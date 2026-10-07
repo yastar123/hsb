@@ -1,3 +1,4 @@
 - [Real-finance integrity](financial-preview-integrity.md) — Honor the no-demo direction; never present unverified balances, prices, or transactions as real.
 - [npm portability on Replit and VPS](npm-runtime.md) — Keep Node available in workflows and keep lockfile tarballs accessible outside Replit.
 - [Admin authentication checks](admin-auth-tests.md) — Test valid email/phone credentials through both the protected page and API paths, not only the credential matcher.
+- [Credential file handling](credential-file-handling.md) — Keep real secrets out of workspace `.env` files; use placeholders in `.env.example` and secure runtime configuration.

@@ -9,8 +9,13 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const configuredBaseUrl = process.env.E2E_BASE_URL;
 const port = Number(process.env.E2E_PORT) || 5101;
 const baseUrl = configuredBaseUrl || `http://127.0.0.1:${port}`;
+const skipMarketChecks = process.env.E2E_SKIP_MARKET === "1";
 const adminUsername = configuredBaseUrl ? process.env.E2E_ADMIN_USERNAME : "smoke-test";
-const adminPassword = configuredBaseUrl ? process.env.E2E_ADMIN_PASSWORD : "smoke-test-only";
+const adminPassword = configuredBaseUrl
+  ? process.env.E2E_ADMIN_PASSWORD
+  : "smoke-test-only-password-2026!";
+const adminEmail = configuredBaseUrl ? process.env.E2E_ADMIN_EMAIL : "smoke-test@example.test";
+const adminPhone = configuredBaseUrl ? process.env.E2E_ADMIN_PHONE : "081234567890";
 const browserPath =
   process.env.CHROMIUM_PATH ||
   (existsSync("/repl/tools/bin/chromium") ? "/repl/tools/bin/chromium" : undefined);
@@ -39,7 +44,17 @@ async function getRoutePaths() {
     }
   }
 
-  return [...paths].sort();
+  return [...paths].sort().filter((route) => {
+    if (!skipMarketChecks) return true;
+    const normalized = route.replace(/\/+$/, "") || "/";
+    return !(
+      normalized === "/pasar" ||
+      normalized.startsWith("/pasar/") ||
+      normalized === "/cari-produk" ||
+      normalized === "/arrangement" ||
+      normalized === "/admin/pasar"
+    );
+  });
 }
 
 async function waitForDatabase() {
@@ -69,6 +84,7 @@ try {
     adminUsername && adminPassword,
     "Set E2E_ADMIN_USERNAME and E2E_ADMIN_PASSWORD when testing an external deployment.",
   );
+  assert(adminPassword.length >= 16, "E2E_ADMIN_PASSWORD must contain at least 16 characters.");
 
   const productionAssetsDirectory = path.join(projectRoot, "dist", "assets");
   const productionScripts = (await readdir(productionAssetsDirectory))
@@ -91,6 +107,8 @@ try {
         ...process.env,
         NODE_ENV: "production",
         PORT: String(port),
+        ADMIN_EMAIL: adminEmail,
+        ADMIN_PHONE: adminPhone,
         ADMIN_USERNAME: adminUsername,
         ADMIN_PASSWORD: adminPassword,
       },
@@ -101,20 +119,22 @@ try {
   const health = await waitForDatabase();
   console.log(`PostgreSQL: ${health.database}`);
 
-  const marketCatalogResponse = await fetch(new URL("/api/market", baseUrl));
-  assert(marketCatalogResponse.status === 200, "The public market catalog API did not respond.");
-  const marketCatalog = await marketCatalogResponse.json();
-  assert(
-    marketCatalog.quoteMode === "illustrative" &&
-      marketCatalog.groups.includes("Metal") &&
-      marketCatalog.products.some((product) => product.symbol === "XAUUSD"),
-    "The PostgreSQL market catalog or its illustrative-price label is missing.",
-  );
-  const brokerOrdersResponse = await fetch(new URL("/api/market/orders", baseUrl));
-  assert(
-    brokerOrdersResponse.status === 404,
-    "A broker order endpoint was unexpectedly exposed under the market API.",
-  );
+  if (!skipMarketChecks) {
+    const marketCatalogResponse = await fetch(new URL("/api/market", baseUrl));
+    assert(marketCatalogResponse.status === 200, "The public market catalog API did not respond.");
+    const marketCatalog = await marketCatalogResponse.json();
+    assert(
+      marketCatalog.quoteMode === "illustrative" &&
+        marketCatalog.groups.includes("Metal") &&
+        marketCatalog.products.some((product) => product.symbol === "XAUUSD"),
+      "The PostgreSQL market catalog or its illustrative-price label is missing.",
+    );
+    const brokerOrdersResponse = await fetch(new URL("/api/market/orders", baseUrl));
+    assert(
+      brokerOrdersResponse.status === 404,
+      "A broker order endpoint was unexpectedly exposed under the market API.",
+    );
+  }
 
   const adminUrl = new URL("/admin", baseUrl);
   const anonymousAdminResponse = await fetch(adminUrl);
@@ -127,6 +147,41 @@ try {
     headers: { Authorization: `Basic ${adminAuthorization}` },
   });
   assert(authenticatedAdminResponse.status === 200, "Configured admin credentials were rejected.");
+  if (!configuredBaseUrl) {
+    for (const identity of [adminEmail, adminPhone]) {
+      const authorization = Buffer.from(`${identity}:${adminPassword}`).toString("base64");
+      const response = await fetch(adminUrl, {
+        headers: { Authorization: `Basic ${authorization}` },
+      });
+      assert(response.status === 200, `Admin page rejected configured identifier ${identity}.`);
+    }
+  }
+  const unauthorizedAdminApi = await fetch(new URL("/api/admin/referrals", baseUrl));
+  assert(
+    unauthorizedAdminApi.status === 401,
+    "Admin API was accessible without admin credentials.",
+  );
+  const authorizedAdminApi = await fetch(new URL("/api/admin/referrals", baseUrl), {
+    headers: { Authorization: `Basic ${adminAuthorization}` },
+  });
+  assert(
+    authorizedAdminApi.status === 200,
+    "Admin role could not read the referral administration API.",
+  );
+  const unauthorizedCustomerApi = await fetch(new URL("/api/account/state", baseUrl));
+  assert(
+    unauthorizedCustomerApi.status === 401,
+    "Customer account data was accessible without a customer session.",
+  );
+  if (!configuredBaseUrl) {
+    for (const identity of [adminEmail, adminPhone]) {
+      const authorization = Buffer.from(`${identity}:${adminPassword}`).toString("base64");
+      const response = await fetch(new URL("/api/admin/referrals", baseUrl), {
+        headers: { Authorization: `Basic ${authorization}` },
+      });
+      assert(response.status === 200, `Admin API rejected configured identifier ${identity}.`);
+    }
+  }
 
   browser = await chromium.launch({
     headless: true,
@@ -210,77 +265,145 @@ try {
     "Registration was enabled before required fields were complete.",
   );
 
-  await page.goto(new URL("/pasar/", baseUrl).href);
-  await page.locator(".market-row").first().waitFor({ state: "visible", timeout: 10_000 });
+  await page.route("**/api/referral/state", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        currentUserCode: "REF-TEST-1",
+        referrers: [
+          {
+            id: "referrer-test",
+            name: "Referral Owner",
+            email: "owner@example.test",
+            code: "REF-TEST-1",
+            commissionRate: 10,
+            status: "Aktif",
+          },
+        ],
+        referrals: [
+          {
+            id: "client-test-1",
+            referrerId: "referrer-test",
+            name: "Rina Invitee",
+            joined: "2026-10-06T12:00:00.000Z",
+            deposit: 0,
+            status: "Terdaftar",
+            commissionPaid: false,
+          },
+          {
+            id: "client-test-2",
+            referrerId: "referrer-test",
+            name: "Budi Depositor",
+            joined: "2026-10-07T12:00:00.000Z",
+            deposit: 25,
+            status: "Deposit",
+            commissionPaid: false,
+          },
+        ],
+      }),
+    });
+  });
+  await page.goto(new URL("/klien", baseUrl).href);
   assert(
-    (await page.locator(".market-quote-notice").innerText()).includes(
-      "bukan kuotasi pasar langsung",
-    ),
-    "The market's illustrative-price disclosure is missing.",
+    (await page.getByRole("tab", { name: "Ringkasan" }).count()) === 0,
+    "The removed client summary tab is still visible.",
   );
-  await page.getByRole("tab", { name: "Metal" }).click();
+  await page.getByRole("button", { name: "Filter" }).click();
+  const clientRows = page.locator(".partner-client-table-wrap tbody tr");
+  await clientRows.first().waitFor({ state: "visible", timeout: 10_000 });
   assert(
-    (await page.locator(".market-row").filter({ hasText: "XAUUSD" }).count()) === 1,
-    "Market category selection failed.",
+    (await clientRows.count()) === 2,
+    "The client list did not load the signed-in user's referrals.",
   );
-  const favoriteButton = page
-    .locator(".market-row")
-    .filter({ hasText: "XAUUSD" })
-    .locator("button.market-star");
-  const favoriteBefore = await favoriteButton.getAttribute("aria-pressed");
-  await favoriteButton.click();
+  const clientSearch = page.getByRole("textbox", { name: "Cari klien" });
+  await clientSearch.fill("Rina");
+  assert((await clientRows.count()) === 1, "Client search did not filter by name.");
+  await clientSearch.fill("");
+  await page.getByRole("combobox", { name: "Status klien" }).selectOption("Deposit");
   assert(
-    (await favoriteButton.getAttribute("aria-pressed")) !== favoriteBefore,
-    "Market favorite toggle failed.",
+    (await clientRows.count()) === 1 &&
+      (await clientRows.first().innerText()).includes("Budi Depositor"),
+    "Client status filtering did not return the matching referral.",
   );
 
-  await page
-    .locator(".market-row")
-    .filter({ hasText: "XAUUSD" })
-    .locator("a.market-product-link")
-    .click();
-  await page.waitForURL("**/pasar/XAUUSD");
-  assert(
-    (await page.getByText("Ask (simulasi)").count()) === 0 &&
-      (await page.getByText("Bid (simulasi)").count()) === 0,
-    "The simulated suffix is still attached to market-detail quote labels.",
-  );
-  assert(
-    (await page.getByRole("button", { name: "Beli", exact: true }).count()) === 0 &&
-      (await page.getByRole("button", { name: "Jual", exact: true }).count()) === 0 &&
-      (await page.getByRole("tab", { name: "Signals", exact: true }).count()) === 0 &&
-      (await page.getByRole("tab", { name: "Pesanan", exact: true }).count()) === 0,
-    "The market detail page exposed broker-trading controls.",
-  );
+  if (!skipMarketChecks) {
+    await page.goto(new URL("/pasar/", baseUrl).href);
+    await page.locator(".market-row").first().waitFor({ state: "visible", timeout: 10_000 });
+    assert(
+      (await page.locator(".market-quote-notice").innerText()).includes(
+        "bukan kuotasi pasar langsung",
+      ),
+      "The market's illustrative-price disclosure is missing.",
+    );
+    await page.getByRole("tab", { name: "Metal" }).click();
+    assert(
+      (await page.locator(".market-row").filter({ hasText: "XAUUSD" }).count()) === 1,
+      "Market category selection failed.",
+    );
+    const favoriteButton = page
+      .locator(".market-row")
+      .filter({ hasText: "XAUUSD" })
+      .locator("button.market-star");
+    const favoriteBefore = await favoriteButton.getAttribute("aria-pressed");
+    await favoriteButton.click();
+    assert(
+      (await favoriteButton.getAttribute("aria-pressed")) !== favoriteBefore,
+      "Market favorite toggle failed.",
+    );
 
-  await page.goto(new URL("/cari-produk", baseUrl).href);
-  const search = page.getByRole("textbox", { name: "Pencarian Cepat" });
-  await search.fill("XAUUSD");
-  await page
-    .locator(".market-row")
-    .filter({ hasText: "XAUUSD" })
-    .waitFor({ state: "visible", timeout: 10_000 });
-  assert(
-    (await page.locator(".market-row").count()) === 1,
-    "Market search did not filter to the requested product.",
-  );
-  await page.getByRole("button", { name: "Hapus pencarian" }).click();
-  assert(
-    (await page.locator(".market-row").count()) > 1,
-    "Clearing market search did not restore the product list.",
-  );
+    await page
+      .locator(".market-row")
+      .filter({ hasText: "XAUUSD" })
+      .locator("a.market-product-link")
+      .click();
+    await page.waitForURL("**/pasar/XAUUSD");
+    assert(
+      (await page.getByText("Ask (simulasi)").count()) === 0 &&
+        (await page.getByText("Bid (simulasi)").count()) === 0,
+      "The simulated suffix is still attached to market-detail quote labels.",
+    );
+    assert(
+      (await page.getByRole("button", { name: "Beli", exact: true }).count()) === 0 &&
+        (await page.getByRole("button", { name: "Jual", exact: true }).count()) === 0 &&
+        (await page.getByRole("tab", { name: "Signals", exact: true }).count()) === 0 &&
+        (await page.getByRole("tab", { name: "Pesanan", exact: true }).count()) === 0,
+      "The market detail page exposed broker-trading controls.",
+    );
+
+    await page.goto(new URL("/cari-produk", baseUrl).href);
+    const search = page.getByRole("textbox", { name: "Pencarian Cepat" });
+    await search.fill("XAUUSD");
+    await page
+      .locator(".market-row")
+      .filter({ hasText: "XAUUSD" })
+      .waitFor({ state: "visible", timeout: 10_000 });
+    assert(
+      (await page.locator(".market-row").count()) === 1,
+      "Market search did not filter to the requested product.",
+    );
+    await page.getByRole("button", { name: "Hapus pencarian" }).click();
+    assert(
+      (await page.locator(".market-row").count()) > 1,
+      "Clearing market search did not restore the product list.",
+    );
+  }
 
   await page.goto(new URL("/admin", baseUrl).href);
-  await page.getByRole("link", { name: "Kelola Pasar" }).click();
-  await page.waitForURL("**/admin/pasar");
+  await page.getByRole("link", { name: skipMarketChecks ? "Kelola User" : "Kelola Pasar" }).click();
+  await page.waitForURL(skipMarketChecks ? "**/admin/user" : "**/admin/pasar");
   assert(
-    (await page.locator("#root").innerText()).includes("Kelola Pasar"),
-    "Admin navigation did not open market management.",
+    (await page.locator("#root").innerText()).includes(
+      skipMarketChecks ? "Kelola User" : "Kelola Pasar",
+    ),
+    "Admin navigation did not open the selected management page.",
   );
 
   await page.goto(new URL("/beranda", baseUrl).href);
-  await page.getByRole("link", { name: /Cek sinyal harian/ }).click();
-  await page.waitForURL("**/pasar");
+  if (!skipMarketChecks) {
+    await page.getByRole("link", { name: /Cek sinyal harian/ }).click();
+    await page.waitForURL("**/pasar");
+  }
   await page.goto(new URL("/beranda", baseUrl).href);
   await page.getByRole("link", { name: /Rekap Agenda Penting Minggu Ini/ }).click();
   await page.waitForURL("**/kalender-ekonomi");
@@ -304,13 +427,17 @@ try {
   );
 
   await page.goto(new URL("/smart-trader", baseUrl).href);
+  const smartTraderLinks = page.locator(".ins-cards a[href^='/smart-trader/']");
+  await smartTraderLinks.first().waitFor({ state: "visible", timeout: 10_000 });
   assert(
-    (await page.locator(".ins-cards a[href^='/smart-trader/']").count()) === 4,
+    (await smartTraderLinks.count()) === 4,
     "Smart Trader tools do not link to individual detail pages.",
   );
   await page.goto(new URL("/smart-trader/analisa-teknikal", baseUrl).href);
+  const smartTraderOverview = page.getByRole("heading", { name: "Gambaran umum" });
+  await smartTraderOverview.waitFor({ state: "visible", timeout: 10_000 });
   assert(
-    await page.getByRole("heading", { name: "Gambaran umum" }).isVisible(),
+    await smartTraderOverview.isVisible(),
     "The Smart Trader detail page is missing its tool overview.",
   );
 
@@ -339,13 +466,15 @@ try {
     await englishHomeHeading.isVisible(),
     "English language selection did not translate the home screen.",
   );
-  await page.goto(new URL("/pasar", baseUrl).href);
-  const englishMarketHeading = page.getByRole("heading", { name: "Markets" });
-  await englishMarketHeading.waitFor({ state: "visible", timeout: 10_000 });
-  assert(
-    await englishMarketHeading.isVisible(),
-    "English language selection did not translate the market screen.",
-  );
+  if (!skipMarketChecks) {
+    await page.goto(new URL("/pasar", baseUrl).href);
+    const englishMarketHeading = page.getByRole("heading", { name: "Markets" });
+    await englishMarketHeading.waitFor({ state: "visible", timeout: 10_000 });
+    assert(
+      await englishMarketHeading.isVisible(),
+      "English language selection did not translate the market screen.",
+    );
+  }
   await page.goto(new URL("/login", baseUrl).href);
   const englishLoginHeading = page.getByRole("heading", { name: "Sign in" });
   await englishLoginHeading.waitFor({ state: "visible", timeout: 10_000 });
@@ -384,7 +513,7 @@ try {
   assert(browserErrors.length === 0, `Browser reported errors: ${browserErrors.join("; ")}`);
 
   console.log(
-    "Interactions: carousel, login UI, registration validation, market tabs/favorites/search, admin navigation, mobile navigation, language switching, and dark mode passed.",
+    `Interactions: carousel, login UI, registration validation, client referral list and filters, role-protected admin/customer APIs, ${skipMarketChecks ? "admin" : "market"} navigation, mobile navigation, language switching, and dark mode passed.`,
   );
   console.log("Note: this smoke test did not create a customer account or financial transaction.");
 } finally {

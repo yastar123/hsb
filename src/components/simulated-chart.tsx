@@ -50,8 +50,24 @@ export function SimulatedChart({
         autoSize: true,
         layout: { background: { type: ColorType.Solid, color: token('--background') }, textColor: token('--muted-foreground'), fontSize: 10, attributionLogo: false },
         grid: { vertLines: { color: token('--market-grid') }, horzLines: { color: token('--market-grid') } },
-        rightPriceScale: { borderColor: token('--market-grid') },
-        timeScale: { borderColor: token('--market-grid'), timeVisible: true, secondsVisible: false },
+        rightPriceScale: {
+          visible: true,
+          autoScale: true,
+          minimumWidth: 72,
+          borderVisible: true,
+          borderColor: token('--market-grid'),
+          scaleMargins: { top: 0.12, bottom: 0.12 },
+        },
+        timeScale: {
+          visible: true,
+          borderVisible: true,
+          borderColor: token('--market-grid'),
+          timeVisible: true,
+          secondsVisible: false,
+          ticksVisible: true,
+          minimumHeight: 32,
+          rightOffset: 3,
+        },
         localization: { priceFormatter: (value: number) => value.toFixed(product.decimals) },
       });
 

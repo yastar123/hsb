@@ -595,6 +595,9 @@ html, body { overflow-x: clip; }
 .partner-top th { padding: 10px 6px; border-right: 1px solid var(--border); }
 .partner-top th:last-child { border-right: 0; }
 .partner-top td { padding: 12px; text-align: center; color: var(--muted-foreground); border-top: 1px solid var(--border); }
+.partner-client-table-wrap { overflow-x: auto; }
+.partner-client-table-wrap table { min-width: 420px; }
+.partner-client-table-wrap th { white-space: nowrap; }
 .partner-title { font-size: 20px; font-weight: 700; padding: 14px 12px 10px; background: var(--background); }
 .partner-klien-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 12px; background: var(--background); }
 .partner-klien-head > b { display: flex; align-items: center; gap: 8px; font-size: 15px; }

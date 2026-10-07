@@ -74,7 +74,7 @@ export function ReferralProvider({ children }: { children: ReactNode }) {
       setRecordsError(cause instanceof Error ? cause.message : 'Data referral tidak dapat dimuat.');
       setRecordsStatus('error');
     }
-  }, [adminView]);
+  }, [adminView, pathname]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 

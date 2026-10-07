@@ -26,4 +26,13 @@ describe('admin login credentials', () => {
     expect(hasConfiguredAdminCredentials()).toBe(false);
     expect(verifyAdminCredentials('admin@example.com', 'test-password-only')).toBe(false);
   });
+
+  it('disables admin access when the configured password is shorter than 16 characters', () => {
+    vi.stubEnv('ADMIN_EMAIL', 'admin@example.com');
+    vi.stubEnv('ADMIN_PHONE', '081234567890');
+    vi.stubEnv('ADMIN_PASSWORD', 'Short-pass-1!');
+
+    expect(hasConfiguredAdminCredentials()).toBe(false);
+    expect(verifyAdminCredentials('admin@example.com', 'Short-pass-1!')).toBe(false);
+  });
 });

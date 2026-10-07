@@ -38,8 +38,8 @@ export function normalizeIndonesianPhone(value) {
 
 export function validPassword(value) {
   return typeof value === "string" &&
-    value.length >= 8 &&
-    value.length <= 12 &&
+    value.length >= 12 &&
+    value.length <= 128 &&
     /\d/.test(value) &&
     /[A-Z]/.test(value) &&
     /[a-z]/.test(value) &&
@@ -203,12 +203,16 @@ function adminIdentifiers() {
 }
 
 export function hasConfiguredAdminCredentials() {
-  return adminIdentifiers().length > 0 && Boolean(process.env.ADMIN_PASSWORD);
+  const password = process.env.ADMIN_PASSWORD;
+  return adminIdentifiers().length > 0 &&
+    typeof password === "string" &&
+    password.length >= 16 &&
+    password.length <= 128;
 }
 
 export function verifyAdminCredentials(identity, password) {
+  if (!hasConfiguredAdminCredentials()) return false;
   const configuredPassword = process.env.ADMIN_PASSWORD;
-  if (!configuredPassword) return false;
 
   const rawIdentity = String(identity ?? "").trim();
   const candidates = new Set([

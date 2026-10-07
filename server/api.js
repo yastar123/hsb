@@ -1,6 +1,5 @@
 import express from "express";
 import { randomUUID } from "node:crypto";
-import { hasConfiguredAdminCredentials, verifyAdminCredentials } from "./auth.js";
 import {
   clearSessionCookie,
   ConfigurationError,
@@ -18,6 +17,7 @@ import {
   validPassword,
   verifyPassword,
 } from "./auth.js";
+import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
 
 const MAX_MONEY = 1_000_000_000;
 const BUSINESS_TIME_ZONE = "Asia/Jakarta";
@@ -90,40 +90,6 @@ function requireDatabase(pool) {
   };
 }
 
-function adminAuth(request, response, next) {
-  if (process.env.NODE_ENV !== "production") {
-    request.adminName = "development-admin";
-    return next();
-  }
-
-  if (!hasConfiguredAdminCredentials()) {
-    return apiError(response, 503, "Akses admin belum dikonfigurasi.");
-  }
-
-  const authorization = request.get("authorization") ?? "";
-  const [scheme, encoded = ""] = authorization.split(" ", 2);
-  if (scheme?.toLowerCase() !== "basic") {
-    response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');
-    return apiError(response, 401, "Autentikasi admin diperlukan.");
-  }
-  try {
-    const decoded = Buffer.from(encoded, "base64").toString("utf8");
-    const separator = decoded.indexOf(":");
-    if (separator < 0) throw new Error("Invalid basic auth.");
-    const suppliedUser = decoded.slice(0, separator);
-    const suppliedPassword = decoded.slice(separator + 1);
-    if (!verifyAdminCredentials(suppliedUser, suppliedPassword)) {
-      response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');
-      return apiError(response, 401, "Autentikasi admin tidak valid.");
-    }
-    request.adminName = suppliedUser;
-    return next();
-  } catch {
-    response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');
-    return apiError(response, 401, "Autentikasi admin tidak valid.");
-  }
-}
-
 async function issueSession(pool, response, userId) {
   const token = newSessionToken();
   const tokenHash = hashSessionToken(token);
@@ -153,11 +119,12 @@ function requireCustomer(pool) {
       return apiError(response, 401, "Sesi berakhir. Silakan masuk kembali.");
     }
     request.customer = result.rows[0];
+    request.auth = { role: ROLES.CUSTOMER, subject: request.customer.id };
     if (request.customer.status === "Diblokir") {
       response.setHeader("Set-Cookie", clearSessionCookie());
       return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
     }
-    return next();
+    return requireRole(ROLES.CUSTOMER)(request, response, next);
   });
 }
 
@@ -715,7 +682,8 @@ export function createApiRouter(pool) {
        WHERE s.token_hash = $1 AND s.expires_at > now()`,
       [hashSessionToken(token)],
     );
-    return response.json({ user: result.rows[0] ?? null });
+    const user = result.rows[0];
+    return response.json({ user: user ? { ...user, role: ROLES.CUSTOMER } : null });
   }));
 
   router.post("/auth/register", rateLimit("register", 6), asyncRoute(async (request, response) => {
@@ -762,7 +730,7 @@ export function createApiRouter(pool) {
       );
       await client.query("COMMIT");
       await issueSession(pool, response, user.id);
-      return response.status(201).json({ user });
+      return response.status(201).json({ user: { ...user, role: ROLES.CUSTOMER } });
     } catch (error) {
       await client.query("ROLLBACK");
       if (error?.code === "23505") return apiError(response, 409, "Email atau nomor telepon sudah terdaftar.");
@@ -793,7 +761,7 @@ export function createApiRouter(pool) {
     if (user.status === "Diblokir") return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
     await issueSession(pool, response, user.id);
     const { password_hash: _passwordHash, ...safeUser } = user;
-    return response.json({ user: safeUser });
+    return response.json({ user: { ...safeUser, role: ROLES.CUSTOMER } });
   }));
 
   router.post("/auth/logout", asyncRoute(async (request, response) => {
@@ -1143,7 +1111,11 @@ export function createApiRouter(pool) {
     }
   }));
 
-  router.use("/admin", adminAuth);
+  router.use(
+    "/admin",
+    requireAdminAuthentication,
+    requireRole(ROLES.ADMIN),
+  );
 
   router.put("/admin/market", asyncRoute(async (request, response) => {
     const catalog = request.body;

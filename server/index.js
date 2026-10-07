@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { createServer as createViteServer } from "vite";
-import { hasConfiguredAdminCredentials, verifyAdminCredentials } from "./auth.js";
+import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
 import { createApiRouter } from "./api.js";
 
 const { Pool } = pg;
@@ -23,6 +23,16 @@ app.set(
   "trust proxy",
   process.env.NODE_ENV === "production" || process.env.REPLIT_DEV_DOMAIN ? 1 : false,
 );
+app.use((_request, response, next) => {
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (process.env.NODE_ENV === "production") {
+    response.setHeader("X-Frame-Options", "DENY");
+    response.setHeader("Strict-Transport-Security", "max-age=31536000");
+  }
+  next();
+});
 app.use(express.json({ limit: "3mb" }));
 
 app.get("/api/health", async (_request, response) => {
@@ -45,37 +55,7 @@ app.use("/api", (_request, response) => {
   response.status(404).json({ error: "API route not found" });
 });
 
-app.use((request, response, next) => {
-  if (process.env.NODE_ENV !== "production" || !/^\/admin(?:\/|$)/i.test(request.path)) {
-    return next();
-  }
-
-  response.setHeader("Cache-Control", "no-store");
-
-  if (!hasConfiguredAdminCredentials()) {
-    return response
-      .status(503)
-      .type("text")
-      .send("Admin access is disabled until credentials are configured.");
-  }
-
-  const authorization = request.get("authorization") ?? "";
-  const [scheme, encodedCredentials = ""] = authorization.split(" ", 2);
-  if (scheme?.toLowerCase() === "basic") {
-    const credentials = Buffer.from(encodedCredentials, "base64").toString("utf8");
-    const separator = credentials.indexOf(":");
-    if (separator >= 0) {
-      const suppliedUsername = Buffer.from(credentials.slice(0, separator));
-      const suppliedPassword = Buffer.from(credentials.slice(separator + 1));
-      if (verifyAdminCredentials(suppliedUsername.toString(), suppliedPassword.toString())) {
-        return next();
-      }
-    }
-  }
-
-  response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');
-  return response.status(401).type("text").send("Authentication required.");
-});
+app.use("/admin", requireAdminAuthentication, requireRole(ROLES.ADMIN));
 
 if (process.env.NODE_ENV === "production") {
   const buildDirectory = path.join(projectRoot, "dist");

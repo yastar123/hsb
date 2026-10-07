@@ -131,23 +131,73 @@ export function PartnerScreen() {
 export function ClientScreen() {
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
-  const [tab, setTab] = useState<'Daftar Klien' | 'Ringkasan'>('Daftar Klien');
+  const { data, recordsStatus, recordsError } = useReferral();
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('Semua');
   const [showFilter, setShowFilter] = useState(false);
+  const owner = data.referrers.find((referrer) => referrer.code === data.currentUserCode);
+  const referrals = data.referrals.filter((referral) => referral.referrerId === owner?.id);
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleReferrals = referrals.filter((referral) => {
+    const matchesSearch = !normalizedSearch ||
+      `${referral.name} ${referral.id}`.toLowerCase().includes(normalizedSearch);
+    const matchesStatus = status === 'Semua' || referral.status === status;
+    return matchesSearch && matchesStatus;
+  });
+  const dateLocale = language === 'en' ? 'en-US' : language === 'zh' ? 'zh-CN' : 'id-ID';
+
   return <main className="home-page"><div className="home-shell partner-shell">
     <PartnerNav active="/klien" />
     <h1 className="partner-title">{tr('Klien')}</h1>
-    <div className="acct-tabs acct-tabs-left" role="tablist">{(['Daftar Klien', 'Ringkasan'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>{tr(t)}</button>)}</div>
-    {tab === 'Daftar Klien' ? <>
-      <div className="partner-klien-head"><b><UserRoundSearch /> {tr('Daftar Klien')}</b><small>{tr('Semua hasil')}: <b>0 {tr('hasil')}</b></small></div>
-      <div className="partner-filter"><Button variant="outline" onClick={() => setShowFilter((v) => !v)} aria-expanded={showFilter}><Filter /> {tr('Filter')}</Button></div>
+    <section aria-labelledby="client-list-title">
+      <div className="partner-klien-head">
+        <b id="client-list-title"><UserRoundSearch /> {tr('Daftar Klien')}</b>
+        <small>{tr('Semua hasil')}: <b>{visibleReferrals.length} {tr('hasil')}</b></small>
+      </div>
+      <div className="partner-filter">
+        <Button variant="outline" onClick={() => setShowFilter((value) => !value)} aria-expanded={showFilter}>
+          <Filter /> {tr('Filter')}
+        </Button>
+      </div>
       {showFilter && <div className="partner-filter-panel">
-        <input placeholder={tr('Cari nama atau ID klien')} aria-label={tr('Cari klien')} />
-        <select aria-label={tr('Status klien')} defaultValue="Semua"><option>{tr('Semua')}</option><option>{tr('Lead')}</option><option>{tr('Sudah deposit')}</option><option>{tr('Trader aktif')}</option></select>
+        <input
+          placeholder={tr('Cari nama atau ID klien')}
+          aria-label={tr('Cari klien')}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <select aria-label={tr('Status klien')} value={status} onChange={(event) => setStatus(event.target.value)}>
+          {['Semua', 'Terdaftar', 'Deposit'].map((value) => <option key={value} value={value}>{tr(value)}</option>)}
+        </select>
       </div>}
-      <p className="partner-empty">{tr('Tidak ada hasil')}</p>
-    </> : <div className="partner-summary">
-       {[['Total Klien', 'Klien'], ['Lead Baru', 'Lead'], ['Deposit Pertama', 'FTD'], ['Trader Aktif', 'Trader']].map(([l, u]) => <div key={String(l)} className="partner-stat"><small>{tr(String(l))}</small><b>0 <span>{tr(String(u))}</span></b></div>)}
-    </div>}
+      {recordsStatus === 'loading' ? <p className="partner-empty" role="status">{tr('Memuat daftar klien...')}</p>
+        : recordsError ? <p className="partner-empty" role="alert">{tr(recordsError)}</p>
+          : !data.currentUserCode ? <p className="partner-empty">
+            {tr('Masuk ke akun untuk melihat orang yang mendaftar menggunakan kode referral Anda.')}
+            {' '}<Link to="/login" className="underline">{tr('Masuk')}</Link>
+          </p>
+            : visibleReferrals.length === 0 ? <p className="partner-empty" role="status">
+              {referrals.length === 0
+                ? tr('Belum ada klien yang mendaftar menggunakan kode referral Anda.')
+                : tr('Tidak ada hasil')}
+            </p>
+              : <div className="partner-top partner-client-table-wrap">
+                <table>
+                  <thead><tr><th>{tr('Nama klien')}</th><th>{tr('Tanggal daftar')}</th><th>{tr('Status')}</th></tr></thead>
+                  <tbody>{visibleReferrals.map((referral) => {
+                    const joined = new Date(referral.joined);
+                    const joinedLabel = Number.isNaN(joined.getTime())
+                      ? '—'
+                      : new Intl.DateTimeFormat(dateLocale, { dateStyle: 'medium' }).format(joined);
+                    return <tr key={referral.id}>
+                      <td>{referral.name}</td>
+                      <td>{joinedLabel}</td>
+                      <td>{tr(referral.status)}</td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>}
+    </section>
     <BottomNav active="Mitra" />
   </div></main>;
 }

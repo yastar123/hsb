@@ -1,5 +1,5 @@
 export const passwordRules = [
-  { label: 'Memiliki 8 hingga 12 karakter', valid: (value: string) => value.length >= 8 && value.length <= 12 },
+  { label: 'Memiliki 12 hingga 128 karakter', valid: (value: string) => value.length >= 12 && value.length <= 128 },
   { label: 'Memiliki setidaknya 1 angka', valid: (value: string) => /\d/.test(value) },
   { label: 'Memiliki setidaknya 1 huruf BESAR', valid: (value: string) => /[A-Z]/.test(value) },
   { label: 'Memiliki setidaknya 1 huruf kecil', valid: (value: string) => /[a-z]/.test(value) },
