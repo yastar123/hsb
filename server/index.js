@@ -19,7 +19,10 @@ const databaseUrl = process.env.DATABASE_URL?.trim();
 const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
 
 app.disable("x-powered-by");
-app.set("trust proxy", process.env.NODE_ENV === "production" || process.env.REPLIT_DEV_DOMAIN ? 1 : false);
+app.set(
+  "trust proxy",
+  process.env.NODE_ENV === "production" || process.env.REPLIT_DEV_DOMAIN ? 1 : false,
+);
 app.use(express.json({ limit: "3mb" }));
 
 app.get("/api/health", async (_request, response) => {
