@@ -49,6 +49,19 @@ The repository includes sample systemd and Caddy configuration in `deploy/vps/`.
 
 These are deployment instructions and sample configuration only; the app has not been installed on an external VPS or connected to a public domain.
 
+## Deploy on Rocky Linux with PM2 and Nginx
+
+The sample files are `deploy/pm2/ecosystem.config.cjs` and `deploy/nginx/webullxau.com.conf.example`. They run the production Express server on `127.0.0.1:5000` behind Nginx. Use Node.js 20.19 or newer and make sure PostgreSQL is running and the `HSB` database exists.
+
+1. On the server, clone the repository, enter its directory, then run `npm ci --registry=https://registry.npmjs.org/` and `npm run build`.
+2. Create a private `.env` file in the project root (it is ignored by Git), with `DATABASE_URL`, `ADMIN_NUMBER` (or `ADMIN_USERNAME`), and `ADMIN_PASSWORD`. Use your own current values there; do not put them in `.env.example` or commit them. `ADMIN_NUMBER` is used as the HTTP Basic Auth username for `/admin`.
+3. Install PM2 globally with `npm install -g pm2`, then run `pm2 start deploy/pm2/ecosystem.config.cjs --env production`, `pm2 save`, and `pm2 startup`. Run the startup command PM2 prints so the process returns after a reboot.
+4. Copy the Nginx example to `/etc/nginx/conf.d/webullxau.com.conf`, test it with `sudo nginx -t`, and reload Nginx. Point the domain's DNS A record to the server and allow inbound ports 80 and 443.
+5. Install Certbot for Rocky Linux and run `sudo certbot --nginx -d webullxau.com` to enable HTTPS. Use HTTPS before entering admin credentials; HTTP Basic Auth must not be exposed over plain HTTP.
+6. Check `https://webullxau.com/api/health`; it should report `"database":"connected"`. If it reports `disconnected`, verify that PostgreSQL is running and `DATABASE_URL` points to an existing database with valid credentials.
+
+The `/admin` protection is HTTP Basic Auth, not a full user/session system. Trading, deposits, withdrawals, and account flows remain demos and must not be used for real funds or customer financial data.
+
 ## Current demo limits
 
 Login, registration, deposit, withdrawal, and trading/account data are still demo flows. The smoke test verifies their current interface behavior, not real identity checks or financial transactions. Do not use them for live trading or real customer data. Production `/admin` pages require HTTP Basic Auth credentials; keep HTTPS enabled and never reuse the database password.

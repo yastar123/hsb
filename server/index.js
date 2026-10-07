@@ -43,7 +43,7 @@ app.use((request, response, next) => {
     return next();
   }
 
-  const username = process.env.ADMIN_USERNAME?.trim();
+  const username = process.env.ADMIN_USERNAME?.trim() || process.env.ADMIN_NUMBER?.trim();
   const password = process.env.ADMIN_PASSWORD;
   response.setHeader("Cache-Control", "no-store");
 
