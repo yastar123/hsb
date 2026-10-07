@@ -21,7 +21,25 @@ import { createApiRouter } from "./api.js";
 const { Pool } = pg;
 const app = express();
 const httpServer = createServer(app);
-const port = process.env.PORT && process.env.PORT !== "8080" ? Number(process.env.PORT) : 3000;
+function getListenPort() {
+  const portArgIndex = process.argv.indexOf("--port");
+  if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+    const parsed = Number(process.argv[portArgIndex + 1]);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  const pArgIndex = process.argv.indexOf("-p");
+  if (pArgIndex !== -1 && process.argv[pArgIndex + 1]) {
+    const parsed = Number(process.argv[pArgIndex + 1]);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  if (process.env.PORT && process.env.PORT !== "8080") {
+    const parsed = Number(process.env.PORT);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return 3000;
+}
+
+const port = getListenPort();
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
 setAdminDbPool(pool);
