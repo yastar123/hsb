@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -35,6 +36,47 @@ app.get("/api/health", async (_request, response) => {
 
 app.use("/api", (_request, response) => {
   response.status(404).json({ error: "API route not found" });
+});
+
+app.use((request, response, next) => {
+  if (process.env.NODE_ENV !== "production" || !/^\/admin(?:\/|$)/i.test(request.path)) {
+    return next();
+  }
+
+  const username = process.env.ADMIN_USERNAME?.trim();
+  const password = process.env.ADMIN_PASSWORD;
+  response.setHeader("Cache-Control", "no-store");
+
+  if (!username || !password) {
+    return response
+      .status(503)
+      .type("text")
+      .send("Admin access is disabled until credentials are configured.");
+  }
+
+  const authorization = request.get("authorization") ?? "";
+  const [scheme, encodedCredentials = ""] = authorization.split(" ", 2);
+  if (scheme?.toLowerCase() === "basic") {
+    const credentials = Buffer.from(encodedCredentials, "base64").toString("utf8");
+    const separator = credentials.indexOf(":");
+    if (separator >= 0) {
+      const suppliedUsername = Buffer.from(credentials.slice(0, separator));
+      const suppliedPassword = Buffer.from(credentials.slice(separator + 1));
+      const expectedUsername = Buffer.from(username);
+      const expectedPassword = Buffer.from(password);
+      const usernameMatches =
+        suppliedUsername.length === expectedUsername.length &&
+        timingSafeEqual(suppliedUsername, expectedUsername);
+      const passwordMatches =
+        suppliedPassword.length === expectedPassword.length &&
+        timingSafeEqual(suppliedPassword, expectedPassword);
+
+      if (usernameMatches && passwordMatches) return next();
+    }
+  }
+
+  response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');
+  return response.status(401).type("text").send("Authentication required.");
 });
 
 if (process.env.NODE_ENV === "production") {

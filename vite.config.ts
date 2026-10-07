@@ -18,5 +18,8 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     allowedHosts: true,
+    watch: {
+      ignored: ["**/node_modules/**", "**/.git/**", "**/.cache/**"],
+    },
   },
 });

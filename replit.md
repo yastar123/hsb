@@ -19,3 +19,11 @@ For local development, copy `.env.example` to `.env` and enter a PostgreSQL conn
 Run `bun run build`, then `bun run start`. The Express server serves the compiled React app from `dist`.
 
 Existing demo content and account flows still persist in browser storage. They have not been migrated to PostgreSQL because their data model and access controls need to be defined before storing shared user or trading data.
+
+## Test the project
+
+Run `bun run test:all` to lint the changed runtime files, type-check, run unit tests, and exercise every file-based page plus key interactions against a production build. On Replit the browser test uses `/repl/tools/bin/chromium`. On another machine, install Chromium with `bunx playwright install chromium`.
+
+## VPS deployment
+
+See `deploy/vps/` for sample systemd and Caddy configuration. Set `DATABASE_URL`, `ADMIN_USERNAME`, and a strong, unique `ADMIN_PASSWORD` in a protected environment file on the VPS, build with `bun run build`, and run the Express service behind Caddy or another HTTPS reverse proxy. The production `/admin` routes return 503 until admin credentials are configured and require HTTP Basic Auth afterwards. The VPS needs Node.js 20.19 or newer, PostgreSQL access, and public DNS/firewall configuration for HTTPS.

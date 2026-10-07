@@ -1,0 +1,23 @@
+[Unit]
+Description=HSB Trading web application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hsb-trading
+Group=hsb-trading
+WorkingDirectory=/opt/hsb-trading
+Environment=NODE_ENV=production
+Environment=PORT=5000
+EnvironmentFile=/etc/hsb-trading/hsb-trading.env
+ExecStart=/usr/bin/node /opt/hsb-trading/server/index.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

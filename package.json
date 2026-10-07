@@ -3,6 +3,9 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "node server/index.js",
     "build": "vite build",
@@ -12,7 +15,10 @@
     "lint": "eslint src/main.tsx src/routes/__root.tsx server/index.js vite.config.ts",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "bunx tsc --noEmit",
+    "test:e2e": "bun run build && bun run scripts/smoke-test.js",
+    "test:all": "bun run lint && bun run typecheck && bun run test && bun run test:e2e"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -60,6 +66,7 @@
     "lightweight-charts": "^5.2.1",
     "lucide-react": "^0.575.0",
     "pg": "^8.23.1",
+    "playwright": "^1.63.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",
