@@ -64,6 +64,18 @@ try {
     "Set E2E_ADMIN_USERNAME and E2E_ADMIN_PASSWORD when testing an external deployment.",
   );
 
+  const productionAssetsDirectory = path.join(projectRoot, "dist", "assets");
+  const productionScripts = (await readdir(productionAssetsDirectory))
+    .filter((name) => name.endsWith(".js"))
+    .map((name) => path.join(productionAssetsDirectory, name));
+  const productionBundle = (await Promise.all(productionScripts.map((file) => readFile(file, "utf8")))).join("\n");
+  for (const demoCredential of ["admin@demo.test", "Demo@1234", "Admin@123"]) {
+    assert(
+      !productionBundle.includes(demoCredential),
+      `Development-only demo credential ${demoCredential} was included in the production bundle.`,
+    );
+  }
+
   if (!configuredBaseUrl) {
     serverProcess = Bun.spawn(["bun", "run", "start"], {
       cwd: projectRoot,
@@ -135,6 +147,14 @@ try {
   assert(/Akun Demo/i.test(await page.locator("h1").innerText()), "Welcome carousel did not change slides.");
 
   await page.goto(new URL("/login", baseUrl).href);
+  assert(
+    (await page.getByRole("tab", { name: "MT5" }).count()) === 0,
+    "The removed MT5 login tab is still visible.",
+  );
+  assert(
+    (await page.getByRole("heading", { name: "Akun Demo" }).count()) === 0,
+    "Development demo credentials were exposed in the production login page.",
+  );
   await page.getByRole("tab", { name: "Email" }).click();
   assert(await page.getByRole("textbox", { name: "Email" }).isVisible(), "Email login tab did not switch.");
   await page.getByRole("button", { name: "Lupa Kata Sandi" }).click();

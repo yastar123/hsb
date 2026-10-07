@@ -218,8 +218,20 @@
 .account-forgot { display: flex; justify-content: flex-end; margin-top: 3px; }
 .account-forgot button { font-size: 10px; padding: 0; height: 27px; }
 .account-signin .account-submit { margin-top: 92px; }
+.account-signin-demo .account-submit { margin-top: 30px; }
 .account-switch { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 21px; font-size: 10px; }
 .account-switch a { font-size: 10px; padding: 0; height: 25px; }
+.account-demo { margin-top: 28px; padding: 14px; border: 1px solid var(--account-field-border); border-radius: 10px; background: var(--account-field); }
+.account-demo-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.account-demo-heading h2 { margin: 0; font-size: 14px; font-weight: 700; }
+.account-demo-heading > span { border-radius: 999px; background: var(--background); padding: 4px 8px; color: var(--account-soft); font-size: 9px; }
+.account-demo > p { margin: 7px 0 12px; color: var(--muted-foreground); font-size: 10px; line-height: 1.5; }
+.account-demo-list { display: grid; gap: 8px; }
+.account-demo-card { display: grid; gap: 10px; border: 1px solid var(--account-field-border); border-radius: 8px; background: var(--background); padding: 10px; }
+.account-demo-card > div { display: grid; gap: 3px; font-size: 10px; }
+.account-demo-card > div > strong { margin-bottom: 2px; font-size: 11px; }
+.account-demo-card code { color: var(--foreground); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.account-demo-card button { min-height: 34px; font-size: 10px; }
 .account-partners { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--account-placeholder); margin: 82px 20px 0; font-family: Arial, sans-serif; }
 .account-registration .account-partners { margin-top: 42px; }
 .account-partners > div { display: flex; align-items: center; gap: 3px; }
