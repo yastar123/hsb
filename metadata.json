@@ -1,0 +1,5 @@
+{
+  "name": "HSB Trading",
+  "description": "HSB Trading platform application with market data, accounts, and financial services.",
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

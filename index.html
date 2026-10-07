@@ -2,7 +2,38 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          var target = typeof window !== "undefined" ? window : globalThis;
+          if (!target) return;
+          var nativeFetch = target.fetch;
+          var currentFetch = typeof nativeFetch === "function" ? nativeFetch.bind(target) : nativeFetch;
+          var propDesc = {
+            get: function () {
+              return currentFetch;
+            },
+            set: function (val) {
+              currentFetch = val;
+            },
+            configurable: true,
+            enumerable: true,
+          };
+          try {
+            Object.defineProperty(target, "fetch", propDesc);
+          } catch (_) {}
+          if (typeof Window !== "undefined" && Window.prototype) {
+            try {
+              Object.defineProperty(Window.prototype, "fetch", propDesc);
+            } catch (_) {}
+          }
+        } catch (_) {}
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="HSB Trading platform application with market data, accounts, and financial services." />
+    <meta property="og:title" content="HSB Trading" />
+    <meta property="og:description" content="HSB Trading platform application with market data, accounts, and financial services." />
     <link rel="icon" href="/hsb-mark.svg" type="image/svg+xml" />
     <link
       rel="stylesheet"

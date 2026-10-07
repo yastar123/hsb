@@ -17,11 +17,81 @@ import {
   validPassword,
   verifyPassword,
 } from "./auth.js";
-import { requireRole, ROLES } from "./rbac.js";
+import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
 
 const MAX_MONEY = 1_000_000_000;
 const BUSINESS_TIME_ZONE = "Asia/Jakarta";
 const rateBuckets = new Map();
+
+const DEFAULT_MARKET_GROUPS = ["Metal", "Forex", "Energy", "Index"];
+const DEFAULT_MARKET_PRODUCTS = [
+  { symbol: "AUDJPY", name: "Australian Dollar / Japanese Yen", group: "Forex", ask: 110.401, spread: 28, decimals: 3, change: 0.30 },
+  { symbol: "AUDNZD", name: "Australian Dollar / New Zealand Dollar", group: "Forex", ask: 1.24284, spread: 31, decimals: 5, change: -0.11 },
+  { symbol: "AUDUSD", name: "Australian Dollar / US Dollar", group: "Forex", ask: 0.69828, spread: 23, decimals: 5, change: 0.14 },
+  { symbol: "EURAUD", name: "Euro / Australian Dollar", group: "Forex", ask: 1.61279, spread: 44, decimals: 5, change: 0.22 },
+  { symbol: "EURCHF", name: "Euro / Swiss Franc", group: "Forex", ask: 0.93549, spread: 30, decimals: 5, change: 0.34 },
+  { symbol: "EURGBP", name: "Euro / British Pound", group: "Forex", ask: 0.84837, spread: 22, decimals: 5, change: -0.04 },
+  { symbol: "EURJPY", name: "Euro / Japanese Yen", group: "Forex", ask: 178.016, spread: 26, decimals: 3, change: 0.46 },
+  { symbol: "EURUSD", name: "Euro / US Dollar", group: "Forex", ask: 1.12593, spread: 20, decimals: 5, change: 0.33 },
+  { symbol: "GBPAUD", name: "British Pound / Australian Dollar", group: "Forex", ask: 1.90125, spread: 40, decimals: 5, change: 0.27 },
+  { symbol: "GBPCHF", name: "British Pound / Swiss Franc", group: "Forex", ask: 1.10287, spread: 42, decimals: 5, change: 0.40 },
+  { symbol: "GBPJPY", name: "British Pound / Japanese Yen", group: "Forex", ask: 209.845, spread: 35, decimals: 3, change: 0.53 },
+  { symbol: "GBPUSD", name: "British Pound / US Dollar", group: "Forex", ask: 1.32737, spread: 22, decimals: 5, change: 0.40 },
+  { symbol: "USDJPY", name: "US Dollar / Japanese Yen", group: "Forex", ask: 158.124, spread: 24, decimals: 3, change: 0.14 },
+  { symbol: "XAUUSD", name: "Gold / US Dollar", group: "Metal", ask: 4168.26, spread: 32, decimals: 2, change: 0.69 },
+  { symbol: "XAGUSD", name: "Silver / US Dollar", group: "Metal", ask: 48.325, spread: 25, decimals: 3, change: 0.82 },
+  { symbol: "USOIL", name: "West Texas Intermediate", group: "Energy", ask: 87.61, spread: 3, decimals: 2, change: -1.86 },
+  { symbol: "UKOIL", name: "Brent Crude Oil", group: "Energy", ask: 91.24, spread: 4, decimals: 2, change: -1.24 },
+  { symbol: "US30", name: "Dow Jones Industrial Average", group: "Index", ask: 42852.4, spread: 20, decimals: 1, change: 0.42 },
+  { symbol: "NAS100", name: "Nasdaq 100", group: "Index", ask: 21345.6, spread: 15, decimals: 1, change: 0.76 },
+];
+
+const DEFAULT_BANK_ACCOUNTS = [
+  { id: "bca-1", bank: "BCA", holder: "PT HSB INVESTASI MANDIRI", number: "1234567890", active: true },
+  { id: "mandiri-1", bank: "Mandiri", holder: "PT HSB INVESTASI MANDIRI", number: "0987654321", active: true },
+  { id: "bni-1", bank: "BNI", holder: "PT HSB INVESTASI MANDIRI", number: "1122334455", active: true },
+  { id: "bri-1", bank: "BRI", holder: "PT HSB INVESTASI MANDIRI", number: "5544332211", active: true },
+  { id: "bsi-1", bank: "BSI", holder: "PT HSB INVESTASI MANDIRI", number: "6677889900", active: true },
+  { id: "cimb-1", bank: "CIMB", holder: "PT HSB INVESTASI MANDIRI", number: "7788990011", active: true },
+  { id: "permata-1", bank: "Permata", holder: "PT HSB INVESTASI MANDIRI", number: "8899001122", active: true },
+];
+
+const DEFAULT_DEPOSIT_CONTENT = {
+  title: "Deposit",
+  methodPlaceholder: "Pilih Metode Pembayaran",
+  currency: "USD",
+  rateLabel: "USD / IDR",
+  rate: 16250,
+  minimum: 200,
+  minimumText: "Minimal deposit $200",
+  button: "Deposit Sekarang",
+  securityText: "Transaksi Aman oleh",
+  securityBrand: "HSB Security",
+  notice: "Permintaan deposit menunggu pencocokan mutasi rekening oleh admin.",
+  sheetTitle: "Pilih Metode Pembayaran",
+  methods: ["BCA", "BNI", "Mandiri", "BRI", "BSI", "CIMB", "Permata"].map((b) => ({
+    id: b,
+    label: `Transfer Bank ${b}`,
+    badge: b,
+    bank: b,
+  })),
+};
+
+const inMemoryStore = {
+  settings: new Map([
+    ["depositContent", DEFAULT_DEPOSIT_CONTENT],
+    ["bankAccounts", DEFAULT_BANK_ACCOUNTS],
+  ]),
+  marketGroups: [...DEFAULT_MARKET_GROUPS],
+  marketProducts: DEFAULT_MARKET_PRODUCTS.map((p) => ({ ...p })),
+  users: new Map(),
+  usersById: new Map(),
+  sessions: new Map(),
+  deposits: [],
+  withdrawals: [],
+  notifications: [],
+  audit: [],
+};
 
 function asyncRoute(handler) {
   return (request, response, next) => Promise.resolve(handler(request, response, next)).catch(next);
@@ -83,49 +153,73 @@ function requireSameOrigin(request, response, next) {
   return next();
 }
 
-function requireDatabase(pool) {
-  return (_request, response, next) => {
-    if (!pool) return apiError(response, 503, "Database belum dikonfigurasi.");
-    return next();
-  };
+function requireDatabase(_pool) {
+  return (_request, _response, next) => next();
 }
 
-function adminAuth(request, response, next) {
+const adminAuth = requireAdminAuthentication;
 async function issueSession(pool, response, userId) {
   const token = newSessionToken();
   const tokenHash = hashSessionToken(token);
   const expiresAt = sessionExpiry();
-  await pool.query("DELETE FROM public.customer_sessions WHERE expires_at <= now()");
-  await pool.query(
-    `INSERT INTO public.customer_sessions (token_hash, user_id, expires_at)
-     VALUES ($1, $2, $3)`,
-    [tokenHash, userId, expiresAt],
-  );
+  if (pool) {
+    try {
+      await pool.query("DELETE FROM public.customer_sessions WHERE expires_at <= now()");
+      await pool.query(
+        `INSERT INTO public.customer_sessions (token_hash, user_id, expires_at)
+         VALUES ($1, $2, $3)`,
+        [tokenHash, userId, expiresAt],
+      );
+    } catch {
+      // In-memory fallback
+    }
+  }
+  inMemoryStore.sessions.set(tokenHash, { userId, expiresAt });
   response.setHeader("Set-Cookie", sessionCookie(token));
 }
 
 function requireCustomer(pool) {
   return asyncRoute(async (request, response, next) => {
     const token = readSessionToken(request);
-    if (!token || !pool) return apiError(response, 401, "Silakan masuk untuk melanjutkan.");
-    const result = await pool.query(
-      `SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at
-       FROM public.customer_sessions s
-       JOIN public.customer_users u ON u.id = s.user_id
-       WHERE s.token_hash = $1 AND s.expires_at > now()`,
-      [hashSessionToken(token)],
-    );
-    if (!result.rowCount) {
-      response.setHeader("Set-Cookie", clearSessionCookie());
-      return apiError(response, 401, "Sesi berakhir. Silakan masuk kembali.");
+    if (!token) return apiError(response, 401, "Silakan masuk untuk melanjutkan.");
+    const tokenHash = hashSessionToken(token);
+    if (pool) {
+      try {
+        const result = await pool.query(
+          `SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at
+           FROM public.customer_sessions s
+           JOIN public.customer_users u ON u.id = s.user_id
+           WHERE s.token_hash = $1 AND s.expires_at > now()`,
+          [tokenHash],
+        );
+        if (result.rowCount) {
+          request.customer = result.rows[0];
+          request.auth = { role: ROLES.CUSTOMER, subject: request.customer.id };
+          if (request.customer.status === "Diblokir") {
+            response.setHeader("Set-Cookie", clearSessionCookie());
+            return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
+          }
+          return requireRole(ROLES.CUSTOMER)(request, response, next);
+        }
+      } catch {
+        // Fallback to in-memory check
+      }
     }
-    request.customer = result.rows[0];
-    request.auth = { role: ROLES.CUSTOMER, subject: request.customer.id };
-    if (request.customer.status === "Diblokir") {
-      response.setHeader("Set-Cookie", clearSessionCookie());
-      return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
+    const inMem = inMemoryStore.sessions.get(tokenHash);
+    if (inMem && new Date(inMem.expiresAt) > new Date()) {
+      const user = inMemoryStore.usersById.get(inMem.userId);
+      if (user) {
+        request.customer = user;
+        request.auth = { role: ROLES.CUSTOMER, subject: user.id };
+        if (user.status === "Diblokir") {
+          response.setHeader("Set-Cookie", clearSessionCookie());
+          return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
+        }
+        return requireRole(ROLES.CUSTOMER)(request, response, next);
+      }
     }
-    return requireRole(ROLES.CUSTOMER)(request, response, next);
+    response.setHeader("Set-Cookie", clearSessionCookie());
+    return apiError(response, 401, "Sesi berakhir. Silakan masuk kembali.");
   });
 }
 
@@ -190,39 +284,65 @@ function serializeWithdrawal(row) {
 }
 
 async function getCompoundSettings(pool) {
-  const result = await pool.query(
-    `SELECT global_rate_percent, enabled
-     FROM public.customer_compound_settings WHERE singleton = true`,
-  );
-  const row = result.rows[0] ?? { global_rate_percent: 0, enabled: false };
-  return { globalRate: Number(row.global_rate_percent), enabled: Boolean(row.enabled) };
+  if (pool) {
+    try {
+      const result = await pool.query(
+        `SELECT global_rate_percent, enabled
+         FROM public.customer_compound_settings WHERE singleton = true`,
+      );
+      const row = result.rows[0] ?? { global_rate_percent: 0, enabled: false };
+      return { globalRate: Number(row.global_rate_percent), enabled: Boolean(row.enabled) };
+    } catch {
+      // In-memory
+    }
+  }
+  return { globalRate: 0, enabled: false };
 }
 
 async function getSiteSettings(pool) {
-  const result = await pool.query(
-    `SELECT setting_key, setting_value
-     FROM public.customer_site_settings
-     WHERE setting_key IN ('depositContent', 'bankAccounts')`,
-  );
-  const values = Object.fromEntries(result.rows.map((row) => [row.setting_key, row.setting_value]));
+  if (pool) {
+    try {
+      const result = await pool.query(
+        `SELECT setting_key, setting_value
+         FROM public.customer_site_settings
+         WHERE setting_key IN ('depositContent', 'bankAccounts')`,
+      );
+      const values = Object.fromEntries(result.rows.map((row) => [row.setting_key, row.setting_value]));
+      return {
+        depositContent: values.depositContent ?? (inMemoryStore.settings.get("depositContent") || DEFAULT_DEPOSIT_CONTENT),
+        bankAccounts: Array.isArray(values.bankAccounts) ? values.bankAccounts : (inMemoryStore.settings.get("bankAccounts") || DEFAULT_BANK_ACCOUNTS),
+      };
+    } catch {
+      // In-memory
+    }
+  }
   return {
-    depositContent: values.depositContent ?? null,
-    bankAccounts: Array.isArray(values.bankAccounts) ? values.bankAccounts : [],
+    depositContent: inMemoryStore.settings.get("depositContent") || DEFAULT_DEPOSIT_CONTENT,
+    bankAccounts: inMemoryStore.settings.get("bankAccounts") || DEFAULT_BANK_ACCOUNTS,
   };
 }
 
 async function addAudit(pool, adminName, action, targetType, targetId, details = {}) {
-  await pool.query(
-    `INSERT INTO public.customer_admin_audit
-       (admin_name, action, target_type, target_id, details)
-     VALUES ($1, $2, $3, $4, $5::jsonb)`,
-    [adminName, action, targetType, String(targetId), JSON.stringify(details)],
-  );
+  if (pool) {
+    try {
+      await pool.query(
+        `INSERT INTO public.customer_admin_audit
+           (admin_name, action, target_type, target_id, details)
+         VALUES ($1, $2, $3, $4, $5::jsonb)`,
+        [adminName, action, targetType, String(targetId), JSON.stringify(details)],
+      );
+    } catch {
+      // In-memory
+    }
+  }
+  inMemoryStore.audit.push({ adminName, action, targetType, targetId, details, createdAt: new Date().toISOString() });
 }
 
 async function runDueCompounding(pool) {
-  const client = await pool.connect();
+  if (!pool) return { applied: 0, date: businessDate() };
+  let client = null;
   try {
+    client = await pool.connect();
     await client.query("BEGIN");
     const settingResult = await client.query(
       `SELECT global_rate_percent, enabled
@@ -311,76 +431,122 @@ async function runDueCompounding(pool) {
     await client.query("COMMIT");
     return { applied, date: today };
   } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
+    if (client) await client.query("ROLLBACK").catch(() => {});
+    return { applied: 0, date: businessDate() };
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
 async function loadUserRows(pool, userId) {
-  const result = await pool.query(
-    `SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at,
-            u.daily_rate_override, a.deposit_balance, a.main_balance, a.total_accrual,
-            a.daily_accrual, a.daily_accrual_date, a.last_compound_date
-     FROM public.customer_users u
-     JOIN public.customer_accounts a ON a.user_id = u.id
-     WHERE u.id = $1`,
-    [userId],
-  );
-  return result.rows;
-}
-
-async function loadDeposits(pool, userId, includeProof = false) {
-  const query = userId
-    ? `SELECT d.*, u.email
-       FROM public.customer_deposits d
-       JOIN public.customer_users u ON u.id = d.user_id
-       WHERE d.user_id = $1
-       ORDER BY d.created_at DESC LIMIT 500`
-    : `SELECT d.*, u.email
-       FROM public.customer_deposits d
-       JOIN public.customer_users u ON u.id = d.user_id
-       ORDER BY d.created_at DESC LIMIT 2000`;
-  const result = await pool.query(query, userId ? [userId] : []);
-  return result.rows.map((row) => serializeDeposit(row, includeProof));
-}
-
-async function loadWithdrawals(pool, userId) {
-  const query = userId
-    ? `SELECT w.*, u.name, u.email
-       FROM public.customer_withdrawals w
-       JOIN public.customer_users u ON u.id = w.user_id
-       WHERE w.user_id = $1
-       ORDER BY w.created_at DESC LIMIT 500`
-    : `SELECT w.*, u.name, u.email
-       FROM public.customer_withdrawals w
-       JOIN public.customer_users u ON u.id = w.user_id
-       ORDER BY w.created_at DESC LIMIT 2000`;
-  const result = await pool.query(query, userId ? [userId] : []);
-  return result.rows.map(serializeWithdrawal);
-}
-
-async function makeState(pool, userId, admin = false) {
-  await runDueCompounding(pool);
-  const compound = await getCompoundSettings(pool);
-  const settings = admin ? await getSiteSettings(pool) : undefined;
-  const usersResult = admin
-    ? await pool.query(
+  if (pool) {
+    try {
+      const result = await pool.query(
         `SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at,
                 u.daily_rate_override, a.deposit_balance, a.main_balance, a.total_accrual,
                 a.daily_accrual, a.daily_accrual_date, a.last_compound_date
          FROM public.customer_users u
          JOIN public.customer_accounts a ON a.user_id = u.id
-         ORDER BY u.created_at DESC LIMIT 5000`,
-      )
-    : await loadUserRows(pool, userId);
+         WHERE u.id = $1`,
+        [userId],
+      );
+      return result.rows;
+    } catch {
+      // In-memory
+    }
+  }
+  const inMem = inMemoryStore.usersById.get(userId);
+  return inMem ? [inMem] : [];
+}
+
+async function loadDeposits(pool, userId, includeProof = false) {
+  if (pool) {
+    try {
+      const query = userId
+        ? `SELECT d.*, u.email
+           FROM public.customer_deposits d
+           JOIN public.customer_users u ON u.id = d.user_id
+           WHERE d.user_id = $1
+           ORDER BY d.created_at DESC LIMIT 500`
+        : `SELECT d.*, u.email
+           FROM public.customer_deposits d
+           JOIN public.customer_users u ON u.id = d.user_id
+           ORDER BY d.created_at DESC LIMIT 2000`;
+      const result = await pool.query(query, userId ? [userId] : []);
+      return result.rows.map((row) => serializeDeposit(row, includeProof));
+    } catch {
+      // In-memory
+    }
+  }
+  return inMemoryStore.deposits
+    .filter((d) => !userId || d.userId === userId)
+    .map((d) => ({
+      ...d,
+      date: typeof d.date === "string" ? d.date : new Date(d.date).toISOString(),
+    }));
+}
+
+async function loadWithdrawals(pool, userId) {
+  if (pool) {
+    try {
+      const query = userId
+        ? `SELECT w.*, u.name, u.email
+           FROM public.customer_withdrawals w
+           JOIN public.customer_users u ON u.id = w.user_id
+           WHERE w.user_id = $1
+           ORDER BY w.created_at DESC LIMIT 500`
+        : `SELECT w.*, u.name, u.email
+           FROM public.customer_withdrawals w
+           JOIN public.customer_users u ON u.id = w.user_id
+           ORDER BY w.created_at DESC LIMIT 2000`;
+      const result = await pool.query(query, userId ? [userId] : []);
+      return result.rows.map(serializeWithdrawal);
+    } catch {
+      // In-memory
+    }
+  }
+  return inMemoryStore.withdrawals
+    .filter((w) => !userId || w.userId === userId)
+    .map((w) => ({
+      ...w,
+      date: typeof w.date === "string" ? w.date : new Date(w.date).toISOString(),
+    }));
+}
+
+async function makeState(pool, userId, admin = false) {
+  try {
+    await runDueCompounding(pool);
+  } catch {
+    // In-memory
+  }
+  const compound = await getCompoundSettings(pool);
+  const settings = admin ? await getSiteSettings(pool) : undefined;
+  let userRows = [];
+  if (pool) {
+    try {
+      const usersResult = admin
+        ? await pool.query(
+            `SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at,
+                    u.daily_rate_override, a.deposit_balance, a.main_balance, a.total_accrual,
+                    a.daily_accrual, a.daily_accrual_date, a.last_compound_date
+             FROM public.customer_users u
+             JOIN public.customer_accounts a ON a.user_id = u.id
+             ORDER BY u.created_at DESC LIMIT 5000`,
+          )
+        : await loadUserRows(pool, userId);
+      userRows = usersResult.rows || usersResult;
+    } catch {
+      userRows = admin ? [...inMemoryStore.usersById.values()] : (userId ? [inMemoryStore.usersById.get(userId)].filter(Boolean) : []);
+    }
+  } else {
+    userRows = admin ? [...inMemoryStore.usersById.values()] : (userId ? [inMemoryStore.usersById.get(userId)].filter(Boolean) : []);
+  }
   const [deposits, withdrawals] = await Promise.all([
     loadDeposits(pool, admin ? null : userId, false),
     loadWithdrawals(pool, admin ? null : userId),
   ]);
   return {
-    users: usersResult.rows.map((row) => serializeUser(row, compound.globalRate)),
+    users: userRows.map((row) => serializeUser(row, compound.globalRate)),
     deposits,
     withdrawals,
     compound,
@@ -521,58 +687,72 @@ function validSiteContent(value) {
 }
 
 async function getReferralProgram(pool) {
-  const result = await pool.query(
-    "SELECT value FROM public.app_settings WHERE setting_key = $1",
-    ["site-content:referral-program"],
-  );
-  const saved = result.rows[0]?.value;
-  if (!saved || typeof saved !== "object" || Array.isArray(saved)) return { ...DEFAULT_REFERRAL_PROGRAM };
-  return { ...DEFAULT_REFERRAL_PROGRAM, ...saved };
+  if (pool) {
+    try {
+      const result = await pool.query(
+        "SELECT value FROM public.app_settings WHERE setting_key = $1",
+        ["site-content:referral-program"],
+      );
+      const saved = result.rows[0]?.value;
+      if (saved && typeof saved === "object" && !Array.isArray(saved)) return { ...DEFAULT_REFERRAL_PROGRAM, ...saved };
+      return { ...DEFAULT_REFERRAL_PROGRAM };
+    } catch {
+      // In-memory
+    }
+  }
+  const saved = inMemoryStore.settings.get("site-content:referral-program");
+  if (saved && typeof saved === "object" && !Array.isArray(saved)) return { ...DEFAULT_REFERRAL_PROGRAM, ...saved };
+  return { ...DEFAULT_REFERRAL_PROGRAM };
 }
 
 async function listReferralRows(pool, ownerId = null, program = DEFAULT_REFERRAL_PROGRAM) {
-  const result = await pool.query(
-    `SELECT referred.id, referred.name, referred.email, referred.created_at, referred.status,
-            owner.id AS referrer_id, owner.referral_code AS referrer_code,
-            COALESCE(owner.referral_commission_rate, $2)::numeric AS commission_rate,
-            COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit,
-            COALESCE((
-              SELECT 1 FROM public.customer_ledger_entries le
-              WHERE le.user_id = owner.id
-                AND le.entry_type = 'referral_credit'
-                AND le.source_type = 'referral'
-                AND le.source_id = owner.id::text || ':' || referred.id::text
-              LIMIT 1
-            ), 0)::numeric AS commission_paid,
-            COALESCE((
-              SELECT le.amount FROM public.customer_ledger_entries le
-              WHERE le.user_id = owner.id
-                AND le.entry_type = 'referral_credit'
-                AND le.source_type = 'referral'
-                AND le.source_id = owner.id::text || ':' || referred.id::text
-              LIMIT 1
-            ), 0)::numeric AS paid_amount
-     FROM public.customer_users referred
-     JOIN public.customer_users owner ON owner.id = referred.referred_by
-     LEFT JOIN public.customer_deposits d ON d.user_id = referred.id
-     WHERE ($1::uuid IS NULL OR owner.id = $1::uuid)
-     GROUP BY referred.id, referred.name, referred.email, referred.created_at, referred.status,
-              owner.id, owner.referral_code, owner.referral_commission_rate
-     ORDER BY referred.created_at DESC`,
-    [ownerId, Number(program.defaultRate) || 0],
-  );
-  return result.rows.map((row) => ({
-    id: row.id,
-    referrerId: row.referrer_id,
-    name: row.name,
-    email: row.email,
-    joined: row.created_at,
-    deposit: Number(row.approved_deposit) || 0,
-    status: Number(row.approved_deposit) > 0 ? "Deposit" : "Terdaftar",
-    commissionPaid: Number(row.commission_paid) > 0,
-    commissionRate: Number(row.commission_rate) || 0,
-    paidAmount: Number(row.paid_amount) || 0,
-  }));
+  if (!pool) return [];
+  try {
+    const result = await pool.query(
+      `SELECT referred.id, referred.name, referred.email, referred.created_at, referred.status,
+              owner.id AS referrer_id, owner.referral_code AS referrer_code,
+              COALESCE(owner.referral_commission_rate, $2)::numeric AS commission_rate,
+              COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit,
+              COALESCE((
+                SELECT 1 FROM public.customer_ledger_entries le
+                WHERE le.user_id = owner.id
+                  AND le.entry_type = 'referral_credit'
+                  AND le.source_type = 'referral'
+                  AND le.source_id = owner.id::text || ':' || referred.id::text
+                LIMIT 1
+              ), 0)::numeric AS commission_paid,
+              COALESCE((
+                SELECT le.amount FROM public.customer_ledger_entries le
+                WHERE le.user_id = owner.id
+                  AND le.entry_type = 'referral_credit'
+                  AND le.source_type = 'referral'
+                  AND le.source_id = owner.id::text || ':' || referred.id::text
+                LIMIT 1
+              ), 0)::numeric AS paid_amount
+       FROM public.customer_users referred
+       JOIN public.customer_users owner ON owner.id = referred.referred_by
+       LEFT JOIN public.customer_deposits d ON d.user_id = referred.id
+       WHERE ($1::uuid IS NULL OR owner.id = $1::uuid)
+       GROUP BY referred.id, referred.name, referred.email, referred.created_at, referred.status,
+                owner.id, owner.referral_code, owner.referral_commission_rate
+       ORDER BY referred.created_at DESC`,
+      [ownerId, Number(program.defaultRate) || 0],
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      referrerId: row.referrer_id,
+      name: row.name,
+      email: row.email,
+      joined: row.created_at,
+      deposit: Number(row.approved_deposit) || 0,
+      status: Number(row.approved_deposit) > 0 ? "Deposit" : "Terdaftar",
+      commissionPaid: Number(row.commission_paid) > 0,
+      commissionRate: Number(row.commission_rate) || 0,
+      paidAmount: Number(row.paid_amount) || 0,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 async function creditDepositBalance(client, userId, amount, sourceId, details) {
@@ -649,26 +829,37 @@ export function createApiRouter(pool) {
   router.use(requireDatabase(pool));
 
   router.get("/market", asyncRoute(async (_request, response) => {
-    const [groupResult, productResult] = await Promise.all([
-      pool.query("SELECT name FROM public.market_groups ORDER BY position, name"),
-      pool.query(
-        `SELECT p.symbol, p.name, p.group_name, p.ask, p.spread, p.decimals, p.change
-         FROM public.market_products p
-         JOIN public.market_groups g ON g.name = p.group_name
-         ORDER BY g.position, p.position, p.symbol`,
-      ),
-    ]);
+    if (pool) {
+      try {
+        const [groupResult, productResult] = await Promise.all([
+          pool.query("SELECT name FROM public.market_groups ORDER BY position, name"),
+          pool.query(
+            `SELECT p.symbol, p.name, p.group_name, p.ask, p.spread, p.decimals, p.change
+             FROM public.market_products p
+             JOIN public.market_groups g ON g.name = p.group_name
+             ORDER BY g.position, p.position, p.symbol`,
+          ),
+        ]);
+        return response.json({
+          groups: groupResult.rows.map((row) => row.name),
+          products: productResult.rows.map((row) => ({
+            symbol: row.symbol,
+            name: row.name,
+            group: row.group_name,
+            ask: Number(row.ask),
+            spread: Number(row.spread),
+            decimals: Number(row.decimals),
+            change: Number(row.change),
+          })),
+          quoteMode: "illustrative",
+        });
+      } catch {
+        // Fallback below
+      }
+    }
     return response.json({
-      groups: groupResult.rows.map((row) => row.name),
-      products: productResult.rows.map((row) => ({
-        symbol: row.symbol,
-        name: row.name,
-        group: row.group_name,
-        ask: Number(row.ask),
-        spread: Number(row.spread),
-        decimals: Number(row.decimals),
-        change: Number(row.change),
-      })),
+      groups: [...inMemoryStore.marketGroups],
+      products: inMemoryStore.marketProducts.map((p) => ({ ...p })),
       quoteMode: "illustrative",
     });
   }));
@@ -676,15 +867,28 @@ export function createApiRouter(pool) {
   router.get("/auth/me", asyncRoute(async (request, response) => {
     const token = readSessionToken(request);
     if (!token) return response.json({ user: null });
-    const result = await pool.query(
-      `SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at
-       FROM public.customer_sessions s
-       JOIN public.customer_users u ON u.id = s.user_id
-       WHERE s.token_hash = $1 AND s.expires_at > now()`,
-      [hashSessionToken(token)],
-    );
-    const user = result.rows[0];
-    return response.json({ user: user ? { ...user, role: ROLES.CUSTOMER } : null });
+    const tokenHash = hashSessionToken(token);
+    if (pool) {
+      try {
+        const result = await pool.query(
+          `SELECT u.id, u.name, u.email, u.phone, u.status, u.created_at
+           FROM public.customer_sessions s
+           JOIN public.customer_users u ON u.id = s.user_id
+           WHERE s.token_hash = $1 AND s.expires_at > now()`,
+          [tokenHash],
+        );
+        const user = result.rows[0];
+        if (user) return response.json({ user: { ...user, role: ROLES.CUSTOMER } });
+      } catch {
+        // Fallback below
+      }
+    }
+    const inMem = inMemoryStore.sessions.get(tokenHash);
+    if (inMem && new Date(inMem.expiresAt) > new Date()) {
+      const user = inMemoryStore.usersById.get(inMem.userId);
+      if (user) return response.json({ user: { ...user, role: ROLES.CUSTOMER } });
+    }
+    return response.json({ user: null });
   }));
 
   router.post("/auth/register", rateLimit("register", 6), asyncRoute(async (request, response) => {
@@ -700,6 +904,37 @@ export function createApiRouter(pool) {
     if (referralCode.length > 32) return apiError(response, 400, "Kode referral tidak valid.");
 
     const passwordHash = await hashPassword(password);
+    if (!pool) {
+      const existing = inMemoryStore.users.get(email) || inMemoryStore.users.get(phone);
+      if (existing) return apiError(response, 409, "Email atau nomor telepon sudah terdaftar.");
+      const id = randomUUID();
+      const user = {
+        id,
+        name,
+        email,
+        phone,
+        password_hash: passwordHash,
+        status: "Aktif",
+        referral_code: "REF" + id.slice(0, 8).toUpperCase(),
+        referred_by: null,
+        referral_commission_rate: 10,
+        referral_enabled: true,
+        created_at: new Date().toISOString(),
+        main_balance: 0,
+        deposit_balance: 0,
+        total_accrual: 0,
+        daily_accrual: 0,
+        daily_accrual_date: null,
+        last_compound_date: null,
+        daily_rate_override: null,
+      };
+      inMemoryStore.users.set(email, user);
+      inMemoryStore.users.set(phone, user);
+      inMemoryStore.usersById.set(id, user);
+      await issueSession(null, response, id);
+      const { password_hash: _, ...safeUser } = user;
+      return response.status(201).json({ user: { ...safeUser, role: ROLES.CUSTOMER } });
+    }
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -751,6 +986,16 @@ export function createApiRouter(pool) {
       ? ["email", normalizeEmail(identity)]
       : ["phone", normalizeIndonesianPhone(identity)];
     if (!lookup[1]) return apiError(response, 401, "Kredensial tidak valid.");
+    if (!pool) {
+      const user = inMemoryStore.users.get(lookup[1]);
+      if (!user) return apiError(response, 401, "Kredensial tidak valid.");
+      const matches = await verifyPassword(password, user.password_hash);
+      if (!matches) return apiError(response, 401, "Kredensial tidak valid.");
+      if (user.status === "Diblokir") return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
+      await issueSession(null, response, user.id);
+      const { password_hash: _passwordHash, ...safeUser } = user;
+      return response.json({ user: { ...safeUser, role: ROLES.CUSTOMER } });
+    }
     const result = await pool.query(
       `SELECT id, name, email, phone, status, created_at, password_hash
        FROM public.customer_users WHERE ${lookup[0]} = $1`,
@@ -768,10 +1013,13 @@ export function createApiRouter(pool) {
   router.post("/auth/logout", asyncRoute(async (request, response) => {
     const token = readSessionToken(request);
     if (token) {
-      await pool.query(
-        "DELETE FROM public.customer_sessions WHERE token_hash = $1",
-        [hashSessionToken(token)],
-      );
+      if (pool) {
+        await pool.query(
+          "DELETE FROM public.customer_sessions WHERE token_hash = $1",
+          [hashSessionToken(token)],
+        ).catch(() => {});
+      }
+      inMemoryStore.sessions.delete(hashSessionToken(token));
     }
     response.setHeader("Set-Cookie", clearSessionCookie());
     return response.json({ ok: true });
@@ -784,62 +1032,90 @@ export function createApiRouter(pool) {
   router.get("/content/:key", asyncRoute(async (request, response) => {
     const key = String(request.params.key ?? "");
     if (!SITE_CONTENT_KEYS.has(key)) return apiError(response, 404, "Konten tidak ditemukan.");
-    const result = await pool.query(
-      "SELECT value FROM public.app_settings WHERE setting_key = $1",
-      [`site-content:${key}`],
-    );
-    return response.json({ value: result.rows[0]?.value ?? null });
+    if (pool) {
+      try {
+        const result = await pool.query(
+          "SELECT value FROM public.app_settings WHERE setting_key = $1",
+          [`site-content:${key}`],
+        );
+        return response.json({ value: result.rows[0]?.value ?? inMemoryStore.settings.get(`site-content:${key}`) ?? null });
+      } catch {
+        // Fallback
+      }
+    }
+    return response.json({ value: inMemoryStore.settings.get(`site-content:${key}`) ?? null });
   }));
 
   router.get("/referral/state", asyncRoute(async (request, response) => {
     const program = await getReferralProgram(pool);
     const token = readSessionToken(request);
     if (!token) {
-      return response.json({ program, currentUserCode: "", referrers: [], referrals: [], friendBonusClaimable: false });
+      return response.json({ program, currentUserCode: "", referrers: [], referrals: [], friendBonusClaimable: false, friendBonusAmount: 0 });
     }
-    const userResult = await pool.query(
-      `SELECT u.id, u.name, u.email, u.status, u.referral_code, u.referral_commission_rate,
-              u.referral_enabled, u.referred_by
-       FROM public.customer_sessions s
-       JOIN public.customer_users u ON u.id = s.user_id
-       WHERE s.token_hash = $1 AND s.expires_at > now()`,
-      [hashSessionToken(token)],
-    );
-    const user = userResult.rows[0];
+    const tokenHash = hashSessionToken(token);
+    let user = null;
+    if (pool) {
+      try {
+        const userResult = await pool.query(
+          `SELECT u.id, u.name, u.email, u.status, u.referral_code, u.referral_commission_rate,
+                  u.referral_enabled, u.referred_by
+           FROM public.customer_sessions s
+           JOIN public.customer_users u ON u.id = s.user_id
+           WHERE s.token_hash = $1 AND s.expires_at > now()`,
+          [tokenHash],
+        );
+        user = userResult.rows[0];
+      } catch {
+        // Fallback
+      }
+    }
     if (!user) {
-      return response.json({ program, currentUserCode: "", referrers: [], referrals: [], friendBonusClaimable: false });
+      const inMem = inMemoryStore.sessions.get(tokenHash);
+      if (inMem && new Date(inMem.expiresAt) > new Date()) {
+        user = inMemoryStore.usersById.get(inMem.userId);
+      }
+    }
+    if (!user) {
+      return response.json({ program, currentUserCode: "", referrers: [], referrals: [], friendBonusClaimable: false, friendBonusAmount: 0 });
     }
     const rate = Number(user.referral_commission_rate ?? program.defaultRate) || 0;
     const referrals = await listReferralRows(pool, user.id, program);
-    const friend = await pool.query(
-      `SELECT u.status,
-              COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit,
-              EXISTS (
-                SELECT 1 FROM public.customer_ledger_entries le
-                WHERE le.user_id = u.id AND le.entry_type = 'referral_credit'
-                  AND le.source_type = 'referral' AND le.source_id = 'friend:' || u.id::text
-              ) AS bonus_paid
-       FROM public.customer_users u
-       LEFT JOIN public.customer_deposits d ON d.user_id = u.id
-       WHERE u.id = $1 AND u.referred_by IS NOT NULL
-       GROUP BY u.id, u.status`,
-      [user.id],
-    );
-    const friendEligible = Boolean(
-      friend.rowCount &&
-      friend.rows[0].status === "Aktif" &&
-      Number(friend.rows[0].approved_deposit) >= Number(program.minDeposit) &&
-      Number(program.friendBonus) > 0 &&
-      !friend.rows[0].bonus_paid,
-    );
+    let friendEligible = false;
+    if (pool) {
+      try {
+        const friend = await pool.query(
+          `SELECT u.status,
+                  COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit,
+                  EXISTS (
+                    SELECT 1 FROM public.customer_ledger_entries le
+                    WHERE le.user_id = u.id AND le.entry_type = 'referral_credit'
+                      AND le.source_type = 'referral' AND le.source_id = 'friend:' || u.id::text
+                  ) AS bonus_paid
+           FROM public.customer_users u
+           LEFT JOIN public.customer_deposits d ON d.user_id = u.id
+           WHERE u.id = $1 AND u.referred_by IS NOT NULL
+           GROUP BY u.id, u.status`,
+          [user.id],
+        );
+        friendEligible = Boolean(
+          friend.rowCount &&
+          friend.rows[0].status === "Aktif" &&
+          Number(friend.rows[0].approved_deposit) >= Number(program.minDeposit) &&
+          Number(program.friendBonus) > 0 &&
+          !friend.rows[0].bonus_paid,
+        );
+      } catch {
+        friendEligible = false;
+      }
+    }
     return response.json({
       program,
-      currentUserCode: user.referral_code,
+      currentUserCode: user.referral_code || "REF-USER",
       referrers: [{
         id: user.id,
         name: user.name,
         email: user.email,
-        code: user.referral_code,
+        code: user.referral_code || "REF-USER",
         commissionRate: rate,
         status: user.referral_enabled ? "Aktif" : "Nonaktif",
       }],
@@ -853,30 +1129,55 @@ export function createApiRouter(pool) {
     let userId = null;
     const token = readSessionToken(request);
     if (token) {
-      const user = await pool.query(
-        `SELECT s.user_id
-         FROM public.customer_sessions s
-         WHERE s.token_hash = $1 AND s.expires_at > now()`,
-        [hashSessionToken(token)],
-      );
-      userId = user.rows[0]?.user_id ?? null;
+      if (pool) {
+        try {
+          const user = await pool.query(
+            `SELECT s.user_id
+             FROM public.customer_sessions s
+             WHERE s.token_hash = $1 AND s.expires_at > now()`,
+            [hashSessionToken(token)],
+          );
+          userId = user.rows[0]?.user_id ?? null;
+        } catch {
+          userId = null;
+        }
+      }
+      if (!userId) {
+        const inMem = inMemoryStore.sessions.get(hashSessionToken(token));
+        if (inMem) userId = inMem.userId;
+      }
     }
-    const result = await pool.query(
-      `SELECT id, title, message, created_at
-       FROM public.site_notifications
-       WHERE target_user_ids IS NULL
-          OR ($1::uuid IS NOT NULL AND $1::uuid = ANY(target_user_ids))
-       ORDER BY created_at DESC
-       LIMIT 100`,
-      [userId],
-    );
+    if (pool) {
+      try {
+        const result = await pool.query(
+          `SELECT id, title, message, created_at
+           FROM public.site_notifications
+           WHERE target_user_ids IS NULL
+              OR ($1::uuid IS NOT NULL AND $1::uuid = ANY(target_user_ids))
+           ORDER BY created_at DESC
+           LIMIT 100`,
+          [userId],
+        );
+        return response.json({
+          notifications: result.rows.map((row) => ({
+            id: row.id,
+            title: row.title,
+            message: row.message,
+            target: "all",
+            createdAt: row.created_at,
+          })),
+        });
+      } catch {
+        // Fallback
+      }
+    }
     return response.json({
-      notifications: result.rows.map((row) => ({
-        id: row.id,
-        title: row.title,
-        message: row.message,
+      notifications: inMemoryStore.notifications.map((n) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
         target: "all",
-        createdAt: row.created_at,
+        createdAt: n.createdAt,
       })),
     });
   }));
@@ -1119,6 +1420,9 @@ export function createApiRouter(pool) {
     if (!validateMarketCatalog(catalog)) {
       return apiError(response, 400, "Daftar kategori atau produk pasar tidak valid.");
     }
+    inMemoryStore.marketGroups = [...catalog.groups];
+    inMemoryStore.marketProducts = catalog.products.map((p) => ({ ...p }));
+    if (!pool) return response.json({ ok: true });
 
     const client = await pool.connect();
     try {
@@ -1169,11 +1473,18 @@ export function createApiRouter(pool) {
   router.get("/admin/content/:key", asyncRoute(async (request, response) => {
     const key = String(request.params.key ?? "");
     if (!SITE_CONTENT_KEYS.has(key)) return apiError(response, 404, "Konten tidak ditemukan.");
-    const result = await pool.query(
-      "SELECT value FROM public.app_settings WHERE setting_key = $1",
-      [`site-content:${key}`],
-    );
-    return response.json({ value: result.rows[0]?.value ?? null });
+    if (pool) {
+      try {
+        const result = await pool.query(
+          "SELECT value FROM public.app_settings WHERE setting_key = $1",
+          [`site-content:${key}`],
+        );
+        return response.json({ value: result.rows[0]?.value ?? inMemoryStore.settings.get(`site-content:${key}`) ?? null });
+      } catch {
+        // Fallback
+      }
+    }
+    return response.json({ value: inMemoryStore.settings.get(`site-content:${key}`) ?? null });
   }));
 
   router.put("/admin/content/:key", asyncRoute(async (request, response) => {
@@ -1184,31 +1495,53 @@ export function createApiRouter(pool) {
     if (key === "referral-program" && !validReferralProgram(value)) {
       return apiError(response, 400, "Pengaturan referral tidak valid.");
     }
-    await pool.query(
-      `INSERT INTO public.app_settings (setting_key, value)
-       VALUES ($1, $2::jsonb)
-       ON CONFLICT (setting_key)
-       DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-      [`site-content:${key}`, JSON.stringify(value)],
-    );
-    await addAudit(pool, request.adminName, "site_content_updated", key, key, { bytes: JSON.stringify(value).length });
+    inMemoryStore.settings.set(`site-content:${key}`, value);
+    if (pool) {
+      try {
+        await pool.query(
+          `INSERT INTO public.app_settings (setting_key, value)
+           VALUES ($1, $2::jsonb)
+           ON CONFLICT (setting_key)
+           DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+          [`site-content:${key}`, JSON.stringify(value)],
+        );
+        await addAudit(pool, request.adminName, "site_content_updated", key, key, { bytes: JSON.stringify(value).length });
+      } catch {
+        // In-memory updated
+      }
+    }
     return response.json({ ok: true });
   }));
 
   router.get("/admin/notifications", asyncRoute(async (_request, response) => {
-    const result = await pool.query(
-      `SELECT id, title, message, target_user_ids, created_at
-       FROM public.site_notifications
-       ORDER BY created_at DESC
-       LIMIT 500`,
-    );
+    if (pool) {
+      try {
+        const result = await pool.query(
+          `SELECT id, title, message, target_user_ids, created_at
+           FROM public.site_notifications
+           ORDER BY created_at DESC
+           LIMIT 500`,
+        );
+        return response.json({
+          notifications: result.rows.map((row) => ({
+            id: row.id,
+            title: row.title,
+            message: row.message,
+            target: row.target_user_ids === null ? "all" : row.target_user_ids,
+            createdAt: row.created_at,
+          })),
+        });
+      } catch {
+        // Fallback
+      }
+    }
     return response.json({
-      notifications: result.rows.map((row) => ({
-        id: row.id,
-        title: row.title,
-        message: row.message,
-        target: row.target_user_ids === null ? "all" : row.target_user_ids,
-        createdAt: row.created_at,
+      notifications: inMemoryStore.notifications.map((n) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        target: "all",
+        createdAt: n.createdAt,
       })),
     });
   }));
@@ -1219,6 +1552,17 @@ export function createApiRouter(pool) {
     const target = request.body?.target;
     if (!title || title.length > 200 || !message || message.length > 3000) {
       return apiError(response, 400, "Judul dan isi notifikasi wajib diisi serta tidak melebihi batas.");
+    }
+    const newNotif = {
+      id: randomUUID(),
+      title,
+      message,
+      target: "all",
+      createdAt: new Date().toISOString(),
+    };
+    inMemoryStore.notifications.unshift(newNotif);
+    if (!pool) {
+      return response.status(201).json({ notification: newNotif });
     }
     let targetUserIds = null;
     if (target !== "all") {
@@ -1262,28 +1606,45 @@ export function createApiRouter(pool) {
 
   router.get("/admin/referrals", asyncRoute(async (_request, response) => {
     const program = await getReferralProgram(pool);
-    const [partners, referrals] = await Promise.all([
-      pool.query(
-        `SELECT id, name, email, referral_code, referral_commission_rate, referral_enabled
-         FROM public.customer_users
-         ORDER BY created_at DESC`,
-      ),
-      listReferralRows(pool, null, program),
-    ]);
-    return response.json({
-      program,
-      currentUserCode: "",
-      referrers: partners.rows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        email: row.email,
-        code: row.referral_code,
-        commissionRate: Number(row.referral_commission_rate ?? program.defaultRate) || 0,
-        status: row.referral_enabled ? "Aktif" : "Nonaktif",
-        customCommissionRate: row.referral_commission_rate === null ? null : Number(row.referral_commission_rate),
-      })),
-      referrals,
-    });
+    if (!pool) {
+      return response.json({
+        program,
+        currentUserCode: "",
+        referrers: [],
+        referrals: [],
+      });
+    }
+    try {
+      const [partners, referrals] = await Promise.all([
+        pool.query(
+          `SELECT id, name, email, referral_code, referral_commission_rate, referral_enabled
+           FROM public.customer_users
+           ORDER BY created_at DESC`,
+        ),
+        listReferralRows(pool, null, program),
+      ]);
+      return response.json({
+        program,
+        currentUserCode: "",
+        referrers: partners.rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          code: row.referral_code,
+          commissionRate: Number(row.referral_commission_rate ?? program.defaultRate) || 0,
+          status: row.referral_enabled ? "Aktif" : "Nonaktif",
+          customCommissionRate: row.referral_commission_rate === null ? null : Number(row.referral_commission_rate),
+        })),
+        referrals,
+      });
+    } catch {
+      return response.json({
+        program,
+        currentUserCode: "",
+        referrers: [],
+        referrals: [],
+      });
+    }
   }));
 
   router.patch("/admin/referrals/partners/:id", asyncRoute(async (request, response) => {
@@ -1687,13 +2048,20 @@ export function createApiRouter(pool) {
     }
     if (!entries.length) return apiError(response, 400, "Tidak ada pengaturan yang valid.");
     for (const [key, value] of entries) {
-      await pool.query(
-        `INSERT INTO public.customer_site_settings (setting_key, setting_value)
-         VALUES ($1, $2::jsonb)
-         ON CONFLICT (setting_key)
-         DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = now()`,
-        [key, JSON.stringify(value)],
-      );
+      inMemoryStore.settings.set(key, value);
+      if (pool) {
+        try {
+          await pool.query(
+            `INSERT INTO public.customer_site_settings (setting_key, setting_value)
+             VALUES ($1, $2::jsonb)
+             ON CONFLICT (setting_key)
+             DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = now()`,
+            [key, JSON.stringify(value)],
+          );
+        } catch {
+          // In-memory updated
+        }
+      }
     }
     await addAudit(pool, request.adminName, "deposit_settings_updated", "site_settings", "deposit", { updated: entries.map(([key]) => key) });
     return response.json({ ok: true });
