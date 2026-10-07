@@ -36,6 +36,9 @@ export function MarketScreen() {
         <Button asChild variant="ghost" size="icon"><Link to="/cari-produk" aria-label={tr('Cari Produk')}><Search /></Link></Button>
         <Button asChild variant="ghost" size="icon"><Link to="/arrangement" aria-label={tr('Arrangement')}><SlidersHorizontal /></Link></Button>
       </MarketHeader>
+      <p className="market-quote-notice" role="note">
+        {tr('Harga dan grafik adalah ilustrasi, bukan kuotasi pasar langsung.')}
+      </p>
       {loading ? <p className="market-empty" role="status">{tr('Memuat katalog pasar...')}</p>
         : error ? <div className="market-empty" role="alert">
           {tr(error)}
