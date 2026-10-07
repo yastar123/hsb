@@ -1,0 +1,76 @@
+[root@rocky8adib hsb]# clear
+[root@rocky8adib hsb]# echo "===== NGINX: /etc/nginx/conf.d/hsb.conf ====="
+===== NGINX: /etc/nginx/conf.d/hsb.conf =====
+===== PM2: /root/hsb/ecosystem.config.cjs ====="
+cat /root/hsb/ecosystem.config.cjs[root@rocky8adib hsb]# cat /etc/nginx/conf.d/hsb.conf
+server {
+    server_name webullxau.com www.webullxau.com;
+
+    client_max_body_size 20M;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/webullxau.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/webullxau.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+}
+server {
+    if ($host = www.webullxau.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    if ($host = webullxau.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    server_name webullxau.com www.webullxau.com;
+    return 404; # managed by Certbot
+
+
+
+
+}[root@rocky8adib hsb]#
+[root@rocky8adib hsb]# echo
+
+[root@rocky8adib hsb]# echo "===== PM2: /root/hsb/ecosystem.config.cjs ====="
+===== PM2: /root/hsb/ecosystem.config.cjs =====
+[root@rocky8adib hsb]# cat /root/hsb/ecosystem.config.cjs
+const fs = require('fs');
+const path = require('path');
+const env = Object.fromEntries(
+  fs.readFileSync(path.join(__dirname, '.env'), 'utf8')
+    .split('\n').filter(l => l.includes('=') && !l.startsWith('#'))
+    .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
+);
+module.exports = {
+  apps: [{
+    name: 'hsb',
+    cwd: __dirname,
+    script: 'server/index.js',
+    env: { ...env, NODE_ENV: 'production', PORT: 5000 },
+    max_memory_restart: '500M',
+  }],
+};
+[root@rocky8adib hsb]# cat .env
+DATABASE_URL=postgresql://postgres:EDUJUANDA12345@localhost:5432/HSB
+
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=GANTI_DENGAN_PASSWORD_KUAT
+PORT=5000
+[root@rocky8adib hsb]#
