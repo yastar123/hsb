@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, ArrowUp, ArrowDown, Search, SlidersHorizontal, Star, GripHorizontal, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, ChevronsUp, X, Maximize2, CandlestickChart, LineChart, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { bidPrice, type Product } from '@/lib/market-data';
+import { bidPrice, simulatePriceTick, type Product } from '@/lib/market-data';
 import { useMarket } from '@/components/market-context';
 import { SimulatedChart } from '@/components/simulated-chart';
 import { useAppPreferences, translate } from '@/components/app-preferences';
@@ -24,7 +24,22 @@ export function MarketDetailScreen({ product }: { product: Product }) {
   const [line, setLine] = useState(false);
   const [indicator, setIndicator] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const priceDetails: [string, number][] = [['Open', product.ask * 0.997], ['High', product.ask * 1.0005], ['Close', product.ask * 0.999], ['Low', product.ask * 0.996]];
+  const [liveAsk, setLiveAsk] = useState(product.ask);
+  useEffect(() => {
+    let tick = 0;
+    setLiveAsk(product.ask);
+    const timer = window.setInterval(() => {
+      tick += 1;
+      setLiveAsk((price) => simulatePriceTick(product, price, tick));
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [product]);
+  const liveProduct = {
+    ...product,
+    ask: liveAsk,
+    change: Number((product.change + ((liveAsk - product.ask) / product.ask) * 100).toFixed(2)),
+  };
+  const priceDetails: [string, number][] = [['Open', liveAsk * 0.997], ['High', liveAsk * 1.0005], ['Close', liveAsk * 0.999], ['Low', liveAsk * 0.996]];
 
   return <main className="market-page">
     <div className={`market-shell market-detail-shell ${expanded ? 'market-chart-expanded' : ''}`}>
@@ -36,7 +51,7 @@ export function MarketDetailScreen({ product }: { product: Product }) {
       </div>
       {tab === 'Grafik' ? <>
         <section className="market-detail-prices">
-          <strong>{(product.ask - 0.01 / 10 ** (product.decimals - 3)).toFixed(product.decimals)}</strong>
+          <strong>{(liveAsk - 0.01 / 10 ** (product.decimals - 3)).toFixed(product.decimals)}</strong>
           <dl>{priceDetails.map(([label, value]) => <div key={label}><dt>{tr(label)}</dt><dd>{value.toFixed(product.decimals)}</dd></div>)}</dl>
         </section>
         <div className="market-chart-tools">
@@ -45,19 +60,19 @@ export function MarketDetailScreen({ product }: { product: Product }) {
           <Button variant="ghost" aria-pressed={indicator} onClick={() => setIndicator(!indicator)}>ƒx <span>{tr('Indicators')}</span></Button>
           <Button variant="ghost" size="icon" aria-label={expanded ? 'Kecilkan grafik' : 'Perbesar grafik'} onClick={() => setExpanded(!expanded)}><Maximize2 /></Button>
         </div>
-        <div className="market-chart-label"><span>{product.symbol} · {interval}</span><small className="market-up">{product.ask.toFixed(product.decimals)} {product.change >= 0 ? '+' : ''}{product.change.toFixed(2)}% · Simulasi</small></div>
-        <SimulatedChart product={product} interval={interval} line={line} indicator={indicator} />
+        <div className="market-chart-label"><span>{product.symbol} · {interval}</span><small className={liveProduct.change >= 0 ? 'market-up' : 'market-down'}>{liveAsk.toFixed(product.decimals)} {liveProduct.change >= 0 ? '+' : ''}{liveProduct.change.toFixed(2)}% · Simulasi</small></div>
+        <SimulatedChart product={product} price={liveAsk} interval={interval} line={line} indicator={indicator} />
       </> : <section className="market-detail-content">
         {tab === 'Spesifikasi' ? <dl>{[['Produk', product.name], ['Kelompok', product.group], ['Mata uang', 'USD'], ['Ukuran minimum', '0.01 lot'], ['Spread', `${product.spread}`], ['Jenis akun', 'Demo']].map(([key, value]) => <div key={String(key)}><dt>{tr(String(key))}</dt><dd>{tr(String(value))}</dd></div>)}</dl>
           : tab === 'Berita' ? <><h2>{product.symbol}: ringkasan pasar</h2><p>Pergerakan {product.name} dalam sesi perdagangan simulasi.</p><small>Berita simulasi · Bukan rekomendasi investasi</small></>
-              : tab === 'Signals' ? <><h2>{tr(product.change >= 0 ? 'Beli' : 'Jual')} · {product.symbol}</h2><dl><div><dt>{tr('Open')}</dt><dd>{product.ask.toFixed(product.decimals)}</dd></div><div><dt>{tr('Take Profit')}</dt><dd>{(product.ask * 1.002).toFixed(product.decimals)}</dd></div><div><dt>{tr('Stop Loss')}</dt><dd>{(product.ask * 0.999).toFixed(product.decimals)}</dd></div></dl><small>{tr('Sinyal simulasi · Bukan rekomendasi investasi')}</small></>
+              : tab === 'Signals' ? <><h2>{tr(liveProduct.change >= 0 ? 'Beli' : 'Jual')} · {product.symbol}</h2><dl><div><dt>{tr('Open')}</dt><dd>{liveAsk.toFixed(product.decimals)}</dd></div><div><dt>{tr('Take Profit')}</dt><dd>{(liveAsk * 1.002).toFixed(product.decimals)}</dd></div><div><dt>{tr('Stop Loss')}</dt><dd>{(liveAsk * 0.999).toFixed(product.decimals)}</dd></div></dl><small>{tr('Sinyal simulasi · Bukan rekomendasi investasi')}</small></>
               : <p className="market-empty">Belum ada {tab.toLowerCase()}</p>}
       </section>}
       <div className="market-detail-footer">
         <div className="market-trade-actions">
-          <Button variant="marketSell" disabled title={tr('Trading tidak tersedia di pratinjau demo')}>{tr('JUAL')}<small>{bidPrice(product).toFixed(product.decimals)}</small></Button>
+          <Button variant="marketSell" disabled title={tr('Trading tidak tersedia di pratinjau demo')}>{tr('JUAL')}<small>{bidPrice(liveProduct).toFixed(product.decimals)}</small></Button>
           <span>{(product.spread / 10 ** product.decimals).toFixed(product.decimals)}</span>
-          <Button variant="marketBuy" disabled title={tr('Trading tidak tersedia di pratinjau demo')}>{tr('BELI')}<small>{product.ask.toFixed(product.decimals)}</small></Button>
+          <Button variant="marketBuy" disabled title={tr('Trading tidak tersedia di pratinjau demo')}>{tr('BELI')}<small>{liveAsk.toFixed(product.decimals)}</small></Button>
         </div>
         <DemoStrip />
       </div>

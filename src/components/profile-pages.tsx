@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, CalendarDays, Check, ChevronRight, Copy, Crown, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Sun, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, CalendarDays, Check, ChevronRight, Copy, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Sun, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav, Notice } from '@/components/account-pages';
 import { isValidPassword, passwordRules } from '@/lib/account-validation';
@@ -28,7 +28,7 @@ export function ProfileScreen() {
     { label: 'Deposit', icon: Wallet, to: '/deposit' as const },
     { label: 'Kalender Ekonomi', icon: CalendarDays, to: '/kalender-ekonomi' as const },
     { label: 'Daily Report', icon: FileBarChart, to: '/daily-report' as const },
-    { label: 'Premium Program', icon: Crown },
+    { label: 'Withdraw', icon: ArrowDownToLine, to: '/withdraw' as const },
     { label: 'Promo', icon: Percent, to: '/promo' as const },
     { label: 'Smart Trader', icon: Sparkles, to: '/smart-trader' as const },
   ];
@@ -39,9 +39,8 @@ export function ProfileScreen() {
       <div><h1>{tr('Hello Demo')}</h1><p>UID: {UID} <button onClick={copy} aria-label={tr('Salin UID')}><Copy /></button></p></div>
       <Button variant="ghost" size="icon" className="prof-moon" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
     </section>
-    <nav className="prof-grid">{shortcuts.map(({ label, icon: Icon, to }) => to
-      ? <Link key={label} to={to}><span><Icon /></span>{tr(label)}</Link>
-      : <button key={label} onClick={soon(label)}><span><Icon /></span>{tr(label)}</button>)}</nav>
+    <nav className="prof-grid">{shortcuts.map(({ label, icon: Icon, to }) =>
+      <Link key={label} to={to}><span><Icon /></span>{tr(label)}</Link>)}</nav>
     <section className="prof-list">
       <h2>{tr('Pusat Klien')}</h2>
        <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>

@@ -22,4 +22,18 @@ export const products: Product[] = [
   { symbol:'NAS100',name:'Nasdaq 100',group:'Index',ask:21345.6,spread:15,decimals:1,change:0.76 },
 ];
 export const bidPrice = (p: Product) => p.ask - p.spread / 10 ** p.decimals;
+export function simulatedTickMove(symbol: string, tick: number) {
+  const seed = [...symbol].reduce((value, char) => Math.imul(value ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
+  const phase = (seed % 1000003) / 1000003 * Math.PI * 2;
+  const speed = 0.37 + (seed % 19) * 0.019;
+  const wave = Math.sin(tick * speed + phase) + Math.sin(tick * 0.31 + phase * 1.7) * 0.42;
+  const move = Math.round(wave * 2.4);
+  return move || ((seed + tick) % 2 === 0 ? 1 : -1);
+}
+
+export function simulatePriceTick(product: Pick<Product, 'symbol' | 'decimals'>, price: number, tick: number) {
+  const tickSize = 10 ** -product.decimals;
+  return Number(Math.max(tickSize, price + simulatedTickMove(product.symbol, tick) * tickSize).toFixed(product.decimals));
+}
+
 export const marketMeta = (title: string, description: string) => ({ meta:[{title:`${title} — HSB Trading`},{name:'description',content:description},{property:'og:title',content:`${title} — HSB Trading`},{property:'og:description',content:description},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}] });
