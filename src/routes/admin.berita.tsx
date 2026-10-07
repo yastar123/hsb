@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, RotateCcw, Upload, ExternalLink, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, Upload, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Pagination, usePagination } from '@/components/pagination';
 import { newsCategories, type NewsArticle } from '@/lib/news-data';
@@ -25,7 +25,7 @@ const today = () => new Date().toLocaleDateString('id-ID', { day: 'numeric', mon
 type Draft = Omit<NewsArticle, 'body'> & { bodyText: string };
 
 function AdminBerita() {
-  const { list, save, reset } = useNews();
+  const { list, save } = useNews();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [q, setQ] = useState('');
   const set = (p: Partial<Draft>) => setDraft((d) => d && { ...d, ...p });
@@ -47,7 +47,7 @@ function AdminBerita() {
   return <main className="space-y-4 p-4 text-foreground md:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h1 className="text-2xl font-bold">Kelola Berita</h1><p className="text-sm text-muted-foreground">Tersimpan di browser ini · belum terhubung ke server.</p></div>
-      <div className="flex gap-2"><Button variant="outline" onClick={() => confirm('Kembalikan ke berita contoh?') && reset()}><RotateCcw /> Reset</Button><Button onClick={openNew}><Plus /> Tambah Berita</Button></div>
+      <Button onClick={openNew}><Plus /> Tambah Berita</Button>
     </div>
 
     {draft && <article className="space-y-3 rounded-xl border border-border bg-background p-4">

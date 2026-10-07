@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Plus, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { commissionOf, uid, useReferral, type Referral, type Referrer } from '@/components/referral-content';
 
@@ -21,7 +21,7 @@ const inp = 'w-full rounded-md border border-input bg-background px-2 py-1 text-
 const tabs = ['Ringkasan Komisi', 'Mitra', 'User Diajak', 'Pengaturan Program'] as const;
 
 function AdminMitra() {
-  const { data, setData, reset } = useReferral();
+  const { data, setData } = useReferral();
   const [tab, setTab] = useState<(typeof tabs)[number]>('Ringkasan Komisi');
   const [filter, setFilter] = useState('');
   const set = <K extends keyof typeof data>(k: K, v: (typeof data)[K]) => setData((p) => ({ ...p, [k]: v }));
@@ -34,7 +34,6 @@ function AdminMitra() {
   return <main className="space-y-4 p-4 text-foreground md:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h1 className="text-2xl font-bold">Kelola Mitra &amp; Referral</h1><p className="text-sm text-muted-foreground">Tersimpan di browser ini · belum terhubung ke server.</p></div>
-      <Button variant="outline" onClick={reset}><RotateCcw /> Reset data contoh</Button>
     </div>
     <div className="flex flex-wrap gap-2">{tabs.map((t) => <Button key={t} variant={tab === t ? 'default' : 'outline'} size="sm" onClick={() => setTab(t)}>{t}</Button>)}</div>
 

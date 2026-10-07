@@ -4,6 +4,8 @@ import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/account-pages';
 import { useFaq } from '@/components/faq-content';
+import { useCalendarContent } from '@/components/calendar-content';
+import { useAppPreferences, translate } from '@/components/app-preferences';
 
 function Header({ title }: { title: string }) {
   return <header className="acct-header"><Button asChild variant="ghost" size="icon"><Link to="/profil" aria-label="Kembali"><ArrowLeft /></Link></Button><h1>{title}</h1></header>;
@@ -69,22 +71,21 @@ export function DailyReportScreen() {
   </Shell>;
 }
 
-const events = [
-  ['03.30', '🇺🇸', 'API Cushing number', '0,233 M', true], ['03.30', '🇺🇸', 'API weekly crude imports', '-0,249 M', true],
-  ['03.30', '🇺🇸', 'API weekly heating oil', '-0,459 M', true], ['03.30', '🇺🇸', 'API weekly product imports', '0,435 M', true],
-  ['03.30', '🇺🇸', 'API Wkly crude runs', '-0,282 M', true], ['03.30', '🇺🇸', 'API wkly crude Stk', '1,019 M', true],
-  ['05.00', '🇦🇺', 'AIG Construction Index*', '-6,9', false], ['05.00', '🇦🇺', 'AIG Manufacturing Index*', '-16,6', false],
-  ['06.00', '🇯🇵', 'Reuters Tankan Man\'f Idx', '21', false], ['06.00', '🇯🇵', 'Reuters Tankan N-Man Idx', '29', false],
-] as const;
 export function CalendarScreen() {
   const [more, setMore] = useState(false);
-  return <Shell title="Kalender Ekonomi">
+  const { events } = useCalendarContent();
+  const { language } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
+  const ordered = [...events].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  const countries = [...new Set(ordered.map((event) => event.country))].slice(0, 3);
+  return <Shell title={tr('Kalender Ekonomi')}>
     <section className="ins-cal">
-      <div className="ins-cal-head"><span>🇺🇸 🇯🇵 🇪🇺 <b>+9</b></span><small>Aktual: — · Prakiraan: — · Sebelumnya: —</small></div>
-      {(more ? events : events.slice(0, 8)).map(([t, f, name, prev, hot]) => <div key={name} className="ins-event"><b className={hot ? 'ins-hot' : ''}>{t}</b><div><p>{name}</p><small>{f} ▮</small></div><small className="ins-prev">Sebelumnya: <b>{prev}</b></small></div>)}
-      {!more && <button className="ins-more" onClick={() => setMore(true)}>Peristiwa lainnya ›</button>}
+      <div className="ins-cal-head"><span>{countries.join(' ')} {ordered.length > countries.length && <b>+{ordered.length - countries.length}</b>}</span><small>{tr('Aktual · Prakiraan · Sebelumnya')}</small></div>
+      {(more ? ordered : ordered.slice(0, 8)).map((event) => <div key={event.id} className="ins-event"><b className={event.impact === 'Tinggi' ? 'ins-hot' : ''}>{event.time}</b><div><p>{event.name}</p><small>{event.country} · {new Date(`${event.date}T00:00:00`).toLocaleDateString(language === 'zh' ? 'zh-CN' : language === 'en' ? 'en-US' : 'id-ID')}</small></div><small className="ins-prev">{tr('Aktual:')} <b>{event.actual}</b><br />{tr('Prakiraan:')} <b>{event.forecast}</b><br />{tr('Sebelumnya:')} <b>{event.previous}</b></small></div>)}
+      {!more && ordered.length > 8 && <button className="ins-more" onClick={() => setMore(true)}>{tr('Peristiwa lainnya ›')}</button>}
+      {ordered.length === 0 && <p className="ins-empty">{tr('Belum ada agenda.')}</p>}
     </section>
-    <p className="ins-foot">Data contoh kalender ekonomi</p>
+    <p className="ins-foot">{tr('Data contoh kalender ekonomi')}</p>
   </Shell>;
 }
 

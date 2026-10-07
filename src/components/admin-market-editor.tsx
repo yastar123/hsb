@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, ChevronLeft, Monitor, Pencil, Check } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, ChevronLeft, Monitor, Pencil, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MarketScreen } from '@/components/market-screens';
 import { useMarket } from '@/components/market-context';
@@ -10,7 +10,7 @@ const input = 'w-full rounded-md border border-input bg-background px-3 py-2 tex
 type Tab = 'products' | 'groups';
 
 export function AdminMarketEditor() {
-  const { products, setProducts, groups, setGroups, moveGroup, reset } = useMarket();
+  const { products, setProducts, groups, setGroups, moveGroup } = useMarket();
   const [tab, setTab] = useState<Tab>('products');
   const [filter, setFilter] = useState('Semua');
   const [openIdx, setOpenIdx] = useState<number | null>(null);
@@ -45,7 +45,6 @@ export function AdminMarketEditor() {
       <Button asChild variant="ghost" size="sm"><Link to="/admin"><ChevronLeft /> Admin</Link></Button>
       <h1 className="text-lg font-bold">Kelola Pasar</h1>
       <div className="ml-auto flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => { if (confirm('Kembalikan semua produk & kategori ke awal?')) { reset(); setPreviewKey(k => k + 1); } }}><RotateCcw /> Reset</Button>
         <Button asChild size="sm"><Link to="/pasar"><Monitor /> Buka Pasar</Link></Button>
       </div>
     </header>

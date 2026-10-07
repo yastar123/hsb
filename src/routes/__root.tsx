@@ -17,6 +17,9 @@ import { DepositContentProvider } from "@/components/deposit-content";
 import { ReferralProvider } from "@/components/referral-content";
 import { FaqProvider } from "@/components/faq-content";
 import { LedgerProvider } from "@/components/ledger-content";
+import { CalendarContentProvider } from "@/components/calendar-content";
+import { CustomerServiceContentProvider } from "@/components/customer-service-content";
+import { AppPreferencesProvider } from "@/components/app-preferences";
 
 function NotFoundComponent() {
   return (
@@ -100,19 +103,25 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {createPortal(<HeadContent />, document.head)}
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <MarketProvider>
-        <HomeContentProvider>
-          <DepositContentProvider>
-            <ReferralProvider>
-              <FaqProvider>
-                <LedgerProvider>
-                  <Outlet />
-                </LedgerProvider>
-              </FaqProvider>
-            </ReferralProvider>
-          </DepositContentProvider>
-        </HomeContentProvider>
-      </MarketProvider>
+      <AppPreferencesProvider>
+        <CalendarContentProvider>
+          <CustomerServiceContentProvider>
+            <MarketProvider>
+              <HomeContentProvider>
+                <DepositContentProvider>
+                  <ReferralProvider>
+                    <FaqProvider>
+                      <LedgerProvider>
+                        <Outlet />
+                      </LedgerProvider>
+                    </FaqProvider>
+                  </ReferralProvider>
+                </DepositContentProvider>
+              </HomeContentProvider>
+            </MarketProvider>
+          </CustomerServiceContentProvider>
+        </CalendarContentProvider>
+      </AppPreferencesProvider>
     </QueryClientProvider>
   );
 }

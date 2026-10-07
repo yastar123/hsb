@@ -68,7 +68,7 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
 
   const [currentEmail, setCur] = useState('');
   useEffect(() => { setCur(localStorage.getItem('hsb-current-email') || ''); }, []);
-  const setCurrentEmail = (e: string) => { setCur(e); try { localStorage.setItem('hsb-current-email', e); } catch { /* ignore */ } };
+  const setCurrentEmail = (e: string) => { setCur(e); try { if (e) localStorage.setItem('hsb-current-email', e); else localStorage.removeItem('hsb-current-email'); } catch { /* ignore */ } };
   useEffect(() => { const t = setInterval(() => setData((p) => compoundAll(p)), 60000); return () => clearInterval(t); }, []);
   const review = (id: string, approve: boolean, note?: string) => setData((p) => {
     const d = p.deposits.find((x) => x.id === id);

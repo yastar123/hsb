@@ -43,10 +43,12 @@ import { Route as AdminBerandaRouteImport } from './routes/admin.beranda'
 import { Route as AdminBeritaRouteImport } from './routes/admin.berita'
 import { Route as AdminCompoundingRouteImport } from './routes/admin.compounding'
 import { Route as AdminDepositRouteImport } from './routes/admin.deposit'
+import { Route as AdminDepositVerifikasiRouteImport } from './routes/admin.deposit-verifikasi'
+import { Route as AdminKalenderRouteImport } from './routes/admin.kalender'
+import { Route as AdminLayananRouteImport } from './routes/admin.layanan'
 import { Route as AdminMitraRouteImport } from './routes/admin.mitra'
 import { Route as AdminNotifikasiRouteImport } from './routes/admin.notifikasi'
 import { Route as AdminPasarRouteImport } from './routes/admin.pasar'
-import { Route as AdminRekeningRouteImport } from './routes/admin.rekening'
 import { Route as AdminUserRouteImport } from './routes/admin.user'
 import { Route as AdminWithdrawRouteImport } from './routes/admin.withdraw'
 import { Route as BeritaIndexRouteImport } from './routes/berita.index'
@@ -224,6 +226,21 @@ const AdminDepositRoute = AdminDepositRouteImport.update({
   path: '/deposit',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDepositVerifikasiRoute = AdminDepositVerifikasiRouteImport.update({
+  id: '/deposit-verifikasi',
+  path: '/deposit-verifikasi',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminKalenderRoute = AdminKalenderRouteImport.update({
+  id: '/kalender',
+  path: '/kalender',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLayananRoute = AdminLayananRouteImport.update({
+  id: '/layanan',
+  path: '/layanan',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMitraRoute = AdminMitraRouteImport.update({
   id: '/mitra',
   path: '/mitra',
@@ -237,11 +254,6 @@ const AdminNotifikasiRoute = AdminNotifikasiRouteImport.update({
 const AdminPasarRoute = AdminPasarRouteImport.update({
   id: '/pasar',
   path: '/pasar',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRekeningRoute = AdminRekeningRouteImport.update({
-  id: '/rekening',
-  path: '/rekening',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminUserRoute = AdminUserRouteImport.update({
@@ -309,10 +321,12 @@ export interface FileRoutesByFullPath {
   '/admin/berita': typeof AdminBeritaRoute
   '/admin/compounding': typeof AdminCompoundingRoute
   '/admin/deposit': typeof AdminDepositRoute
+  '/admin/deposit-verifikasi': typeof AdminDepositVerifikasiRoute
+  '/admin/kalender': typeof AdminKalenderRoute
+  '/admin/layanan': typeof AdminLayananRoute
   '/admin/mitra': typeof AdminMitraRoute
   '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/pasar': typeof AdminPasarRoute
-  '/admin/rekening': typeof AdminRekeningRoute
   '/admin/user': typeof AdminUserRoute
   '/admin/withdraw': typeof AdminWithdrawRoute
   '/berita/$id': typeof BeritaIdRoute
@@ -352,10 +366,12 @@ export interface FileRoutesByTo {
   '/admin/berita': typeof AdminBeritaRoute
   '/admin/compounding': typeof AdminCompoundingRoute
   '/admin/deposit': typeof AdminDepositRoute
+  '/admin/deposit-verifikasi': typeof AdminDepositVerifikasiRoute
+  '/admin/kalender': typeof AdminKalenderRoute
+  '/admin/layanan': typeof AdminLayananRoute
   '/admin/mitra': typeof AdminMitraRoute
   '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/pasar': typeof AdminPasarRoute
-  '/admin/rekening': typeof AdminRekeningRoute
   '/admin/user': typeof AdminUserRoute
   '/admin/withdraw': typeof AdminWithdrawRoute
   '/berita/$id': typeof BeritaIdRoute
@@ -399,10 +415,12 @@ export interface FileRoutesById {
   '/admin/berita': typeof AdminBeritaRoute
   '/admin/compounding': typeof AdminCompoundingRoute
   '/admin/deposit': typeof AdminDepositRoute
+  '/admin/deposit-verifikasi': typeof AdminDepositVerifikasiRoute
+  '/admin/kalender': typeof AdminKalenderRoute
+  '/admin/layanan': typeof AdminLayananRoute
   '/admin/mitra': typeof AdminMitraRoute
   '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/pasar': typeof AdminPasarRoute
-  '/admin/rekening': typeof AdminRekeningRoute
   '/admin/user': typeof AdminUserRoute
   '/admin/withdraw': typeof AdminWithdrawRoute
   '/berita/$id': typeof BeritaIdRoute
@@ -447,10 +465,12 @@ export interface FileRouteTypes {
     | '/admin/berita'
     | '/admin/compounding'
     | '/admin/deposit'
+    | '/admin/deposit-verifikasi'
+    | '/admin/kalender'
+    | '/admin/layanan'
     | '/admin/mitra'
     | '/admin/notifikasi'
     | '/admin/pasar'
-    | '/admin/rekening'
     | '/admin/user'
     | '/admin/withdraw'
     | '/berita/$id'
@@ -490,10 +510,12 @@ export interface FileRouteTypes {
     | '/admin/berita'
     | '/admin/compounding'
     | '/admin/deposit'
+    | '/admin/deposit-verifikasi'
+    | '/admin/kalender'
+    | '/admin/layanan'
     | '/admin/mitra'
     | '/admin/notifikasi'
     | '/admin/pasar'
-    | '/admin/rekening'
     | '/admin/user'
     | '/admin/withdraw'
     | '/berita/$id'
@@ -536,10 +558,12 @@ export interface FileRouteTypes {
     | '/admin/berita'
     | '/admin/compounding'
     | '/admin/deposit'
+    | '/admin/deposit-verifikasi'
+    | '/admin/kalender'
+    | '/admin/layanan'
     | '/admin/mitra'
     | '/admin/notifikasi'
     | '/admin/pasar'
-    | '/admin/rekening'
     | '/admin/user'
     | '/admin/withdraw'
     | '/berita/$id'
@@ -821,6 +845,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDepositRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/deposit-verifikasi': {
+      id: '/admin/deposit-verifikasi'
+      path: '/deposit-verifikasi'
+      fullPath: '/admin/deposit-verifikasi'
+      preLoaderRoute: typeof AdminDepositVerifikasiRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/kalender': {
+      id: '/admin/kalender'
+      path: '/kalender'
+      fullPath: '/admin/kalender'
+      preLoaderRoute: typeof AdminKalenderRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/layanan': {
+      id: '/admin/layanan'
+      path: '/layanan'
+      fullPath: '/admin/layanan'
+      preLoaderRoute: typeof AdminLayananRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/mitra': {
       id: '/admin/mitra'
       path: '/mitra'
@@ -840,13 +885,6 @@ declare module '@tanstack/react-router' {
       path: '/pasar'
       fullPath: '/admin/pasar'
       preLoaderRoute: typeof AdminPasarRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/rekening': {
-      id: '/admin/rekening'
-      path: '/rekening'
-      fullPath: '/admin/rekening'
-      preLoaderRoute: typeof AdminRekeningRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/user': {
@@ -899,10 +937,12 @@ interface AdminRouteChildren {
   AdminBeritaRoute: typeof AdminBeritaRoute
   AdminCompoundingRoute: typeof AdminCompoundingRoute
   AdminDepositRoute: typeof AdminDepositRoute
+  AdminDepositVerifikasiRoute: typeof AdminDepositVerifikasiRoute
+  AdminKalenderRoute: typeof AdminKalenderRoute
+  AdminLayananRoute: typeof AdminLayananRoute
   AdminMitraRoute: typeof AdminMitraRoute
   AdminNotifikasiRoute: typeof AdminNotifikasiRoute
   AdminPasarRoute: typeof AdminPasarRoute
-  AdminRekeningRoute: typeof AdminRekeningRoute
   AdminUserRoute: typeof AdminUserRoute
   AdminWithdrawRoute: typeof AdminWithdrawRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -913,10 +953,12 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBeritaRoute: AdminBeritaRoute,
   AdminCompoundingRoute: AdminCompoundingRoute,
   AdminDepositRoute: AdminDepositRoute,
+  AdminDepositVerifikasiRoute: AdminDepositVerifikasiRoute,
+  AdminKalenderRoute: AdminKalenderRoute,
+  AdminLayananRoute: AdminLayananRoute,
   AdminMitraRoute: AdminMitraRoute,
   AdminNotifikasiRoute: AdminNotifikasiRoute,
   AdminPasarRoute: AdminPasarRoute,
-  AdminRekeningRoute: AdminRekeningRoute,
   AdminUserRoute: AdminUserRoute,
   AdminWithdrawRoute: AdminWithdrawRoute,
   AdminIndexRoute: AdminIndexRoute,

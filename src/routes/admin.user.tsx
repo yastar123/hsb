@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, RotateCcw, Search } from 'lucide-react';
+import { Plus, Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Pagination, usePagination } from '@/components/pagination';
 
@@ -45,7 +45,6 @@ function AdminUser() {
   return <main className="space-y-4 p-4 text-foreground md:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h1 className="text-2xl font-bold">Kelola User</h1><p className="text-sm text-muted-foreground">Simulasi · tersimpan di browser ini, belum terhubung ke akun sungguhan.</p></div>
-      <Button variant="outline" onClick={() => setUsers(seed)}><RotateCcw /> Reset data contoh</Button>
     </div>
     <section className="grid gap-3 sm:grid-cols-4">{stats.map(([l, v]) =>
       <article key={l} className="rounded-xl border border-border bg-background p-4"><p className="text-sm text-muted-foreground">{l}</p><p className="mt-1 text-2xl font-bold">{v}</p></article>)}</section>

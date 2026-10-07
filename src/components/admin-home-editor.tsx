@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Plus, Trash2, ArrowUp, ArrowDown, RotateCcw, ChevronLeft, Monitor } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, ChevronLeft, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HomeScreen } from '@/components/home-screen';
 import { useHomeContent, imageLibrary, resolveImage, uid, type HomeContent } from '@/components/home-content';
@@ -37,7 +37,7 @@ const sections: { key: SectionKey; label: string; titleKey: string; fields: Fiel
 const input = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground';
 
 export function AdminHomeEditor() {
-  const { content, setContent, reset } = useHomeContent();
+  const { content, setContent } = useHomeContent();
   const [tab, setTab] = useState<SectionKey>('banners');
   const [openId, setOpenId] = useState<string | null>(null);
   const section = sections.find((s) => s.key === tab)!;
@@ -51,7 +51,6 @@ export function AdminHomeEditor() {
       <Button asChild variant="ghost" size="sm"><Link to="/admin"><ChevronLeft /> Admin</Link></Button>
       <h1 className="text-lg font-bold">Kelola Beranda</h1>
       <div className="ml-auto flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => { if (confirm('Kembalikan semua isi Beranda ke awal?')) reset(); }}><RotateCcw /> Reset</Button>
         <Button asChild size="sm"><Link to="/beranda"><Monitor /> Buka Beranda</Link></Button>
       </div>
     </header>

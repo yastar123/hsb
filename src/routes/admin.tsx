@@ -1,9 +1,10 @@
-import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
-import { LayoutDashboard, House, ExternalLink, ChartNoAxesColumn, Wallet, Handshake, CircleHelp, Users, ArrowUpFromLine, Bell, Newspaper, Landmark, TrendingUp } from 'lucide-react';
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { LayoutDashboard, House, ExternalLink, ChartNoAxesColumn, Wallet, Handshake, CircleHelp, Users, ArrowUpFromLine, Bell, Newspaper, CalendarDays, Headset, ClipboardCheck, LogOut, TrendingUp } from 'lucide-react';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { useLedger } from '@/components/ledger-content';
 
 export const Route = createFileRoute('/admin')({
   component: AdminLayout,
@@ -15,16 +16,20 @@ const items = [
   { title: 'Kelola Pasar', url: '/admin/pasar', icon: ChartNoAxesColumn },
   { title: 'Kelola Mitra', url: '/admin/mitra', icon: Handshake },
   { title: 'Kelola Deposit', url: '/admin/deposit', icon: Wallet },
+  { title: 'Verifikasi Deposit', url: '/admin/deposit-verifikasi', icon: ClipboardCheck },
   { title: 'Kelola User', url: '/admin/user', icon: Users },
   { title: 'Compounding', url: '/admin/compounding', icon: TrendingUp },
-  { title: 'Kelola Rekening', url: '/admin/rekening', icon: Landmark },
   { title: 'Kelola Withdraw', url: '/admin/withdraw', icon: ArrowUpFromLine },
   { title: 'Kelola Berita', url: '/admin/berita', icon: Newspaper },
+  { title: 'Kalender Ekonomi', url: '/admin/kalender', icon: CalendarDays },
+  { title: 'Layanan Pelanggan', url: '/admin/layanan', icon: Headset },
   { title: 'Kelola Notifikasi', url: '/admin/notifikasi', icon: Bell },
 ] as const;
 
 function AdminSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname.replace(/\/$/, '') || '/' });
+  const navigate = useNavigate();
+  const { setCurrentEmail } = useLedger();
   return <Sidebar collapsible="icon">
     <SidebarHeader><div className="flex items-center gap-2 px-1 py-1"><img src="/hsb-mark.svg" alt="" width="24" height="24" /><span className="font-bold group-data-[collapsible=icon]:hidden">HSB Admin</span></div></SidebarHeader>
     <SidebarContent>
@@ -38,6 +43,7 @@ function AdminSidebar() {
         <SidebarGroupLabel>Situs</SidebarGroupLabel>
         <SidebarGroupContent><SidebarMenu>
           <SidebarMenuItem><SidebarMenuButton asChild tooltip="Lihat Beranda"><Link to="/beranda"><ExternalLink /><span>Lihat Beranda</span></Link></SidebarMenuButton></SidebarMenuItem>
+          <SidebarMenuItem><SidebarMenuButton tooltip="Keluar" onClick={() => { setCurrentEmail(''); navigate({ to: '/login' }); }}><LogOut /><span>Keluar</span></SidebarMenuButton></SidebarMenuItem>
         </SidebarMenu></SidebarGroupContent>
       </SidebarGroup>
     </SidebarContent>

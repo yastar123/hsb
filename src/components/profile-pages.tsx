@@ -1,26 +1,26 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, CalendarDays, Check, ChevronRight, Copy, Crown, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Copy, Crown, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Sun, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav, Notice } from '@/components/account-pages';
 import { isValidPassword, passwordRules } from '@/lib/account-validation';
+import { useLedger } from '@/components/ledger-content';
+import { useAppPreferences, translate, type Language } from '@/components/app-preferences';
+import { useCustomerServiceContent } from '@/components/customer-service-content';
 
 const UID = '95279505';
 
 function Header({ title, back = '/profil' }: { title: string; back?: '/profil' }) {
-  return <header className="acct-header"><Button asChild variant="ghost" size="icon"><Link to={back} aria-label="Kembali"><ArrowLeft /></Link></Button><h1>{title}</h1></header>;
-}
-
-function Countdown() {
-  const [left, setLeft] = useState(18 * 60 + 22);
-  useEffect(() => { const t = setInterval(() => setLeft((v) => (v > 0 ? v - 1 : 0)), 1000); return () => clearInterval(t); }, []);
-  const parts = [Math.floor(left / 3600), Math.floor((left % 3600) / 60), left % 60].map((n) => String(n).padStart(2, '0'));
-  return <span className="prof-timer">{parts.map((p, i) => <b key={i}>{p}</b>)}</span>;
+  const { language } = useAppPreferences();
+  return <header className="acct-header"><Button asChild variant="ghost" size="icon"><Link to={back} aria-label={translate('Kembali', language)}><ArrowLeft /></Link></Button><h1>{translate(title, language)}</h1></header>;
 }
 
 export function ProfileScreen() {
   const [notice, setNotice] = useState('');
   const navigate = useNavigate();
+  const { setCurrentEmail } = useLedger();
+  const { language, theme, toggleTheme } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
   const soon = (name: string) => () => setNotice(`${name} belum tersedia pada pratinjau ini.`);
   const shortcuts = [
     { label: 'Trade', icon: TrendingUp, to: '/pasar' as const },
@@ -36,28 +36,23 @@ export function ProfileScreen() {
   return <main className="home-page"><div className="home-shell prof-shell">
     <section className="prof-head">
       <img src="/hsb-mark.svg" width="34" height="34" alt="" />
-      <div><h1>Hello Demo</h1><p>UID: {UID} <button onClick={copy} aria-label="Salin UID"><Copy /></button> <span className="prof-unverified">Belum Terverifikasi</span></p></div>
-      <Moon className="prof-moon" aria-hidden />
-    </section>
-    <section className="prof-bonus">
-      <div className="prof-bonus-top"><span className="prof-real">Lanjutkan real</span><small>BERAKHIR DALAM <Countdown /></small></div>
-      <p>hingga <b>$350</b> Bonus Selamat Datang</p>
-      <div className="prof-progress"><i /><small>Langkah 3 dari 4</small><Link to="/register">Verifikasi ›</Link></div>
+      <div><h1>Hello Demo</h1><p>UID: {UID} <button onClick={copy} aria-label="Salin UID"><Copy /></button></p></div>
+      <Button variant="ghost" size="icon" className="prof-moon" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
     </section>
     <nav className="prof-grid">{shortcuts.map(({ label, icon: Icon, to }) => to
-      ? <Link key={label} to={to}><span><Icon /></span>{label}</Link>
-      : <button key={label} onClick={soon(label)}><span><Icon /></span>{label}</button>)}</nav>
+      ? <Link key={label} to={to}><span><Icon /></span>{tr(label)}</Link>
+      : <button key={label} onClick={soon(label)}><span><Icon /></span>{tr(label)}</button>)}</nav>
     <section className="prof-list">
-      <h2>Pusat Klien</h2>
-      <Link to="/informasi-akun">Informasi Anda<ChevronRight /></Link>
+      <h2>{tr('Pusat Klien')}</h2>
+      <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>
       <button onClick={soon('Dokumen')}>Dokumen<ChevronRight /></button>
-      <Link to="/bank-penarikan">Bank Penarikan<ChevronRight /></Link>
-      <Link to="/layanan-pelanggan">Layanan Pelanggan<ChevronRight /></Link>
-      <h2>Pengaturan</h2>
-      <Link to="/ganti-kata-sandi">Ganti Password<ChevronRight /></Link>
-      <Link to="/bahasa">Bahasa<ChevronRight /></Link>
+      <Link to="/bank-penarikan">{tr('Bank Penarikan')}<ChevronRight /></Link>
+      <Link to="/layanan-pelanggan">{tr('Layanan Pelanggan')}<ChevronRight /></Link>
+      <h2>{tr('Pengaturan')}</h2>
+      <Link to="/ganti-kata-sandi">{tr('Ganti Password')}<ChevronRight /></Link>
+      <Link to="/bahasa">{tr('Bahasa')}<ChevronRight /></Link>
     </section>
-    <button className="prof-logout" onClick={() => navigate({ to: '/login' })}><LogOut /> Keluar</button>
+    <button className="prof-logout" onClick={() => { setCurrentEmail(''); navigate({ to: '/login' }); }}><LogOut /> {tr('Keluar')}</button>
     <BottomNav active="Profil" />
     {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;
@@ -73,11 +68,11 @@ export function AccountInfoScreen() {
 
 const LANGS = [{ id: 'en', label: 'English', flag: 'prof-flag-en' }, { id: 'id', label: 'Bahasa Indonesia', flag: 'prof-flag-id' }, { id: 'zh', label: '汉语', flag: 'prof-flag-zh' }];
 export function LanguageScreen() {
-  const [lang, setLang] = useState('id');
+  const { language, setLanguage } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">
-    <Header title="Bahasa" />
-    <div className="prof-langs" role="radiogroup" aria-label="Bahasa">{LANGS.map((l) => <button key={l.id} role="radio" aria-checked={lang === l.id} onClick={() => setLang(l.id)}><i className={`prof-flag ${l.flag}`} />{l.label}<span><Check /></span></button>)}</div>
-    {lang !== 'id' && <p className="prof-hint">Terjemahan bahasa ini belum tersedia; tampilan tetap dalam Bahasa Indonesia.</p>}
+    <Header title={tr('Bahasa')} />
+    <div className="prof-langs" role="radiogroup" aria-label="Language">{LANGS.map((l) => <button key={l.id} role="radio" aria-checked={language === l.id} onClick={() => setLanguage(l.id as Language)}><i className={`prof-flag ${l.flag}`} />{l.label}<span><Check /></span></button>)}</div>
   </div></main>;
 }
 
@@ -114,21 +109,22 @@ export function ChangePasswordScreen() {
 
 export function CustomerServiceScreen() {
   const [notice, setNotice] = useState('');
-  const items = [
-    { k: 'Nomor Telepon', v: '(+62) 21-501-22288', btn: 'Telepon', href: 'tel:+622150122288' },
-    { k: 'Whatsapp', v: 'http://wa.me/628211019087', btn: 'Hubungi', href: 'https://wa.me/628211019087' },
-    { k: 'Email', v: 'cs@hsb.co.id', btn: 'Hubungi', href: 'mailto:cs@hsb.co.id' },
-    { k: 'Ngobrol dengan Agen kami', v: 'Live Chat', btn: 'Hubungi' },
-  ];
+  const { content } = useCustomerServiceContent();
+  const { language } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
+  const safeHref = (value: string) => /^(https?:|tel:|mailto:)/i.test(value.trim()) ? value.trim() : '';
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">
-    <Header title="Layanan Pelanggan" />
+    <Header title={tr('Layanan Pelanggan')} />
     <div className="prof-cs">
-      <h2>Hubungi Layanan Pelanggan</h2>
-      <p className="prof-hint">Jika Anda membutuhkan dukungan, hubungi kami melalui:</p>
-      {items.map((i) => <div key={i.k} className="prof-cs-card"><small>{i.k}</small><div><b>{i.v}</b>{i.href
-        ? <Button asChild size="sm"><a href={i.href} target={i.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{i.btn}</a></Button>
-        : <Button size="sm" onClick={() => setNotice('Live Chat belum tersedia pada pratinjau ini.')}>{i.btn}</Button>}</div></div>)}
-      <div className="prof-cs-card prof-cs-office"><h3><img src="/hsb-mark.svg" width="20" height="20" alt="" />PT. Handal Semesta Berjangka</h3><b>Mayapada Tower 2</b><p>Jl. Jenderal Sudirman No.27 Lantai 14, RT.4/RW.2, Kuningan, Kecamatan Setiabudi, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12920</p></div>
+      <h2>{tr('Hubungi Layanan Pelanggan')}</h2>
+      <p className="prof-hint">{tr('Jika Anda membutuhkan dukungan, hubungi kami melalui:')}</p>
+      {content.items.map((i) => {
+        const href = safeHref(i.href);
+        return <div key={i.id} className="prof-cs-card"><small>{tr(i.title)}</small><div><b>{i.value}</b>{href
+          ? <Button asChild size="sm"><a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{tr(i.buttonLabel)}</a></Button>
+          : <Button size="sm" onClick={() => setNotice(`${i.title} belum tersedia pada pratinjau ini.`)}>{tr(i.buttonLabel)}</Button>}</div></div>;
+      })}
+      <div className="prof-cs-card prof-cs-office"><h3><img src="/hsb-mark.svg" width="20" height="20" alt="" />{content.officeName}</h3><b>{content.officeBuilding}</b><p>{content.officeAddress}</p></div>
     </div>
     {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;
