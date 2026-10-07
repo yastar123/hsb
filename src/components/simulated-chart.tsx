@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { simulatedTickMove, type Product } from '@/lib/market-data';
+import { buildIllustrativeHistory, type Product } from '@/lib/market-data';
 
 export function SimulatedChart({
   product,
@@ -58,27 +58,10 @@ export function SimulatedChart({
       const step = interval === '1m' ? 60 : interval === '5m' ? 300 : interval === '15m' ? 900 : interval === '1h' ? 3600 : 86400;
       const bucketTime = () => Math.floor(Date.now() / 1000 / step) * step;
       const end = bucketTime();
-      const start = end - step * 89;
-      const tickSize = 10 ** -product.decimals;
-      const seed = [...product.symbol].reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
-      let walk = 0;
-      const movements = Array.from({ length: 90 }, (_, index) => {
-        walk += simulatedTickMove(product.symbol, index + 1 + seed % 97);
-        return walk;
-      });
-      const finalWalk = movements[movements.length - 1] ?? 0;
-      const closes = movements.map((movement) => product.ask + (movement - finalWalk) * tickSize);
-      const candles = closes.map((close, index) => {
-        const open = index === 0 ? close - tickSize : closes[index - 1] ?? close;
-        const wick = tickSize * (1 + Math.abs(simulatedTickMove(product.symbol, index + 101)) % 3);
-        return {
-          time: (start + index * step) as import('lightweight-charts').UTCTimestamp,
-          open,
-          close,
-          high: Math.max(open, close) + wick,
-          low: Math.min(open, close) - wick,
-        };
-      });
+      const candles = buildIllustrativeHistory(product, interval, end * 1000).map((candle) => ({
+        ...candle,
+        time: candle.time as import('lightweight-charts').UTCTimestamp,
+      }));
 
       let currentTime = candles[candles.length - 1]?.time ?? (end as import('lightweight-charts').UTCTimestamp);
       let currentOpen = candles[candles.length - 1]?.open ?? product.ask;

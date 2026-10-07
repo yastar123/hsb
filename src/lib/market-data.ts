@@ -31,6 +31,46 @@ export function simulatedTickMove(symbol: string, tick: number) {
   return move || ((seed + tick) % 2 === 0 ? 1 : -1);
 }
 
+export function buildIllustrativeHistory(product: Product, interval: string, now = Date.now()) {
+  const step = interval === '1m' ? 60 : interval === '5m' ? 300 : interval === '15m' ? 900 : interval === '1h' ? 3600 : 86400;
+  const end = Math.floor(now / 1000 / step) * step;
+  const seed = [...product.symbol].reduce((value, char) => Math.imul(value ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
+  const volatility = product.group === 'Forex' ? 0.002
+    : product.group === 'Metal' ? 0.005
+      : product.group === 'Energy' ? 0.009
+        : product.group === 'Index' ? 0.004 : 0.003;
+  const amplitude = product.ask * volatility * (0.8 + (seed % 25) / 50);
+  const phase = (seed % 6283) / 1000;
+  const fastFrequency = 0.065 + ((seed >>> 8) % 36) / 250;
+  const slowFrequency = 0.022 + ((seed >>> 16) % 18) / 500;
+  const change = Math.max(-50, Math.min(100, product.change)) / 100;
+  const startPrice = product.ask / (1 + change);
+  const tickSize = 10 ** -product.decimals;
+  const waveAt = (index: number) => Math.sin(index * fastFrequency + phase) * 0.65
+    + Math.sin(index * slowFrequency + phase * 1.73) * 0.4
+    + Math.cos(index * 0.091 + phase * 0.55) * 0.2;
+  const priceAt = (index: number) => {
+    const progress = index / 89;
+    return Math.max(
+      tickSize,
+      startPrice + (product.ask - startPrice) * progress + amplitude * waveAt(index) * Math.sin(Math.PI * progress),
+    );
+  };
+
+  return Array.from({ length: 90 }, (_, index) => {
+    const close = priceAt(index);
+    const open = index === 0 ? startPrice : priceAt(index - 1);
+    const wick = Math.max(tickSize, Math.abs(close - open) * 0.25 + amplitude * (0.06 + (seed % 5) * 0.01));
+    return {
+      time: end - 89 * step + index * step,
+      open,
+      close,
+      high: Math.max(open, close) + wick,
+      low: Math.max(tickSize, Math.min(open, close) - wick),
+    };
+  });
+}
+
 export function simulatePriceTick(product: Pick<Product, 'symbol' | 'decimals'>, price: number, tick: number) {
   const tickSize = 10 ** -product.decimals;
   return Number(Math.max(tickSize, price + simulatedTickMove(product.symbol, tick) * tickSize).toFixed(product.decimals));

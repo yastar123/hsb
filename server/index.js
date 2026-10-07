@@ -1,6 +1,5 @@
 import "dotenv/config";
 
-import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -8,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { createServer as createViteServer } from "vite";
+import { hasConfiguredAdminCredentials, verifyAdminCredentials } from "./auth.js";
 import { createApiRouter } from "./api.js";
 
 const { Pool } = pg;
@@ -50,11 +50,9 @@ app.use((request, response, next) => {
     return next();
   }
 
-  const username = process.env.ADMIN_USERNAME?.trim() || process.env.ADMIN_NUMBER?.trim();
-  const password = process.env.ADMIN_PASSWORD;
   response.setHeader("Cache-Control", "no-store");
 
-  if (!username || !password) {
+  if (!hasConfiguredAdminCredentials()) {
     return response
       .status(503)
       .type("text")
@@ -69,16 +67,9 @@ app.use((request, response, next) => {
     if (separator >= 0) {
       const suppliedUsername = Buffer.from(credentials.slice(0, separator));
       const suppliedPassword = Buffer.from(credentials.slice(separator + 1));
-      const expectedUsername = Buffer.from(username);
-      const expectedPassword = Buffer.from(password);
-      const usernameMatches =
-        suppliedUsername.length === expectedUsername.length &&
-        timingSafeEqual(suppliedUsername, expectedUsername);
-      const passwordMatches =
-        suppliedPassword.length === expectedPassword.length &&
-        timingSafeEqual(suppliedPassword, expectedPassword);
-
-      if (usernameMatches && passwordMatches) return next();
+      if (verifyAdminCredentials(suppliedUsername.toString(), suppliedPassword.toString())) {
+        return next();
+      }
     }
   }
 

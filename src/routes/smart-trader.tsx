@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { SmartTraderScreen } from '@/components/insight-pages';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
+
 export const Route = createFileRoute('/smart-trader')({
   head: () => ({ meta: [
     { title: 'Smart Trader — HSB Trading' },
@@ -9,5 +9,5 @@ export const Route = createFileRoute('/smart-trader')({
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary_large_image' },
   ] }),
-  component: SmartTraderScreen,
+  component: () => <Outlet />,
 });

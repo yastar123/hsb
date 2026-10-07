@@ -29,7 +29,12 @@ async function getRoutePaths() {
     for (const match of source.matchAll(/createFileRoute\(\s*(['"])([^'"]+)\1\s*\)/g)) {
       const route = match[2];
       if (route) {
-        paths.add(route.replace(/\$id/g, "1").replace(/\$symbol/g, "EURUSD"));
+        paths.add(
+          route
+            .replace(/\$id/g, "1")
+            .replace(/\$symbol/g, "EURUSD")
+            .replace(/\$toolId/g, "analisa-teknikal"),
+        );
       }
     }
   }
@@ -131,7 +136,7 @@ try {
 
   const context = await browser.newContext({
     viewport: { width: 1280, height: 850 },
-    httpCredentials: { username: adminUsername, password: adminPassword },
+    httpCredentials: { username: adminUsername, password: adminPassword, send: "always" },
   });
   const page = await context.newPage();
   const browserErrors = [];
@@ -185,6 +190,10 @@ try {
     (await page.getByRole("heading", { name: "Akun Demo" }).count()) === 0,
     "Development demo credentials were exposed in the production login page.",
   );
+  assert(
+    (await page.getByRole("link", { name: "Lihat Beranda" }).count()) === 0,
+    "The removed home link is still visible on the login page.",
+  );
   await page.getByRole("tab", { name: "Email" }).click();
   assert(
     await page.getByRole("textbox", { name: "Email" }).isVisible(),
@@ -232,6 +241,11 @@ try {
     .click();
   await page.waitForURL("**/pasar/XAUUSD");
   assert(
+    (await page.getByText("Ask (simulasi)").count()) === 0 &&
+      (await page.getByText("Bid (simulasi)").count()) === 0,
+    "The simulated suffix is still attached to market-detail quote labels.",
+  );
+  assert(
     (await page.getByRole("button", { name: "Beli", exact: true }).count()) === 0 &&
       (await page.getByRole("button", { name: "Jual", exact: true }).count()) === 0 &&
       (await page.getByRole("tab", { name: "Signals", exact: true }).count()) === 0 &&
@@ -262,6 +276,48 @@ try {
   assert(
     (await page.locator("#root").innerText()).includes("Kelola Pasar"),
     "Admin navigation did not open market management.",
+  );
+
+  await page.goto(new URL("/beranda", baseUrl).href);
+  await page.getByRole("link", { name: /Cek sinyal harian/ }).click();
+  await page.waitForURL("**/pasar");
+  await page.goto(new URL("/beranda", baseUrl).href);
+  await page.getByRole("link", { name: /Rekap Agenda Penting Minggu Ini/ }).click();
+  await page.waitForURL("**/kalender-ekonomi");
+  await page.goto(new URL("/beranda", baseUrl).href);
+  await page.getByRole("link", { name: "Lihat Semua" }).first().click();
+  await page.waitForURL("**/sinyal-trading");
+
+  await page.goto(new URL("/beranda", baseUrl).href);
+  await page.locator(".home-news-grid").waitFor({ state: "visible", timeout: 10_000 });
+  const homeNewsLinks = page.locator(".home-news-grid a");
+  assert((await homeNewsLinks.count()) > 0, "Beranda news cards are not links.");
+  assert(
+    (await homeNewsLinks.first().getAttribute("href"))?.startsWith("/berita/"),
+    "A Beranda news card does not link to its article detail.",
+  );
+  await homeNewsLinks.first().click();
+  await page.waitForURL("**/berita/**");
+  assert(
+    (await page.getByRole("heading", { name: "Berita tidak ditemukan" }).count()) === 0,
+    "A Beranda news card opened a missing article.",
+  );
+
+  await page.goto(new URL("/smart-trader", baseUrl).href);
+  assert(
+    (await page.locator(".ins-cards a[href^='/smart-trader/']").count()) === 4,
+    "Smart Trader tools do not link to individual detail pages.",
+  );
+  await page.goto(new URL("/smart-trader/analisa-teknikal", baseUrl).href);
+  assert(
+    await page.getByRole("heading", { name: "Gambaran umum" }).isVisible(),
+    "The Smart Trader detail page is missing its tool overview.",
+  );
+
+  await page.goto(new URL("/profil", baseUrl).href);
+  assert(
+    !(await page.locator("#root").innerText()).includes("Dokumen"),
+    "The removed Documents entry is still visible in Profile.",
   );
 
   await page.setViewportSize({ width: 390, height: 844 });

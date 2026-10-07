@@ -55,6 +55,8 @@ import { Route as BeritaIndexRouteImport } from './routes/berita.index'
 import { Route as BeritaIdRouteImport } from './routes/berita.$id'
 import { Route as PasarIndexRouteImport } from './routes/pasar.index'
 import { Route as PasarSymbolRouteImport } from './routes/pasar.$symbol'
+import { Route as SmartTraderIndexRouteImport } from './routes/smart-trader.index'
+import { Route as SmartTraderToolIdRouteImport } from './routes/smart-trader.$toolId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -286,6 +288,16 @@ const PasarSymbolRoute = PasarSymbolRouteImport.update({
   path: '/$symbol',
   getParentRoute: () => PasarRoute,
 } as any)
+const SmartTraderIndexRoute = SmartTraderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SmartTraderRoute,
+} as any)
+const SmartTraderToolIdRoute = SmartTraderToolIdRouteImport.update({
+  id: '/$toolId',
+  path: '/$toolId',
+  getParentRoute: () => SmartTraderRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -315,7 +327,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/riwayat-pembayaran': typeof RiwayatPembayaranRoute
   '/sinyal-trading': typeof SinyalTradingRoute
-  '/smart-trader': typeof SmartTraderRoute
+  '/smart-trader': typeof SmartTraderRouteWithChildren
   '/withdraw': typeof WithdrawRoute
   '/admin/beranda': typeof AdminBerandaRoute
   '/admin/berita': typeof AdminBeritaRoute
@@ -331,9 +343,11 @@ export interface FileRoutesByFullPath {
   '/admin/withdraw': typeof AdminWithdrawRoute
   '/berita/$id': typeof BeritaIdRoute
   '/pasar/$symbol': typeof PasarSymbolRoute
+  '/smart-trader/$toolId': typeof SmartTraderToolIdRoute
   '/admin/': typeof AdminIndexRoute
   '/berita/': typeof BeritaIndexRoute
   '/pasar/': typeof PasarIndexRoute
+  '/smart-trader/': typeof SmartTraderIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -360,7 +374,6 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/riwayat-pembayaran': typeof RiwayatPembayaranRoute
   '/sinyal-trading': typeof SinyalTradingRoute
-  '/smart-trader': typeof SmartTraderRoute
   '/withdraw': typeof WithdrawRoute
   '/admin/beranda': typeof AdminBerandaRoute
   '/admin/berita': typeof AdminBeritaRoute
@@ -376,9 +389,11 @@ export interface FileRoutesByTo {
   '/admin/withdraw': typeof AdminWithdrawRoute
   '/berita/$id': typeof BeritaIdRoute
   '/pasar/$symbol': typeof PasarSymbolRoute
+  '/smart-trader/$toolId': typeof SmartTraderToolIdRoute
   '/admin': typeof AdminIndexRoute
   '/berita': typeof BeritaIndexRoute
   '/pasar': typeof PasarIndexRoute
+  '/smart-trader': typeof SmartTraderIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -409,7 +424,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/riwayat-pembayaran': typeof RiwayatPembayaranRoute
   '/sinyal-trading': typeof SinyalTradingRoute
-  '/smart-trader': typeof SmartTraderRoute
+  '/smart-trader': typeof SmartTraderRouteWithChildren
   '/withdraw': typeof WithdrawRoute
   '/admin/beranda': typeof AdminBerandaRoute
   '/admin/berita': typeof AdminBeritaRoute
@@ -425,9 +440,11 @@ export interface FileRoutesById {
   '/admin/withdraw': typeof AdminWithdrawRoute
   '/berita/$id': typeof BeritaIdRoute
   '/pasar/$symbol': typeof PasarSymbolRoute
+  '/smart-trader/$toolId': typeof SmartTraderToolIdRoute
   '/admin/': typeof AdminIndexRoute
   '/berita/': typeof BeritaIndexRoute
   '/pasar/': typeof PasarIndexRoute
+  '/smart-trader/': typeof SmartTraderIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -475,9 +492,11 @@ export interface FileRouteTypes {
     | '/admin/withdraw'
     | '/berita/$id'
     | '/pasar/$symbol'
+    | '/smart-trader/$toolId'
     | '/admin/'
     | '/berita/'
     | '/pasar/'
+    | '/smart-trader/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -504,7 +523,6 @@ export interface FileRouteTypes {
     | '/register'
     | '/riwayat-pembayaran'
     | '/sinyal-trading'
-    | '/smart-trader'
     | '/withdraw'
     | '/admin/beranda'
     | '/admin/berita'
@@ -520,9 +538,11 @@ export interface FileRouteTypes {
     | '/admin/withdraw'
     | '/berita/$id'
     | '/pasar/$symbol'
+    | '/smart-trader/$toolId'
     | '/admin'
     | '/berita'
     | '/pasar'
+    | '/smart-trader'
   id:
     | '__root__'
     | '/'
@@ -568,9 +588,11 @@ export interface FileRouteTypes {
     | '/admin/withdraw'
     | '/berita/$id'
     | '/pasar/$symbol'
+    | '/smart-trader/$toolId'
     | '/admin/'
     | '/berita/'
     | '/pasar/'
+    | '/smart-trader/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -601,7 +623,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   RiwayatPembayaranRoute: typeof RiwayatPembayaranRoute
   SinyalTradingRoute: typeof SinyalTradingRoute
-  SmartTraderRoute: typeof SmartTraderRoute
+  SmartTraderRoute: typeof SmartTraderRouteWithChildren
   WithdrawRoute: typeof WithdrawRoute
 }
 
@@ -929,6 +951,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasarSymbolRouteImport
       parentRoute: typeof PasarRoute
     }
+    '/smart-trader/': {
+      id: '/smart-trader/'
+      path: '/'
+      fullPath: '/smart-trader/'
+      preLoaderRoute: typeof SmartTraderIndexRouteImport
+      parentRoute: typeof SmartTraderRoute
+    }
+    '/smart-trader/$toolId': {
+      id: '/smart-trader/$toolId'
+      path: '/$toolId'
+      fullPath: '/smart-trader/$toolId'
+      preLoaderRoute: typeof SmartTraderToolIdRouteImport
+      parentRoute: typeof SmartTraderRoute
+    }
   }
 }
 
@@ -991,6 +1027,20 @@ const PasarRouteChildren: PasarRouteChildren = {
 
 const PasarRouteWithChildren = PasarRoute._addFileChildren(PasarRouteChildren)
 
+interface SmartTraderRouteChildren {
+  SmartTraderToolIdRoute: typeof SmartTraderToolIdRoute
+  SmartTraderIndexRoute: typeof SmartTraderIndexRoute
+}
+
+const SmartTraderRouteChildren: SmartTraderRouteChildren = {
+  SmartTraderToolIdRoute: SmartTraderToolIdRoute,
+  SmartTraderIndexRoute: SmartTraderIndexRoute,
+}
+
+const SmartTraderRouteWithChildren = SmartTraderRoute._addFileChildren(
+  SmartTraderRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -1019,7 +1069,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   RiwayatPembayaranRoute: RiwayatPembayaranRoute,
   SinyalTradingRoute: SinyalTradingRoute,
-  SmartTraderRoute: SmartTraderRoute,
+  SmartTraderRoute: SmartTraderRouteWithChildren,
   WithdrawRoute: WithdrawRoute,
 }
 export const routeTree = rootRouteImport

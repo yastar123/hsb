@@ -21,7 +21,6 @@ export function ProfileScreen() {
   const { setCurrentEmail } = useLedger();
   const { language, theme, toggleTheme } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
-  const soon = (name: string) => () => setNotice(`${name} belum tersedia pada pratinjau ini.`);
   const shortcuts = [
     { label: 'Trade', icon: TrendingUp, to: '/pasar' as const },
     { label: 'Copy Signals', icon: Signal, to: '/sinyal-trading' as const },
@@ -44,7 +43,6 @@ export function ProfileScreen() {
     <section className="prof-list">
       <h2>{tr('Pusat Klien')}</h2>
        <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>
-       <button onClick={soon('Dokumen')}>{tr('Dokumen')}<ChevronRight /></button>
       <Link to="/bank-penarikan">{tr('Bank Penarikan')}<ChevronRight /></Link>
       <Link to="/layanan-pelanggan">{tr('Layanan Pelanggan')}<ChevronRight /></Link>
       <h2>{tr('Pengaturan')}</h2>

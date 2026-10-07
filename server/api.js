@@ -1,6 +1,6 @@
 import express from "express";
 import { randomUUID } from "node:crypto";
-import { timingSafeTextEqual } from "./auth.js";
+import { hasConfiguredAdminCredentials, verifyAdminCredentials } from "./auth.js";
 import {
   clearSessionCookie,
   ConfigurationError,
@@ -96,9 +96,7 @@ function adminAuth(request, response, next) {
     return next();
   }
 
-  const username = process.env.ADMIN_USERNAME?.trim() || process.env.ADMIN_NUMBER?.trim();
-  const password = process.env.ADMIN_PASSWORD;
-  if (!username || !password) {
+  if (!hasConfiguredAdminCredentials()) {
     return apiError(response, 503, "Akses admin belum dikonfigurasi.");
   }
 
@@ -114,11 +112,11 @@ function adminAuth(request, response, next) {
     if (separator < 0) throw new Error("Invalid basic auth.");
     const suppliedUser = decoded.slice(0, separator);
     const suppliedPassword = decoded.slice(separator + 1);
-    if (!timingSafeTextEqual(suppliedUser, username) || !timingSafeTextEqual(suppliedPassword, password)) {
+    if (!verifyAdminCredentials(suppliedUser, suppliedPassword)) {
       response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');
       return apiError(response, 401, "Autentikasi admin tidak valid.");
     }
-    request.adminName = username;
+    request.adminName = suppliedUser;
     return next();
   } catch {
     response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');

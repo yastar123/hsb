@@ -73,7 +73,6 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
           {notice && <p className="account-notice" role="status">{notice}</p>}
         </form>
          <div className="account-switch">{tr(register ? 'Sudah punya akun?' : 'Belum punya akun?')}<Button variant="link" asChild><Link to={register ? '/login' : '/register'}>{tr(register ? 'Masuk Sekarang' : 'Daftar di Sini')}</Link></Button></div>
-        <div className="account-browse"><Button variant="link" asChild><Link to="/beranda">{tr('Lihat Beranda')}</Link></Button></div>
         <footer className="account-partners" aria-label="Lembaga terkait"><div><Landmark /><span>KEMENTERIAN<br />PERDAGANGAN<small>REPUBLIK INDONESIA</small></span></div><div className="account-icdx"><b>ICDX</b><small>TRADE THE SOURCE</small></div><div><Layers /><span>INDONESIA<br />CLEARING<br />HOUSE</span></div><div><ShieldCheck /><span>ASPEBTINDO</span></div></footer>
       </section>
     </div>

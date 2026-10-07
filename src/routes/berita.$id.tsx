@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { ArrowLeft, Newspaper, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { resolveImage, useHomeContent } from '@/components/home-content';
 import { getNewsArticle } from '@/lib/news-data';
 import { useNews } from '@/lib/news-store';
 
@@ -30,14 +31,24 @@ export const Route = createFileRoute('/berita/$id')({
 function BeritaDetailPage() {
   const { id } = Route.useParams();
   const { list, ready } = useNews();
-  const article = list.find((a) => String(a.id) === id);
-  if (!article) return ready ? <BeritaNotFound /> : null;
-  const related = list.filter((a) => a.id !== article.id && a.cat === article.cat).slice(0, 2);
+  const { content } = useHomeContent();
+  const homeArticle = content.news.find((item) => item.id === id);
+  const article = list.find((item) => String(item.id) === id)
+    ?? (homeArticle && list.find((item) => item.title.toLocaleLowerCase().startsWith(homeArticle.title.toLocaleLowerCase())));
+  const displayArticle = article ?? (homeArticle ? {
+    title: homeArticle.title,
+    img: resolveImage(homeArticle.image),
+    cat: homeArticle.category,
+    date: '',
+    body: [homeArticle.text],
+  } : null);
+  if (!displayArticle) return ready ? <BeritaNotFound /> : null;
+  const related = article ? list.filter((item) => item.id !== article.id && item.cat === article.cat).slice(0, 2) : [];
 
   const share = async () => {
     const url = window.location.href;
     if (navigator.share) {
-      try { await navigator.share({ title: article.title, url }); } catch { /* dibatalkan pengguna */ }
+      try { await navigator.share({ title: displayArticle.title, url }); } catch { /* dibatalkan pengguna */ }
     } else {
       try { await navigator.clipboard.writeText(url); } catch { /* tidak diizinkan */ }
     }
@@ -50,12 +61,12 @@ function BeritaDetailPage() {
       <Button variant="ghost" size="icon" aria-label="Bagikan" onClick={share}><Share2 /></Button>
     </header>
     <article className="pb-8">
-      <img src={article.img} alt={article.title} className="h-48 w-full object-cover" />
+      <img src={displayArticle.img} alt={displayArticle.title} className="h-48 w-full object-cover" />
       <div className="px-4 pt-4">
-        <small className="text-primary">{article.cat} · {article.date}</small>
-        <h1 className="mt-2 text-xl font-bold leading-snug">{article.title}</h1>
+        <small className="text-primary">{displayArticle.cat}{displayArticle.date && ` · ${displayArticle.date}`}</small>
+        <h1 className="mt-2 text-xl font-bold leading-snug">{displayArticle.title}</h1>
         <div className="mt-4 flex flex-col gap-3 text-sm leading-relaxed text-foreground/90">
-          {article.body.map((p, i) => <p key={i}>{p}</p>)}
+          {displayArticle.body.map((p, i) => <p key={i}>{p}</p>)}
         </div>
         <p className="mt-6 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
           Konten ini hanya untuk informasi dan edukasi, bukan rekomendasi investasi. Perdagangan mengandung risiko kerugian.

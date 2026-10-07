@@ -45,7 +45,7 @@ The repository includes sample systemd and Caddy configuration in `deploy/vps/`.
 
 1. Use a Linux VPS with Node.js 20.19 or newer, npm, and PostgreSQL. Point your domain's DNS records to the server and allow inbound ports 80 and 443.
 2. Install the project in `/opt/hsb-trading`, then run `npm ci` and `npm run build`.
-3. Create `/etc/hsb-trading/hsb-trading.env` with `DATABASE_URL`, `ADMIN_USERNAME`, and a unique, strong `ADMIN_PASSWORD`. Keep this file outside the repository and restrict it to the service account. If the admin credentials are absent, production `/admin` routes stay disabled.
+3. Create `/etc/hsb-trading/hsb-trading.env` with `DATABASE_URL`, `ADMIN_EMAIL` and/or `ADMIN_PHONE`, and a unique, strong `ADMIN_PASSWORD`. Keep this file outside the repository and restrict it to the service account. If the admin credentials are absent, production `/admin` routes stay disabled. `ADMIN_NUMBER` and `ADMIN_USERNAME` remain supported for older setups.
 4. Copy `deploy/vps/hsb-trading.service.example` to `/etc/systemd/system/hsb-trading.service`. Update the service user and paths to match the VPS, then enable and start it with systemd.
 5. Configure Caddy with `deploy/vps/Caddyfile.example`, replacing `your-domain.example` with the domain. Caddy terminates HTTPS and forwards traffic to Express on port 5000.
 6. Check `https://your-domain.example/api/health`; it should report `"database":"connected"`.
@@ -57,7 +57,7 @@ These are deployment instructions and sample configuration only; the app has not
 The sample files are `deploy/pm2/ecosystem.config.cjs` and `deploy/nginx/webullxau.com.conf.example`. They run the production Express server on `127.0.0.1:5000` behind Nginx. Use Node.js 20.19 or newer and make sure PostgreSQL is running and the `HSB` database exists.
 
 1. On the server, clone the repository, enter its directory, then run `npm ci --registry=https://registry.npmjs.org/` and `npm run build`.
-2. Create a private `.env` file in the project root (it is ignored by Git), with `DATABASE_URL`, `ADMIN_NUMBER` (or `ADMIN_USERNAME`), and `ADMIN_PASSWORD`. Use your own current values there; do not put them in `.env.example` or commit them. `ADMIN_NUMBER` is used as the HTTP Basic Auth username for `/admin`.
+2. Create a private `.env` file in the project root (it is ignored by Git), with `DATABASE_URL`, `ADMIN_EMAIL` and/or `ADMIN_PHONE`, and `ADMIN_PASSWORD`. Use your own current values there; do not put them in `.env.example` or commit them. Either email or phone can be used as the HTTP Basic Auth username for `/admin`. `ADMIN_NUMBER` and `ADMIN_USERNAME` remain supported for older setups.
 3. Install PM2 globally with `npm install -g pm2`, then run `pm2 start deploy/pm2/ecosystem.config.cjs --env production`, `pm2 save`, and `pm2 startup`. Run the startup command PM2 prints so the process returns after a reboot.
 4. Copy the Nginx example to `/etc/nginx/conf.d/webullxau.com.conf`, test it with `sudo nginx -t`, and reload Nginx. Point the domain's DNS A record to the server and allow inbound ports 80 and 443.
 5. Install Certbot for Rocky Linux and run `sudo certbot --nginx -d webullxau.com` to enable HTTPS. Use HTTPS before entering admin credentials; HTTP Basic Auth must not be exposed over plain HTTP.

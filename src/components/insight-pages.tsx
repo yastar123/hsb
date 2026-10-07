@@ -118,17 +118,69 @@ export function FaqScreen() {
   </Shell>;
 }
 
-const tools = [
-  ['Analisa Teknikal', 'Ringkasan indikator untuk XAUUSD, EURUSD, dan lainnya.'],
-  ['Sentimen Pasar', 'Persentase trader yang membuka posisi beli dan jual.'],
-  ['Kalkulator Lot', 'Hitung ukuran lot sesuai modal dan risiko.'],
-  ['Peringatan Harga', 'Notifikasi saat harga menyentuh level tertentu.'],
-];
+export const smartTraderTools = [
+  {
+    id: 'analisa-teknikal',
+    title: 'Analisa Teknikal',
+    summary: 'Pelajari bagaimana tren, level support dan resistance, serta indikator teknikal digunakan untuk membaca pergerakan harga.',
+    points: [
+      'Amati arah tren dan perubahan struktur harga.',
+      'Tandai zona support dan resistance sebagai area, bukan angka yang pasti.',
+      'Gunakan indikator sebagai konfirmasi, bukan jaminan arah harga.',
+    ],
+  },
+  {
+    id: 'sentimen-pasar',
+    title: 'Sentimen Pasar',
+    summary: 'Sentimen merangkum kecenderungan posisi beli dan jual dari sumber data tertentu.',
+    points: [
+      'Periksa sumber, waktu pembaruan, dan cakupan data sebelum menafsirkan sentimen.',
+      'Sentimen hanya memberi konteks dan tidak memprediksi pergerakan berikutnya.',
+      'Aplikasi ini belum terhubung ke sumber data posisi trader langsung.',
+    ],
+  },
+  {
+    id: 'kalkulator-lot',
+    title: 'Kalkulator Lot',
+    summary: 'Perencanaan ukuran posisi mempertimbangkan modal, batas risiko, jarak stop-loss, dan nilai kontrak instrumen.',
+    points: [
+      'Tentukan jumlah kerugian maksimum yang dapat diterima sebelum membuka posisi.',
+      'Sesuaikan ukuran posisi dengan jarak stop-loss dan spesifikasi kontrak.',
+      'Periksa kembali nilai pip, mata uang akun, dan ketentuan broker untuk instrumen terkait.',
+    ],
+  },
+  {
+    id: 'peringatan-harga',
+    title: 'Peringatan Harga',
+    summary: 'Peringatan harga memberi tahu saat suatu instrumen mencapai level yang dipilih.',
+    points: [
+      'Pilih instrumen, harga pemicu, dan arah kondisi yang ingin dipantau.',
+      'Pastikan peringatan menggunakan kuotasi dan zona waktu yang benar.',
+      'Peringatan harga dan notifikasi belum terhubung ke umpan harga langsung.',
+    ],
+  },
+] as const;
+
 export function SmartTraderScreen() {
-  const [notice, setNotice] = useState('');
   return <Shell title="Smart Trader">
     <p className="ins-intro">Kumpulan alat bantu untuk mengambil keputusan trading lebih cerdas.</p>
-    <div className="ins-cards">{tools.map(([t, d]) => <article key={t} className="ins-card"><h2><Sparkles /> {t}</h2><p>{d}</p><div><span /><Button size="sm" variant="secondary" onClick={() => setNotice(`${t} belum tersedia pada pratinjau ini.`)}>Buka</Button></div></article>)}</div>
-    {notice && <Notice text={notice} onClose={() => setNotice('')} />}
+    <div className="ins-cards">{smartTraderTools.map((tool) => <article key={tool.id} className="ins-card"><h2><Sparkles /> {tool.title}</h2><p>{tool.summary}</p><div><span /><Button asChild size="sm" variant="secondary"><Link to="/smart-trader/$toolId" params={{ toolId: tool.id }}>Buka</Link></Button></div></article>)}</div>
+  </Shell>;
+}
+
+export function SmartTraderDetailScreen({ toolId }: { toolId: string }) {
+  const tool = smartTraderTools.find((item) => item.id === toolId);
+  if (!tool) return <Shell title="Smart Trader"><p className="ins-empty">Alat Smart Trader tidak ditemukan.</p><Button asChild><Link to="/smart-trader">Kembali ke Smart Trader</Link></Button></Shell>;
+
+  return <Shell title={tool.title}>
+    <p className="ins-intro">{tool.summary}</p>
+    <article className="ins-card">
+      <h2>Gambaran umum</h2>
+      <p>{tool.summary}</p>
+      <h2>Cara memahami alat ini</h2>
+      <ul>{tool.points.map((point) => <li key={point}>{point}</li>)}</ul>
+    </article>
+    <p className="ins-foot">Konten ini bersifat edukatif. Data harga di aplikasi masih berupa ilustrasi; fitur yang memerlukan data langsung belum terhubung.</p>
+    <Button asChild variant="outline"><Link to="/smart-trader">Kembali ke Smart Trader</Link></Button>
   </Shell>;
 }

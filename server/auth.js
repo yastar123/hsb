@@ -183,3 +183,45 @@ export function validEmail(value) {
     value.length <= 254 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
+
+function adminIdentifiers() {
+  const identifiers = new Set();
+  const addPhone = (value) => {
+    const raw = value?.trim();
+    if (!raw) return;
+    identifiers.add(normalizeIndonesianPhone(raw) || raw);
+  };
+
+  const email = process.env.ADMIN_EMAIL?.trim();
+  if (email && validEmail(normalizeEmail(email))) identifiers.add(normalizeEmail(email));
+  addPhone(process.env.ADMIN_PHONE);
+  addPhone(process.env.ADMIN_NUMBER);
+
+  const username = process.env.ADMIN_USERNAME?.trim();
+  if (username) identifiers.add(username);
+  return [...identifiers];
+}
+
+export function hasConfiguredAdminCredentials() {
+  return adminIdentifiers().length > 0 && Boolean(process.env.ADMIN_PASSWORD);
+}
+
+export function verifyAdminCredentials(identity, password) {
+  const configuredPassword = process.env.ADMIN_PASSWORD;
+  if (!configuredPassword) return false;
+
+  const rawIdentity = String(identity ?? "").trim();
+  const candidates = new Set([
+    rawIdentity,
+    normalizeEmail(rawIdentity),
+    normalizeIndonesianPhone(rawIdentity),
+  ].filter(Boolean));
+  let identityMatches = false;
+  for (const expected of adminIdentifiers()) {
+    for (const candidate of candidates) {
+      identityMatches = timingSafeTextEqual(candidate, expected) || identityMatches;
+    }
+  }
+  const passwordMatches = timingSafeTextEqual(String(password ?? ""), configuredPassword);
+  return identityMatches && passwordMatches;
+}

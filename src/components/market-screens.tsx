@@ -164,8 +164,8 @@ export function MarketDetailScreen({ product }: { product: Product }) {
         <section className="market-detail-prices">
           <strong>{product.ask.toFixed(product.decimals)}</strong>
           <dl>
-            <div><dt>{tr('Ask (simulasi)')}</dt><dd>{product.ask.toFixed(product.decimals)}</dd></div>
-            <div><dt>{tr('Bid (simulasi)')}</dt><dd>{bidPrice(product).toFixed(product.decimals)}</dd></div>
+            <div><dt>{tr('Ask')}</dt><dd>{product.ask.toFixed(product.decimals)}</dd></div>
+            <div><dt>{tr('Bid')}</dt><dd>{bidPrice(product).toFixed(product.decimals)}</dd></div>
             <div><dt>{tr('Spread')}</dt><dd>{product.spread}</dd></div>
             <div><dt>{tr('Perubahan contoh')}</dt><dd>{product.change >= 0 ? '+' : ''}{product.change.toFixed(2)}%</dd></div>
           </dl>
