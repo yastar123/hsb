@@ -1,10 +1,17 @@
-import "dotenv/config";
-
+import dotenv from "dotenv";
 import express from "express";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+try {
+  dotenv.config({ path: path.join(projectRoot, ".env"), override: true });
+} catch {
+  // Ignore
+}
+
 import pg from "pg";
 import { createServer as createViteServer } from "vite";
 import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
@@ -14,7 +21,6 @@ import { createApiRouter } from "./api.js";
 const { Pool } = pg;
 const app = express();
 const httpServer = createServer(app);
-const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const port = process.env.PORT && process.env.PORT !== "8080" ? Number(process.env.PORT) : 3000;
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;

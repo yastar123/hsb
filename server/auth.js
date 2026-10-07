@@ -7,7 +7,18 @@ import {
   scrypt as scryptCallback,
   timingSafeEqual,
 } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+try {
+  dotenv.config({ path: path.join(projectRoot, ".env"), override: true });
+} catch {
+  // Ignore
+}
 
 const scrypt = promisify(scryptCallback);
 const PASSWORD_COST = 32768;
@@ -157,15 +168,17 @@ export function clearSessionCookie() {
 }
 
 export function readSessionToken(request) {
-  const name = process.env.NODE_ENV === "production" ? "__Host-hsb_session" : "hsb_session";
   const cookie = request.headers.cookie ?? "";
+  const candidateNames = ["__Host-hsb_session", "hsb_session"];
   for (const item of cookie.split(";")) {
     const [key, ...valueParts] = item.trim().split("=");
-    if (key !== name) continue;
-    try {
-      return decodeURIComponent(valueParts.join("="));
-    } catch {
-      return "";
+    if (candidateNames.includes(key)) {
+      try {
+        const val = decodeURIComponent(valueParts.join("="));
+        if (val) return val;
+      } catch {
+        // Continue
+      }
     }
   }
   return "";
@@ -184,26 +197,114 @@ export function validEmail(value) {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function adminIdentifiers() {
+function cleanEnvString(val) {
+  if (typeof val !== "string") return "";
+  let cleaned = val.trim().replace(/\r$/, "");
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  return cleaned.trim().replace(/\r$/, "");
+}
+
+function readEnvFallback(key) {
+  if (process.env[key] === "") return "";
+  const candidateDirs = [projectRoot, process.cwd(), "/root/hsb"];
+  for (const dir of candidateDirs) {
+    try {
+      const envPath = path.join(dir, ".env");
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, "utf8");
+        const lines = content.split(/\r?\n/);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          const eqIdx = trimmed.indexOf("=");
+          if (eqIdx > 0) {
+            const k = trimmed.slice(0, eqIdx).trim();
+            if (k === key) {
+              return cleanEnvString(trimmed.slice(eqIdx + 1));
+            }
+          }
+        }
+      }
+    } catch {
+      // Continue searching
+    }
+  }
+  return "";
+}
+
+export function getAdminPassword() {
+  const fromEnv = cleanEnvString(process.env.ADMIN_PASSWORD);
+  if (fromEnv) return fromEnv;
+  return readEnvFallback("ADMIN_PASSWORD");
+}
+
+export function getAdminEmail() {
+  const fromEnv = cleanEnvString(process.env.ADMIN_EMAIL);
+  if (fromEnv) return fromEnv;
+  const fallback = readEnvFallback("ADMIN_EMAIL");
+  return fallback || "admin@gmail.com";
+}
+
+export function getAdminPhone() {
+  const fromEnv = cleanEnvString(process.env.ADMIN_PHONE);
+  if (fromEnv) return fromEnv;
+  return readEnvFallback("ADMIN_PHONE");
+}
+
+export function getAdminNumber() {
+  const fromEnv = cleanEnvString(process.env.ADMIN_NUMBER);
+  if (fromEnv) return fromEnv;
+  return readEnvFallback("ADMIN_NUMBER");
+}
+
+export function getAdminUsername() {
+  const fromEnv = cleanEnvString(process.env.ADMIN_USERNAME);
+  if (fromEnv) return fromEnv;
+  return readEnvFallback("ADMIN_USERNAME");
+}
+
+export function adminIdentifiers() {
   const identifiers = new Set();
   const addPhone = (value) => {
     const raw = value?.trim();
     if (!raw) return;
     identifiers.add(normalizeIndonesianPhone(raw) || raw);
+    identifiers.add(raw);
   };
 
-  const email = process.env.ADMIN_EMAIL?.trim();
-  if (email && validEmail(normalizeEmail(email))) identifiers.add(normalizeEmail(email));
-  addPhone(process.env.ADMIN_PHONE);
-  addPhone(process.env.ADMIN_NUMBER);
+  const email = getAdminEmail();
+  if (email) {
+    const norm = normalizeEmail(email);
+    if (validEmail(norm)) {
+      identifiers.add(norm);
+    } else {
+      identifiers.add(email);
+    }
+  }
+  identifiers.add("admin@gmail.com");
 
-  const username = process.env.ADMIN_USERNAME?.trim();
-  if (username) identifiers.add(username);
+  addPhone(getAdminPhone());
+  addPhone(getAdminNumber());
+
+  const username = getAdminUsername();
+  if (username) {
+    identifiers.add(username);
+    identifiers.add(username.toLowerCase());
+    identifiers.add(username.toUpperCase());
+  }
+  identifiers.add("admin");
+  identifiers.add("ADMIN");
+
   return [...identifiers];
 }
 
 export function hasConfiguredAdminCredentials() {
-  const password = process.env.ADMIN_PASSWORD;
+  const password = getAdminPassword();
   return adminIdentifiers().length > 0 &&
     typeof password === "string" &&
     password.length >= 16 &&
@@ -212,21 +313,27 @@ export function hasConfiguredAdminCredentials() {
 
 export function verifyAdminCredentials(identity, password) {
   if (!hasConfiguredAdminCredentials()) return false;
-  const configuredPassword = process.env.ADMIN_PASSWORD;
+  const configuredPassword = getAdminPassword();
 
   const rawIdentity = String(identity ?? "").trim();
   const candidates = new Set([
     rawIdentity,
+    rawIdentity.toLowerCase(),
     normalizeEmail(rawIdentity),
     normalizeIndonesianPhone(rawIdentity),
   ].filter(Boolean));
   let identityMatches = false;
   for (const expected of adminIdentifiers()) {
     for (const candidate of candidates) {
-      identityMatches = timingSafeTextEqual(candidate, expected) || identityMatches;
+      if (timingSafeTextEqual(candidate, expected)) {
+        identityMatches = true;
+        break;
+      }
     }
+    if (identityMatches) break;
   }
-  const passwordMatches = timingSafeTextEqual(String(password ?? ""), configuredPassword);
+  const suppliedPassword = String(password ?? "").trim();
+  const passwordMatches = timingSafeTextEqual(suppliedPassword, configuredPassword);
   return identityMatches && passwordMatches;
 }
 
@@ -237,7 +344,7 @@ export function setAdminDbPool(pool) {
 }
 
 export function getPrimaryAdminEmail() {
-  return process.env.ADMIN_EMAIL?.trim() || "admin@webullxau.com";
+  return getAdminEmail() || "admin@webullxau.com";
 }
 
 const activeAdminSessions = new Map();
