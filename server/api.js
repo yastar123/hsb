@@ -17,7 +17,7 @@ import {
   validPassword,
   verifyPassword,
 } from "./auth.js";
-import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
+import { requireRole, ROLES } from "./rbac.js";
 
 const MAX_MONEY = 1_000_000_000;
 const BUSINESS_TIME_ZONE = "Asia/Jakarta";
@@ -90,6 +90,7 @@ function requireDatabase(pool) {
   };
 }
 
+function adminAuth(request, response, next) {
 async function issueSession(pool, response, userId) {
   const token = newSessionToken();
   const tokenHash = hashSessionToken(token);
@@ -1111,11 +1112,7 @@ export function createApiRouter(pool) {
     }
   }));
 
-  router.use(
-    "/admin",
-    requireAdminAuthentication,
-    requireRole(ROLES.ADMIN),
-  );
+  router.use("/admin", adminAuth, requireRole(ROLES.ADMIN));
 
   router.put("/admin/market", asyncRoute(async (request, response) => {
     const catalog = request.body;
