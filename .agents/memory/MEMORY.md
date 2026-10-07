@@ -1,0 +1,1 @@
+- [Demo financial-data integrity](financial-preview-integrity.md) — Keep preview accounts and money flows clearly labeled until authoritative backend and payment connections exist.

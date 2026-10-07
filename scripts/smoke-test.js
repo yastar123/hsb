@@ -212,9 +212,60 @@ try {
   const mobileNavigation = page.getByRole("navigation", { name: "Navigasi utama" });
   await mobileNavigation.waitFor({ state: "visible", timeout: 10_000 });
   assert(await mobileNavigation.isVisible(), "Primary navigation is not visible at a mobile viewport.");
+
+  await page.goto(new URL("/bahasa", baseUrl).href);
+  await page.getByRole("radio", { name: "English" }).click();
+  await page.waitForFunction(() => localStorage.getItem("hsb-language") === "en");
+  await page.goto(new URL("/beranda", baseUrl).href);
+  const englishHomeHeading = page.getByRole("heading", { name: "Trading Signals" });
+  await englishHomeHeading.waitFor({ state: "visible", timeout: 10_000 });
+  assert(
+    await englishHomeHeading.isVisible(),
+    "English language selection did not translate the home screen.",
+  );
+  await page.goto(new URL("/pasar", baseUrl).href);
+  const englishMarketHeading = page.getByRole("heading", { name: "Markets" });
+  await englishMarketHeading.waitFor({ state: "visible", timeout: 10_000 });
+  assert(
+    await englishMarketHeading.isVisible(),
+    "English language selection did not translate the market screen.",
+  );
+  await page.goto(new URL("/login", baseUrl).href);
+  const englishLoginHeading = page.getByRole("heading", { name: "Sign in" });
+  await englishLoginHeading.waitFor({ state: "visible", timeout: 10_000 });
+  assert(
+    await englishLoginHeading.isVisible(),
+    "The selected language was not retained on the login screen.",
+  );
+
+  await page.goto(new URL("/bahasa", baseUrl).href);
+  await page.getByRole("radio", { name: "汉语" }).click();
+  await page.waitForFunction(() => localStorage.getItem("hsb-language") === "zh");
+  await page.goto(new URL("/beranda", baseUrl).href);
+  const chineseHomeHeading = page.getByRole("heading", { name: "交易信号" });
+  await chineseHomeHeading.waitFor({ state: "visible", timeout: 10_000 });
+  assert(
+    await chineseHomeHeading.isVisible(),
+    "Chinese language selection did not translate the home screen.",
+  );
+
+  await page.goto(new URL("/bahasa", baseUrl).href);
+  await page.getByRole("radio", { name: "Bahasa Indonesia" }).click();
+  await page.waitForFunction(() => localStorage.getItem("hsb-language") === "id");
+  await page.goto(new URL("/profil", baseUrl).href);
+  await page.getByRole("button", { name: "Aktifkan mode gelap" }).click();
+  await page.waitForFunction(() => document.documentElement.classList.contains("dark"));
+  await page.reload();
+  assert(
+    await page.locator("html").evaluate((element) => element.classList.contains("dark")),
+    "Dark mode did not persist after reload.",
+  );
+  await page.getByRole("button", { name: "Aktifkan mode terang" }).click();
+  await page.waitForFunction(() => !document.documentElement.classList.contains("dark"));
+
   assert(browserErrors.length === 0, `Browser reported errors: ${browserErrors.join("; ")}`);
 
-  console.log("Interactions: carousel, login, registration validation, market tabs/favorites/search, admin navigation, and mobile navigation passed.");
+  console.log("Interactions: carousel, login, registration validation, market tabs/favorites/search, admin navigation, mobile navigation, language switching, and dark mode passed.");
   console.log("Note: login/registration remain demo-only and display their existing not-connected notices.");
 } finally {
   await browser?.close();

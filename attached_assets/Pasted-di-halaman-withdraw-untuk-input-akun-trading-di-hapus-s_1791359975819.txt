@@ -1,0 +1,43 @@
+di halaman withdraw untuk input akun trading di hapus saja dan bank tujuan ini itu user input sendiri bukan dropdown
+
+di halaman detail pasa disitu ada tombol jual dan beli ketika di klick buat agar tidak ada yang terjadi
+
+di website ini di semua halaman ini itu tidak ada demo akun tapi akun real semua
+
+di website ini semua datanya ini itu simulasi naik turun dan chartnya juga simmulasi naik turun ( tapi jangan sebut simulasi datanya di website ini )
+
+sidebar di halaman admin buat ada tombol logout
+
+di halaman profile buat ada tombol logout
+
+di halaman deposit ini itu ketika user pilih metode pembayaran ingin bank apapun nanti muncul component baru di bawahnya yaitu nomor rekeningnya ( yang sudah di setting admin di halaman admin deposit )
+
+di halaman deposit hapus input Nama pemilik akun dan Email akun ganti menjadi input nama pemilik rekening, nomor rekening dan bank rekening
+
+di halaman posisi hapus menu "tertunda"
+
+di halaman posisi button withdrawa yang bg warna putih tidak kelihatan karena teksnya juga putih ada bug ui perbaiki agar terlihat
+
+buat halaman admin kalender untuk kelola CRUD halaman kalender ekonomi
+
+buat halaman baru admin layanan di sisitu admin bisa CRUD data-data di halaman layanan pelanggan
+
+hapus component "Belum Terverifikasi"
+
+hapus component ini di halaman profile Lanjutkan real BERAKHIR DALAM 00 17 54 hingga $350 Bonus Selamat Datang
+
+Langkah 3 dari 4 Verifikasi ›
+
+selesaikan fitur dark mode ketika klick icon dark moda di halaman profile
+
+selesaikan fitur ganti bahasa yang ada di halaman bahasa
+
+di semua halaman yang menggunaan scrollbar saya ingin kamu buat agar tampilan batang scroll barnya di sembunyikan tapi fungsional scrolbarnya masih ada
+
+buat agar semua halaman, component, live priview responsive di berbagai device khususnya device handphone saja kemudian pastikan fullwidiht untuk component di setiap halaman
+
+di halaman deposit tambahkan menu baru yaitu verifikasi deposit yang mana disitu itu admin bisa chek user siapa saja yang melakukan deposit bisa chek data-data yang di inputkan dan gambarnya, jika admin setujui maka nominal deposit dari user tersebut masuk ke akun user
+
+hapus halaman admin/rekening
+
+di semua halaman pada website ini hapus component atau tombol yang ada riset data, riset data contoh, riset dan lainnya

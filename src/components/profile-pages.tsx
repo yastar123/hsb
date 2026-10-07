@@ -36,7 +36,7 @@ export function ProfileScreen() {
   return <main className="home-page"><div className="home-shell prof-shell">
     <section className="prof-head">
       <img src="/hsb-mark.svg" width="34" height="34" alt="" />
-      <div><h1>Hello Demo</h1><p>UID: {UID} <button onClick={copy} aria-label="Salin UID"><Copy /></button></p></div>
+      <div><h1>{tr('Hello Demo')}</h1><p>UID: {UID} <button onClick={copy} aria-label={tr('Salin UID')}><Copy /></button></p></div>
       <Button variant="ghost" size="icon" className="prof-moon" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
     </section>
     <nav className="prof-grid">{shortcuts.map(({ label, icon: Icon, to }) => to
@@ -44,8 +44,8 @@ export function ProfileScreen() {
       : <button key={label} onClick={soon(label)}><span><Icon /></span>{tr(label)}</button>)}</nav>
     <section className="prof-list">
       <h2>{tr('Pusat Klien')}</h2>
-      <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>
-      <button onClick={soon('Dokumen')}>Dokumen<ChevronRight /></button>
+       <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>
+       <button onClick={soon('Dokumen')}>{tr('Dokumen')}<ChevronRight /></button>
       <Link to="/bank-penarikan">{tr('Bank Penarikan')}<ChevronRight /></Link>
       <Link to="/layanan-pelanggan">{tr('Layanan Pelanggan')}<ChevronRight /></Link>
       <h2>{tr('Pengaturan')}</h2>

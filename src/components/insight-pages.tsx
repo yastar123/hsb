@@ -8,7 +8,8 @@ import { useCalendarContent } from '@/components/calendar-content';
 import { useAppPreferences, translate } from '@/components/app-preferences';
 
 function Header({ title }: { title: string }) {
-  return <header className="acct-header"><Button asChild variant="ghost" size="icon"><Link to="/profil" aria-label="Kembali"><ArrowLeft /></Link></Button><h1>{title}</h1></header>;
+  const { language } = useAppPreferences();
+  return <header className="acct-header"><Button asChild variant="ghost" size="icon"><Link to="/profil" aria-label={translate('Kembali', language)}><ArrowLeft /></Link></Button><h1>{translate(title, language)}</h1></header>;
 }
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return <main className="home-page"><div className="home-shell acct-shell acct-plain ins-shell"><Header title={title} />{children}</div></main>;
@@ -23,6 +24,8 @@ const signalData = [
 ];
 
 export function SignalScreen() {
+  const { language } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
   const [filter, setFilter] = useState('ALL');
   const [status, setStatus] = useState<'aktif' | 'kedaluwarsa'>('aktif');
   const [notice, setNotice] = useState('');
@@ -31,22 +34,22 @@ export function SignalScreen() {
     try { await navigator.clipboard.writeText(`${s.symbol} ${s.buy ? 'BUY' : 'SELL'} Open ${s.open} TP ${s.tp} SL ${s.sl}`); setNotice(`Sinyal ${s.symbol} disalin.`); } catch { setNotice('Sinyal belum dapat disalin.'); }
   };
   return <Shell title="Sinyal Trading">
-    <p className="ins-intro">Trading menjadi lebih mudah dengan meniru analisa dari analis profesional dan terpercaya dari organisasi trading central.</p>
-    <button className="ins-link" onClick={() => setNotice('Pilih sinyal, tekan Copy Signal, lalu buka posisi dengan Open, TP, dan SL yang sama.')}><BookOpen /> Pelajari bagaimana untuk menggunakan Copy Signal?</button>
+    <p className="ins-intro">{tr('Trading menjadi lebih mudah dengan meniru analisa dari analis profesional dan terpercaya dari organisasi trading central.')}</p>
+    <button className="ins-link" onClick={() => setNotice(tr('Pilih sinyal, tekan Copy Signal, lalu buka posisi dengan Open, TP, dan SL yang sama.'))}><BookOpen /> {tr('Pelajari bagaimana untuk menggunakan Copy Signal?')}</button>
     <div className="ins-filters">
-      <label>Filter Produk<select value={filter} onChange={(e) => setFilter(e.target.value)}><option>ALL</option>{signalData.map((s) => <option key={s.symbol}>{s.symbol}</option>)}</select></label>
-      <div>Status Signal<span><button aria-pressed={status === 'aktif'} onClick={() => setStatus('aktif')}>Aktif</button><button aria-pressed={status === 'kedaluwarsa'} onClick={() => setStatus('kedaluwarsa')}>Kedaluwarsa</button></span></div>
+      <label>{tr('Filter Produk')}<select value={filter} onChange={(e) => setFilter(e.target.value)}><option>ALL</option>{signalData.map((s) => <option key={s.symbol}>{s.symbol}</option>)}</select></label>
+      <div>{tr('Status Signal')}<span><button aria-pressed={status === 'aktif'} onClick={() => setStatus('aktif')}>{tr('Aktif')}</button><button aria-pressed={status === 'kedaluwarsa'} onClick={() => setStatus('kedaluwarsa')}>{tr('Kedaluwarsa')}</button></span></div>
     </div>
     <div className="ins-timeline">
-      {list.length === 0 && <p className="ins-empty">Tidak ada sinyal.</p>}
+      {list.length === 0 && <p className="ins-empty">{tr('Tidak ada sinyal.')}</p>}
       {list.map((s) => <div key={s.symbol} className="ins-item">
         <p className="ins-date"><b>{s.time.slice(8, 10)}/{s.time.slice(5, 7)}/{s.time.slice(0, 4)}</b>{s.time}</p>
         <article className={`ins-signal ${s.buy ? 'ins-buy' : 'ins-sell'}`}>
-          <div className="ins-signal-top"><h2>{s.symbol}</h2><div><b>{s.buy ? 'Beli Signal' : 'Jual Signal'}</b><small>Intraday</small></div><i>{s.buy ? <ArrowUp /> : <ArrowDown />}</i></div>
+          <div className="ins-signal-top"><h2>{s.symbol}</h2><div><b>{tr(s.buy ? 'Beli Signal' : 'Jual Signal')}</b><small>{tr('Intraday')}</small></div><i>{s.buy ? <ArrowUp /> : <ArrowDown />}</i></div>
           <div className="ins-signal-body"><dl><div><dt>Open</dt><dd>{s.open}</dd></div><div><dt>TP</dt><dd>{s.tp}</dd></div><div><dt>SL</dt><dd>{s.sl}</dd></div></dl>
             <div className="home-minichart" aria-hidden>{[12,18,13,27,19,22,15,32,25,20].map((h, i) => <i key={i} className={`chart-bar chart-bar-${h} ${i % 3 === 0 ? 'chart-up' : ''}`} />)}</div></div>
           <div className="home-profit"><Sparkles /><div><b>Estimasi Keuntungan:</b><p>Jika membuka 0.1 lot | Profit <span className="home-positive">0$</span> | SL <span className="home-negative">-0$</span></p></div></div>
-          <div className="ins-actions"><Button onClick={() => copy(s)}>Copy Signal</Button><Button variant="secondary" disabled={!s.active} onClick={() => setNotice(`${s.symbol}: Open ${s.open}, TP ${s.tp}, SL ${s.sl}. Data contoh, bukan rekomendasi investasi.`)}>Selengkapnya</Button></div>
+          <div className="ins-actions"><Button onClick={() => copy(s)}>{tr('Copy Signal')}</Button><Button variant="secondary" disabled={!s.active} onClick={() => setNotice(`${s.symbol}: Open ${s.open}, TP ${s.tp}, SL ${s.sl}. ${tr('Data contoh, bukan rekomendasi investasi.')}`)}>{tr('Selengkapnya')}</Button></div>
         </article>
       </div>)}
     </div>
