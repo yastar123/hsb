@@ -150,7 +150,7 @@ type Ctx = LedgerData & {
   submitDeposit: (details: DepositInput) => Promise<void>;
   getDepositProof: (id: string) => Promise<string>;
   review: (id: string, approve: boolean, note?: string) => Promise<void>;
-  updateUser: (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate'>>) => Promise<void>;
+  updateUser: (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate' | 'balance' | 'deposit' | 'profit'>>) => Promise<void>;
   setCompound: (compound: Partial<CompoundSettings>) => Promise<void>;
   runCompound: () => Promise<{ applied: number; date: string }>;
   transferDepositToMain: (userId: string) => Promise<number>;
@@ -239,7 +239,7 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [post, refresh]);
 
-  const updateUser = useCallback(async (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate'>>) => {
+  const updateUser = useCallback(async (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate' | 'balance' | 'deposit' | 'profit'>>) => {
     await post(`/api/admin/users/${encodeURIComponent(id)}`, patch, 'PATCH');
     await refresh();
   }, [post, refresh]);

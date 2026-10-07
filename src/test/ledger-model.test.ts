@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compoundAll, depOf, mainOf, migrateUsers, profitOf, type AppUser, type LedgerData } from '@/components/ledger-content';
+import { compoundAll, depOf, mainOf, profitOf, type AppUser, type LedgerData } from '@/components/ledger-content';
 
 const baseUser = (patch: Partial<AppUser> = {}): AppUser => ({
   id: 'u1',
@@ -12,6 +12,7 @@ const baseUser = (patch: Partial<AppUser> = {}): AppUser => ({
   profit: 0,
   dailyProfit: 0,
   dailyProfitDate: '2026-10-06',
+  rate: null,
   lastCompound: '2026-10-06',
   status: 'Aktif',
   ...patch,
@@ -41,15 +42,12 @@ describe('financial ledger model', () => {
     expect(result.dailyProfitDate).toBe('2026-10-07');
   });
 
-  it('preserves the existing total while migrating legacy balances', () => {
-    const migrated = migrateUsers([
-      { ...baseUser(), balance: 1050, deposit: 1000, profit: 50 },
-      { ...baseUser({ id: 'u2' }), balance: 320, deposit: undefined, profit: undefined },
-    ]);
-    expect(mainOf(migrated[0]!)).toBe(50);
-    expect(depOf(migrated[0]!)).toBe(1000);
-    expect(mainOf(migrated[0]!) + depOf(migrated[0]!)).toBe(1050);
-    expect(mainOf(migrated[1]!)).toBe(0);
-    expect(depOf(migrated[1]!)).toBe(320);
+  it('does not accrue daily profit while compounding is disabled', () => {
+    const data = { ...ledger(baseUser()), compound: { globalRate: 1, enabled: false } };
+    const result = compoundAll(data, false, '2026-10-07').users[0]!;
+    expect(result.balance).toBe(100);
+    expect(result.profit).toBe(0);
+    expect(result.dailyProfit).toBe(0);
+    expect(result.dailyProfitDate).toBe('2026-10-07');
   });
 });

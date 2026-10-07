@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { Trash2, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 import { Pagination, usePagination } from '@/components/pagination';
 import { useLedger, type WithdrawalReq, type WithdrawalStatus } from '@/components/ledger-content';
 
@@ -23,10 +22,19 @@ const inp = 'w-full rounded-md border border-input bg-background px-2 py-1 text-
 const usd = (n: number) => `$${n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function AdminWithdraw() {
-  const { withdrawals: rows, reviewWithdrawal, updateWithdrawal, deleteWithdrawal } = useLedger();
+  const { withdrawals: rows, reviewWithdrawal } = useLedger();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
-  const upd = (id: string, p: Partial<Pick<WithdrawalReq, 'name' | 'email' | 'bank' | 'account' | 'date'>>) => updateWithdrawal(id, p);
+  const [message, setMessage] = useState('');
+  const review = (row: WithdrawalReq, nextStatus: WithdrawalStatus) => {
+    if (nextStatus === 'Menunggu' || nextStatus === row.status) return;
+    const confirmPayout = nextStatus === 'Berhasil';
+    if (confirmPayout && !confirm(`Konfirmasi bahwa transfer bank untuk ${row.name} sebesar ${usd(row.amount)} benar-benar telah dikirim?`)) return;
+    setMessage('');
+    void reviewWithdrawal(row.id, nextStatus, confirmPayout).catch((cause: unknown) => {
+      setMessage(cause instanceof Error ? cause.message : 'Status penarikan gagal disimpan.');
+    });
+  };
   const done = rows.filter((r) => r.status === 'Berhasil');
   const totalDone = done.reduce((s, r) => s + r.amount, 0);
   const pending = rows.filter((r) => r.status === 'Menunggu' || r.status === 'Diproses').reduce((s, r) => s + r.amount, 0);
@@ -48,8 +56,9 @@ function AdminWithdraw() {
 
   return <main className="space-y-4 p-4 text-foreground md:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h1 className="text-2xl font-bold">Kelola Withdraw</h1><p className="text-sm text-muted-foreground">Simulasi · tersimpan di browser ini, tidak ada dana sungguhan yang dipindahkan.</p></div>
+      <div><h1 className="text-2xl font-bold">Kelola Withdraw</h1><p className="text-sm text-muted-foreground">Permintaan dan status disimpan di PostgreSQL. Menandai “Berhasil” hanya setelah transfer bank benar-benar dikirim; riwayat tidak dapat dihapus dari sini.</p></div>
     </div>
+     {message && <p className="text-sm text-destructive" role="alert">{message}</p>}
     <section className="grid gap-3 sm:grid-cols-4">{stats.map(([l, v]) =>
       <article key={l} className="rounded-xl border border-border bg-background p-4"><p className="text-sm text-muted-foreground">{l}</p><p className="mt-1 text-2xl font-bold">{v}</p></article>)}</section>
 
@@ -70,16 +79,15 @@ function AdminWithdraw() {
       </div>
       <table className="w-full min-w-[960px] text-sm"><thead className="text-left text-muted-foreground"><tr><th className="py-2">Tanggal</th><th>Nama</th><th>Email</th><th>Bank</th><th>No. Rekening</th><th>Jumlah $</th><th>Status</th><th /></tr></thead>
         <tbody>{pg.pageItems.map((r) => <tr key={r.id} className="border-t border-border">
-          <td className="py-1 pr-1"><input type="date" className={inp} value={r.date} onChange={(e) => upd(r.id, { date: e.target.value })} aria-label="Tanggal" /></td>
-          <td className="pr-1"><input className={inp} value={r.name} onChange={(e) => upd(r.id, { name: e.target.value })} aria-label="Nama" /></td>
-          <td className="pr-1"><input className={inp} value={r.email} onChange={(e) => upd(r.id, { email: e.target.value })} aria-label="Email" /></td>
-          <td className="pr-1"><input className={inp} value={r.bank} onChange={(e) => upd(r.id, { bank: e.target.value })} aria-label="Bank" /></td>
-          <td className="pr-1"><input className={inp} value={r.account} onChange={(e) => upd(r.id, { account: e.target.value })} aria-label="Rekening" /></td>
+          <td className="py-1 pr-1">{r.date.slice(0, 10)}</td>
+          <td className="pr-1">{r.name}</td>
+          <td className="pr-1">{r.email}</td>
+          <td className="pr-1">{r.bank}</td>
+          <td className="pr-1">{r.account}</td>
           <td className="pr-1">{usd(r.amount)}</td>
-          <td className="pr-1"><select className={inp} value={r.status} disabled={Boolean(r.userId && (r.status === 'Berhasil' || r.status === 'Ditolak'))} onChange={(e) => reviewWithdrawal(r.id, e.target.value as WithdrawalStatus)} aria-label="Status">{statuses.map((s) => <option key={s}>{s}</option>)}</select></td>
-          <td><Button size="icon" variant="ghost" aria-label="Hapus" disabled={Boolean(r.userId && r.status === 'Berhasil')} onClick={() => { if (confirm('Hapus transaksi ini? Permintaan aktif akan dikembalikan ke saldo utama.')) deleteWithdrawal(r.id); }}><Trash2 /></Button></td>
+          <td className="pr-1"><select className={inp} value={r.status} disabled={r.status === 'Berhasil' || r.status === 'Ditolak'} onChange={(e) => review(r, e.target.value as WithdrawalStatus)} aria-label="Status">{statuses.map((s) => <option key={s} value={s} disabled={s === 'Menunggu' && r.status !== 'Menunggu'}>{s}</option>)}</select></td>
         </tr>)}
-        {!shown.length && <tr><td colSpan={8} className="py-6 text-center text-muted-foreground">Tidak ada transaksi.</td></tr>}</tbody></table>
+        {!shown.length && <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">Tidak ada transaksi.</td></tr>}</tbody></table>
       <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} onPage={pg.setPage} />
     </article>
   </main>;

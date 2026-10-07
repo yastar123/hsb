@@ -18,15 +18,16 @@ export function WithdrawScreen() {
   const [number, setNumber] = useState('');
   const [notice, setNotice] = useState('');
   const ready = !!me && me.status === 'Aktif' && Number(amount) > 0 && Number(amount) <= available && bank.trim() !== '' && /^\d{6,20}$/.test(number);
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!ready || !me) return;
-    const id = requestWithdrawal(me.id, { bank: bank.trim(), account: number, amount: Number(amount) });
-    if (id) {
+    setNotice('');
+    try {
+      await requestWithdrawal(me.id, { bank: bank.trim(), account: number, amount: Number(amount) });
       setNotice(tr('Permintaan withdraw simulasi dibuat. Saldo utama dikurangi saat permintaan dikirim; jika ditolak admin, saldo dikembalikan.'));
       setAmount('');
-    } else {
-      setNotice(tr('Permintaan tidak dapat dibuat. Periksa status akun dan saldo utama.'));
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : tr('Permintaan tidak dapat dibuat. Periksa status akun dan saldo utama.'));
     }
   };
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">

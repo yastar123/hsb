@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type SetStateAction } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState, type SetStateAction } from 'react';
 
 export type SaveStatus = 'loading' | 'ready' | 'saved' | 'saving' | 'error';
 
@@ -93,7 +93,7 @@ export function SaveStatusText({ status, error }: { status: SaveStatus; error?: 
       : status === 'error'
         ? error || 'Gagal menyimpan ke server.'
         : 'Tersimpan di server.';
-  return <span role={status === 'error' ? 'alert' : 'status'} aria-live="polite">{label}</span>;
+  return createElement('span', { role: status === 'error' ? 'alert' : 'status', 'aria-live': 'polite' }, label);
 }
 
 export async function postJson<T>(url: string, body?: unknown, method = 'POST'): Promise<T> {

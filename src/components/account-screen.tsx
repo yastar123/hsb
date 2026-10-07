@@ -30,7 +30,8 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
     setNotice('');
     try {
       if (register) {
-        await createAccount({ name, email, phone: identity, password, referralCode: referralCode.trim() || undefined });
+        const code = referralCode.trim();
+        await createAccount({ name, email, phone: identity, password, ...(code ? { referralCode: code } : {}) });
         setNotice(tr('Akun berhasil dibuat dan menunggu verifikasi admin sebelum transaksi keuangan.'));
         await navigate({ to: '/beranda' });
       } else {

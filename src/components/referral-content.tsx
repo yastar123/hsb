@@ -94,14 +94,14 @@ export function ReferralProvider({ children }: { children: ReactNode }) {
         ? legacy.tiers.slice(0, 50).filter((tier: unknown) => {
             if (!tier || typeof tier !== 'object') return false;
             const item = tier as Record<string, unknown>;
-            return typeof item.id === 'string' && typeof item.label === 'string' &&
-              Number.isInteger(Number(item.invites)) && Number(item.invites) >= 0 &&
-              Number.isFinite(Number(item.reward)) && Number(item.reward) >= 0;
+            return typeof item['id'] === 'string' && typeof item['label'] === 'string' &&
+              Number.isInteger(Number(item['invites'])) && Number(item['invites']) >= 0 &&
+              Number.isFinite(Number(item['reward'])) && Number(item['reward']) >= 0;
           }).map((tier: Record<string, unknown>) => ({
-            id: String(tier.id).slice(0, 100),
-            label: String(tier.label).slice(0, 100),
-            invites: Math.min(1_000_000, Number(tier.invites)),
-            reward: Math.min(1_000_000_000, Number(tier.reward)),
+            id: String(tier['id']).slice(0, 100),
+            label: String(tier['label']).slice(0, 100),
+            invites: Math.min(1_000_000, Number(tier['invites'])),
+            reward: Math.min(1_000_000_000, Number(tier['reward'])),
           }))
         : defaultReferralProgram.tiers;
       program.setValue({

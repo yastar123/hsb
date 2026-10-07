@@ -4,10 +4,11 @@ React, TypeScript, and TanStack Router frontend with an Express API and PostgreS
 
 ## Run locally
 
-Install dependencies with npm and start the combined Express/Vite development server (Node.js 20.19 or newer):
+Install the locked dependencies, apply the development database migrations, then start the combined Express/Vite development server (Node.js 20.19 or newer):
 
 ```sh
-npm install
+npm ci --registry=https://registry.npmjs.org/
+npm run db:push
 npm run dev
 ```
 
@@ -19,7 +20,9 @@ Replit supplies the PostgreSQL connection as `DATABASE_URL` at runtime. For loca
 
 Run `npm run db:push` to apply the versioned SQL files in `db/migrations/` to the configured development database. The command records checksums, serializes concurrent runs, and refuses to run with `NODE_ENV=production`; production schema changes for Replit-managed PostgreSQL go through Publish.
 
-The initial schema contains non-sensitive site settings and demo-only accounts/ledger entries. It cannot store real accounts, bank details, payment proofs, or real-money transactions. The app's current demo content and account flows still use browser storage; the new tables are not yet connected to those screens. `/api/health` checks database connectivity.
+The PostgreSQL backend stores customer accounts and sessions, deposit/withdrawal requests, ledger entries, site settings, notifications, and the market catalog. Market catalog changes made by an administrator are saved to PostgreSQL. The market's example prices and charts are illustrative, not live quotes; the Pasar pages do not execute broker orders.
+
+Although account and financial-request data is persisted, the app is not connected to a verified identity, payment settlement, bank, or brokerage provider. Do not use it to hold real funds or represent example balances or prices as verified financial information. `/api/health` checks database connectivity.
 
 ## Production build
 

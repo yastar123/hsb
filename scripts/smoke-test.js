@@ -96,6 +96,21 @@ try {
   const health = await waitForDatabase();
   console.log(`PostgreSQL: ${health.database}`);
 
+  const marketCatalogResponse = await fetch(new URL("/api/market", baseUrl));
+  assert(marketCatalogResponse.status === 200, "The public market catalog API did not respond.");
+  const marketCatalog = await marketCatalogResponse.json();
+  assert(
+    marketCatalog.quoteMode === "illustrative" &&
+      marketCatalog.groups.includes("Metal") &&
+      marketCatalog.products.some((product) => product.symbol === "XAUUSD"),
+    "The PostgreSQL market catalog or its illustrative-price label is missing.",
+  );
+  const brokerOrdersResponse = await fetch(new URL("/api/market/orders", baseUrl));
+  assert(
+    brokerOrdersResponse.status === 404,
+    "A broker order endpoint was unexpectedly exposed under the market API.",
+  );
+
   const adminUrl = new URL("/admin", baseUrl);
   const anonymousAdminResponse = await fetch(adminUrl);
   assert(
@@ -185,20 +200,15 @@ try {
     await registerButton.isDisabled(),
     "Registration was enabled before required fields were complete.",
   );
-  await page.getByRole("textbox", { name: "Nomor Telepon" }).fill("81234567890");
-  await page.getByRole("textbox", { name: "Kata Sandi" }).fill("Ab1!abcd");
-  await page.locator('input[type="checkbox"]').check();
-  assert(
-    await registerButton.isEnabled(),
-    "Registration did not enable after valid required fields were filled.",
-  );
-  await registerButton.click();
-  assert(
-    (await page.getByRole("status").innerText()).includes("belum terhubung"),
-    "Registration did not show its expected demo-service notice.",
-  );
 
   await page.goto(new URL("/pasar/", baseUrl).href);
+  await page.locator(".market-row").first().waitFor({ state: "visible", timeout: 10_000 });
+  assert(
+    (await page.locator(".market-quote-notice").innerText()).includes(
+      "bukan kuotasi pasar langsung",
+    ),
+    "The market's illustrative-price disclosure is missing.",
+  );
   await page.getByRole("tab", { name: "Metal" }).click();
   assert(
     (await page.locator(".market-row").filter({ hasText: "XAUUSD" }).count()) === 1,
@@ -215,13 +225,27 @@ try {
     "Market favorite toggle failed.",
   );
 
-  const demoSummary = page.getByRole("button", { name: "Ringkasan akun demo" });
-  await demoSummary.click();
-  assert(await page.getByText("Margin Bebas").isVisible(), "Demo account summary did not expand.");
+  await page
+    .locator(".market-row")
+    .filter({ hasText: "XAUUSD" })
+    .locator("a.market-product-link")
+    .click();
+  await page.waitForURL("**/pasar/XAUUSD");
+  assert(
+    (await page.getByRole("button", { name: "Beli", exact: true }).count()) === 0 &&
+      (await page.getByRole("button", { name: "Jual", exact: true }).count()) === 0 &&
+      (await page.getByRole("tab", { name: "Signals", exact: true }).count()) === 0 &&
+      (await page.getByRole("tab", { name: "Pesanan", exact: true }).count()) === 0,
+    "The market detail page exposed broker-trading controls.",
+  );
 
   await page.goto(new URL("/cari-produk", baseUrl).href);
   const search = page.getByRole("textbox", { name: "Pencarian Cepat" });
   await search.fill("XAUUSD");
+  await page
+    .locator(".market-row")
+    .filter({ hasText: "XAUUSD" })
+    .waitFor({ state: "visible", timeout: 10_000 });
   assert(
     (await page.locator(".market-row").count()) === 1,
     "Market search did not filter to the requested product.",
@@ -304,11 +328,9 @@ try {
   assert(browserErrors.length === 0, `Browser reported errors: ${browserErrors.join("; ")}`);
 
   console.log(
-    "Interactions: carousel, login, registration validation, market tabs/favorites/search, admin navigation, mobile navigation, language switching, and dark mode passed.",
+    "Interactions: carousel, login UI, registration validation, market tabs/favorites/search, admin navigation, mobile navigation, language switching, and dark mode passed.",
   );
-  console.log(
-    "Note: login/registration remain demo-only and display their existing not-connected notices.",
-  );
+  console.log("Note: this smoke test did not create a customer account or financial transaction.");
 } finally {
   await browser?.close();
   if (serverProcess && serverProcess.exitCode === null) {

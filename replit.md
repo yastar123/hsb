@@ -14,13 +14,15 @@ Open `/api/health`. A successful response includes `"database":"connected"`. Rep
 
 For local development, copy `.env.example` to `.env` and enter a PostgreSQL connection string there. `.env` is ignored by Git.
 
-Apply development schema migrations with `npm run db:push`. It applies the versioned SQL files in `db/migrations/` and refuses to run with `NODE_ENV=production`. Replit-managed production schema changes are applied through Publish. The initial tables are for non-sensitive settings and simulated demo data only; the app's current screens still store their data in browser storage.
+Install the locked dependencies with `npm ci --registry=https://registry.npmjs.org/`, then apply development schema migrations with `npm run db:push`. The migration command applies versioned SQL files in `db/migrations/` and refuses to run with `NODE_ENV=production`. Replit-managed production schema changes are applied through Publish.
 
 ## Build and run production mode
 
 Run `npm run build`, then `npm run start`. The Express server serves the compiled React app from `dist`.
 
-Existing demo content and account flows still persist in browser storage. They have not been migrated to PostgreSQL because their data model and access controls need to be defined before storing shared user or trading data.
+Customer accounts and sessions, financial requests and ledger entries, site content, notifications, and the market catalog persist in PostgreSQL. Admin edits to the market catalog are saved from `/admin/pasar`. Market prices and charts are illustrative only; the Pasar pages do not place or execute broker orders.
+
+Account and financial-request routes are not connected to verified identity, payment settlement, banking, or brokerage providers. Do not use the application to hold real funds or treat example balances and prices as verified financial information.
 
 ## Test the project
 

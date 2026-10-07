@@ -1,4 +1,5 @@
 import express from "express";
+import { randomUUID } from "node:crypto";
 import { timingSafeTextEqual } from "./auth.js";
 import {
   clearSessionCookie,
@@ -154,6 +155,10 @@ function requireCustomer(pool) {
       return apiError(response, 401, "Sesi berakhir. Silakan masuk kembali.");
     }
     request.customer = result.rows[0];
+    if (request.customer.status === "Diblokir") {
+      response.setHeader("Set-Cookie", clearSessionCookie());
+      return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
+    }
     return next();
   });
 }
@@ -449,6 +454,52 @@ function validateBankAccounts(value) {
     );
 }
 
+function validateMarketCatalog(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const { groups, products } = value;
+  if (
+    !Array.isArray(groups) ||
+    groups.length > 30 ||
+    groups.some((group) =>
+      typeof group !== "string" ||
+      group !== group.trim() ||
+      group.length < 1 ||
+      group.length > 60
+    ) ||
+    new Set(groups).size !== groups.length ||
+    !Array.isArray(products) ||
+    products.length > 500
+  ) return false;
+
+  const symbols = new Set();
+  return products.every((product) => {
+    if (!product || typeof product !== "object" || Array.isArray(product)) return false;
+    const valid =
+      typeof product.symbol === "string" &&
+      /^[A-Z0-9._-]{1,20}$/.test(product.symbol) &&
+      !symbols.has(product.symbol) &&
+      typeof product.name === "string" &&
+      product.name === product.name.trim() &&
+      product.name.length >= 1 &&
+      product.name.length <= 120 &&
+      groups.includes(product.group) &&
+      Number.isFinite(product.ask) &&
+      product.ask > 0 &&
+      product.ask <= 1_000_000_000_000 &&
+      Number.isInteger(product.spread) &&
+      product.spread >= 0 &&
+      product.spread <= 1_000_000 &&
+      Number.isInteger(product.decimals) &&
+      product.decimals >= 0 &&
+      product.decimals <= 8 &&
+      Number.isFinite(product.change) &&
+      product.change >= -100 &&
+      product.change <= 100;
+    if (valid) symbols.add(product.symbol);
+    return valid;
+  });
+}
+
 const SITE_CONTENT_KEYS = new Set([
   "home",
   "faq",
@@ -630,6 +681,31 @@ export function createApiRouter(pool) {
     return next();
   });
   router.use(requireDatabase(pool));
+
+  router.get("/market", asyncRoute(async (_request, response) => {
+    const [groupResult, productResult] = await Promise.all([
+      pool.query("SELECT name FROM public.market_groups ORDER BY position, name"),
+      pool.query(
+        `SELECT p.symbol, p.name, p.group_name, p.ask, p.spread, p.decimals, p.change
+         FROM public.market_products p
+         JOIN public.market_groups g ON g.name = p.group_name
+         ORDER BY g.position, p.position, p.symbol`,
+      ),
+    ]);
+    return response.json({
+      groups: groupResult.rows.map((row) => row.name),
+      products: productResult.rows.map((row) => ({
+        symbol: row.symbol,
+        name: row.name,
+        group: row.group_name,
+        ask: Number(row.ask),
+        spread: Number(row.spread),
+        decimals: Number(row.decimals),
+        change: Number(row.change),
+      })),
+      quoteMode: "illustrative",
+    });
+  }));
 
   router.get("/auth/me", asyncRoute(async (request, response) => {
     const token = readSessionToken(request);
@@ -1071,6 +1147,58 @@ export function createApiRouter(pool) {
 
   router.use("/admin", adminAuth);
 
+  router.put("/admin/market", asyncRoute(async (request, response) => {
+    const catalog = request.body;
+    if (!validateMarketCatalog(catalog)) {
+      return apiError(response, 400, "Daftar kategori atau produk pasar tidak valid.");
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM public.market_products");
+      await client.query("DELETE FROM public.market_groups");
+
+      for (const [position, name] of catalog.groups.entries()) {
+        await client.query(
+          "INSERT INTO public.market_groups (name, position) VALUES ($1, $2)",
+          [name, position],
+        );
+      }
+      for (const [position, product] of catalog.products.entries()) {
+        await client.query(
+          `INSERT INTO public.market_products
+             (symbol, name, group_name, ask, spread, decimals, change, position)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            product.symbol,
+            product.name,
+            product.group,
+            product.ask,
+            product.spread,
+            product.decimals,
+            product.change,
+            position,
+          ],
+        );
+      }
+      await client.query(
+        `INSERT INTO public.customer_admin_audit
+           (admin_name, action, target_type, target_id, details)
+         VALUES ($1, 'market_catalog_updated', 'market_catalog', 'global', $2::jsonb)`,
+        [request.adminName, JSON.stringify({ groups: catalog.groups.length, products: catalog.products.length })],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    return response.json({ ok: true });
+  }));
+
   router.get("/admin/content/:key", asyncRoute(async (request, response) => {
     const key = String(request.params.key ?? "");
     if (!SITE_CONTENT_KEYS.has(key)) return apiError(response, 404, "Konten tidak ditemukan.");
@@ -1362,8 +1490,15 @@ export function createApiRouter(pool) {
   }));
 
   router.patch("/admin/users/:id", asyncRoute(async (request, response) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(request.params.id)) {
+      return apiError(response, 400, "ID pengguna tidak valid.");
+    }
     const patch = request.body ?? {};
+    if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
+      return apiError(response, 400, "Perubahan pengguna tidak valid.");
+    }
     const allowed = {};
+    const balances = {};
     if (patch.name !== undefined) {
       const name = String(patch.name).trim();
       if (name.length < 2 || name.length > 120) return apiError(response, 400, "Nama tidak valid.");
@@ -1391,24 +1526,132 @@ export function createApiRouter(pool) {
       }
       allowed.daily_rate_override = patch.rate === null ? null : Number(patch.rate);
     }
-    const entries = Object.entries(allowed);
-    if (!entries.length) return apiError(response, 400, "Tidak ada perubahan yang valid.");
-    const assignments = entries.map(([key], index) => `${key} = $${index + 2}`).join(", ");
-    const values = entries.map(([, value]) => value);
+    for (const field of ["balance", "deposit", "profit"]) {
+      if (patch[field] === undefined) continue;
+      const value = Number(patch[field]);
+      if (!Number.isFinite(value) || value < 0 || value > MAX_MONEY) {
+        return apiError(response, 400, "Saldo dan profit harus berada dalam rentang yang didukung.");
+      }
+      balances[field] = Math.round(value * 100) / 100;
+    }
+    if (!Object.keys(allowed).length && !Object.keys(balances).length) {
+      return apiError(response, 400, "Tidak ada perubahan yang valid.");
+    }
+
+    const client = await pool.connect();
     try {
-      const updated = await pool.query(
-        `UPDATE public.customer_users
-         SET ${assignments}, updated_at = now()
-         WHERE id = $1
-         RETURNING id`,
-        [request.params.id, ...values],
+      await client.query("BEGIN");
+      const current = await client.query(
+        `SELECT u.name, u.email, u.phone, u.status, a.main_balance, a.deposit_balance, a.total_accrual
+         FROM public.customer_users u
+         JOIN public.customer_accounts a ON a.user_id = u.id
+         WHERE u.id = $1
+         FOR UPDATE OF u, a`,
+        [request.params.id],
       );
-      if (!updated.rowCount) return apiError(response, 404, "Pengguna tidak ditemukan.");
+      if (!current.rowCount) {
+        await client.query("ROLLBACK");
+        return apiError(response, 404, "Pengguna tidak ditemukan.");
+      }
+
+      const account = current.rows[0];
+      const oldMain = Number(account.main_balance);
+      const oldDeposit = Number(account.deposit_balance);
+      const oldProfit = Number(account.total_accrual);
+      const newProfit = balances.profit ?? oldProfit;
+      const newMain = balances.balance ?? Math.round((oldMain + newProfit - oldProfit) * 100) / 100;
+      const newDeposit = balances.deposit ?? oldDeposit;
+      if ([newMain, newDeposit, newProfit].some((value) => value < 0 || value > MAX_MONEY)) {
+        await client.query("ROLLBACK");
+        return apiError(response, 400, "Saldo setelah perubahan di luar rentang yang didukung.");
+      }
+
+      const userEntries = Object.entries(allowed);
+      if (userEntries.length) {
+        const assignments = userEntries.map(([key], index) => `${key} = $${index + 2}`).join(", ");
+        await client.query(
+          `UPDATE public.customer_users
+           SET ${assignments}, updated_at = now()
+           WHERE id = $1`,
+          [request.params.id, ...userEntries.map(([, value]) => value)],
+        );
+      }
+
+      const mainDelta = Math.round((newMain - oldMain) * 100) / 100;
+      const depositDelta = Math.round((newDeposit - oldDeposit) * 100) / 100;
+      const profitChanged = newProfit !== oldProfit;
+      if (mainDelta || depositDelta || profitChanged) {
+        await client.query(
+          `UPDATE public.customer_accounts
+           SET main_balance = $2, deposit_balance = $3, total_accrual = $4, updated_at = now()
+           WHERE user_id = $1`,
+          [request.params.id, newMain, newDeposit, newProfit],
+        );
+        for (const adjustment of [
+          {
+            field: balances.balance !== undefined ? "balance" : profitChanged ? "profit" : "balance",
+            bucket: "main",
+            delta: mainDelta,
+            before: oldMain,
+            after: newMain,
+          },
+          { field: "deposit", bucket: "deposit", delta: depositDelta, before: oldDeposit, after: newDeposit },
+        ]) {
+          if (!adjustment.delta) continue;
+          await client.query(
+            `INSERT INTO public.customer_ledger_entries
+               (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
+             VALUES ($1, 'admin_adjustment', $2, $3, $4, 'admin_adjustment', $5, $6::jsonb)`,
+            [
+              request.params.id,
+              adjustment.bucket,
+              Math.abs(adjustment.delta),
+              adjustment.after,
+              randomUUID(),
+              JSON.stringify({
+                field: adjustment.field,
+                delta: adjustment.delta,
+                before: adjustment.before,
+                after: adjustment.after,
+                totalAccrualBefore: oldProfit,
+                totalAccrualAfter: newProfit,
+              }),
+            ],
+          );
+        }
+        if (profitChanged && !mainDelta) {
+          const profitDelta = Math.round((newProfit - oldProfit) * 100) / 100;
+          if (profitDelta) {
+            await client.query(
+              `INSERT INTO public.customer_ledger_entries
+                 (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
+               VALUES ($1, 'admin_adjustment', 'main', $2, $3, 'admin_adjustment', $4, $5::jsonb)`,
+              [
+                request.params.id,
+                Math.abs(profitDelta),
+                newMain,
+                randomUUID(),
+                JSON.stringify({ field: "profit", delta: profitDelta, before: oldProfit, after: newProfit }),
+              ],
+            );
+          }
+        }
+      }
+      if (allowed.status === "Diblokir") {
+        await client.query("DELETE FROM public.customer_sessions WHERE user_id = $1", [request.params.id]);
+      }
+      await addAudit(client, request.adminName, "user_updated", "user", request.params.id, {
+        fields: [...userEntries.map(([key]) => key), ...Object.keys(balances)],
+        balanceDeltas: { main: mainDelta, deposit: depositDelta, totalAccrual: newProfit - oldProfit },
+      });
+      await client.query("COMMIT");
     } catch (error) {
+      await client.query("ROLLBACK");
       if (error?.code === "23505") return apiError(response, 409, "Email atau nomor telepon sudah dipakai akun lain.");
       throw error;
+    } finally {
+      client.release();
     }
-    await addAudit(pool, request.adminName, "user_updated", "user", request.params.id, { fields: entries.map(([key]) => key) });
     return response.json({ ok: true });
   }));
 
