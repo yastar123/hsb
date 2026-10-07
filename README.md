@@ -17,7 +17,9 @@ The site is served on port 5000. The API health endpoint is `/api/health`.
 
 Replit supplies the PostgreSQL connection as `DATABASE_URL` at runtime. For local development, copy `.env.example` to `.env` and replace the example URL with a PostgreSQL connection string. Never commit `.env` or real credentials.
 
-The app's current demo content and account flows still use browser storage. The Express/PostgreSQL connection is available and checked by `/api/health`; product-specific database tables and APIs should be added when those data requirements are defined.
+Run `bun run db:push` to apply the versioned SQL files in `db/migrations/` to the configured development database. The command records checksums, serializes concurrent runs, and refuses to run with `NODE_ENV=production`; production schema changes for Replit-managed PostgreSQL go through Publish.
+
+The initial schema contains non-sensitive site settings and demo-only accounts/ledger entries. It cannot store real accounts, bank details, payment proofs, or real-money transactions. The app's current demo content and account flows still use browser storage; the new tables are not yet connected to those screens. `/api/health` checks database connectivity.
 
 ## Production build
 

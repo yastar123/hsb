@@ -14,6 +14,8 @@ Open `/api/health`. A successful response includes `"database":"connected"`. Rep
 
 For local development, copy `.env.example` to `.env` and enter a PostgreSQL connection string there. `.env` is ignored by Git.
 
+Apply development schema migrations with `bun run db:push`. It applies the versioned SQL files in `db/migrations/` and refuses to run with `NODE_ENV=production`. Replit-managed production schema changes are applied through Publish. The initial tables are for non-sensitive settings and simulated demo data only; the app's current screens still store their data in browser storage.
+
 ## Build and run production mode
 
 Run `bun run build`, then `bun run start`. The Express server serves the compiled React app from `dist`.
