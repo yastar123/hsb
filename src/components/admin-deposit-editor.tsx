@@ -18,8 +18,8 @@ const fields: { key: TextKey; label: string; num?: boolean }[] = [
 ];
 
 export function AdminDepositEditor() {
-  const { content, setContent } = useDepositContent();
-  const { list: accounts, save: saveAccounts } = useBankAccounts();
+  const { content, setContent, saveError: contentError } = useDepositContent();
+  const { list: accounts, save: saveAccounts, saveError: accountsError } = useBankAccounts();
   const [tab, setTab] = useState<'texts' | 'methods' | 'accounts'>('texts');
   const set = (patch: Partial<DepositContent>) => setContent((p) => ({ ...p, ...patch }));
   const methods = content.methods;
@@ -34,7 +34,10 @@ export function AdminDepositEditor() {
         <Button asChild size="sm"><Link to="/deposit"><Monitor /> Buka Deposit</Link></Button>
       </div>
     </header>
-    <p className="bg-accent px-4 py-2 text-xs text-accent-foreground">Perubahan tersimpan otomatis di browser ini saja (belum terhubung ke server). Pembayaran tidak benar-benar diproses.</p>
+    <p className="bg-accent px-4 py-2 text-xs text-accent-foreground">
+      Pengaturan dan rekening tersimpan di PostgreSQL. Deposit dicatat sebagai permintaan dan harus diverifikasi admin; aplikasi tidak memproses transfer otomatis.
+      {(contentError || accountsError) && <span role="alert" className="ml-2 text-destructive">{contentError || accountsError}</span>}
+    </p>
     <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_420px]">
       <section className="min-w-0 rounded-xl border border-border bg-background p-4">
         <nav className="mb-4 flex flex-wrap gap-2">

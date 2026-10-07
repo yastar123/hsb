@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import { useServerContent, type SaveStatus } from '@/lib/site-content';
 
 export type CustomerServiceItem = {
   id: string;
@@ -26,29 +27,17 @@ export const defaultCustomerServiceContent: CustomerServiceContent = {
   officeAddress: 'Jl. Jenderal Sudirman No.27 Lantai 14, RT.4/RW.2, Kuningan, Kecamatan Setiabudi, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12920',
 };
 
-const KEY = 'hsb-customer-service-v1';
 type ServiceContextValue = {
   content: CustomerServiceContent;
   setContent: (content: CustomerServiceContent | ((previous: CustomerServiceContent) => CustomerServiceContent)) => void;
+  status: SaveStatus;
+  error: string;
 };
 const ServiceContext = createContext<ServiceContextValue | null>(null);
 
 export function CustomerServiceContentProvider({ children }: { children: ReactNode }) {
-  const [content, setContent] = useState(defaultCustomerServiceContent);
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(KEY);
-      if (saved) setContent({ ...defaultCustomerServiceContent, ...JSON.parse(saved) });
-    } catch { /* keep defaults when saved content is unreadable */ }
-    setLoaded(true);
-  }, []);
-  useEffect(() => {
-    if (loaded) {
-      try { localStorage.setItem(KEY, JSON.stringify(content)); } catch { /* keep the page usable if browser storage is full */ }
-    }
-  }, [content, loaded]);
-  return <ServiceContext.Provider value={{ content, setContent }}>{children}</ServiceContext.Provider>;
+  const remote = useServerContent<CustomerServiceContent>('customer-service', defaultCustomerServiceContent);
+  return <ServiceContext.Provider value={{ content: remote.value, setContent: remote.setValue, status: remote.status, error: remote.error }}>{children}</ServiceContext.Provider>;
 }
 
 export function useCustomerServiceContent() {

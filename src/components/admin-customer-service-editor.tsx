@@ -2,11 +2,12 @@ import { Link } from '@tanstack/react-router';
 import { Headset, Plus, Trash2 } from 'lucide-react';
 import { useCustomerServiceContent } from '@/components/customer-service-content';
 import { Button } from '@/components/ui/button';
+import { SaveStatusText } from '@/lib/site-content';
 
 const input = 'w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground';
 
 export function AdminCustomerServiceEditor() {
-  const { content, setContent } = useCustomerServiceContent();
+  const { content, setContent, status, error } = useCustomerServiceContent();
   const add = () => setContent((current) => ({
     ...current,
     items: [...current.items, { id: crypto.randomUUID(), title: 'Kontak baru', value: '', buttonLabel: 'Hubungi', href: '' }],
@@ -21,7 +22,7 @@ export function AdminCustomerServiceEditor() {
       <Headset className="size-5" /><h1 className="text-xl font-bold">Kelola Layanan Pelanggan</h1>
       <Button asChild variant="outline" size="sm" className="ml-auto"><Link to="/layanan-pelanggan">Buka halaman</Link></Button>
     </header>
-    <p className="mb-4 rounded-lg bg-accent px-4 py-2 text-xs text-accent-foreground">Kontak dan alamat tersimpan di browser ini. Pastikan detail yang dipublikasikan sudah benar dan aktif.</p>
+    <p className="mb-4 rounded-lg bg-accent px-4 py-2 text-xs text-accent-foreground"><SaveStatusText status={status} error={error} /> Pastikan detail yang dipublikasikan sudah benar dan aktif.</p>
     <section className="mb-4 grid gap-3 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">
       <label className="grid gap-1 text-xs font-medium">Nama perusahaan<input className={input} value={content.officeName} onChange={(e) => updateOffice('officeName', e.target.value)} /></label>
       <label className="grid gap-1 text-xs font-medium">Gedung / alamat singkat<input className={input} value={content.officeBuilding} onChange={(e) => updateOffice('officeBuilding', e.target.value)} /></label>

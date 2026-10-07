@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import { useServerContent, type SaveStatus } from '@/lib/site-content';
 
 export type FaqItem = { id: string; question: string; answer: string };
 export type FaqData = { title: string; intro: string; footer: string; items: FaqItem[] };
@@ -17,15 +18,11 @@ export const defaultFaqData: FaqData = {
   ],
 };
 
-const KEY = 'hsb-faq-data-v1';
-type Ctx = { data: FaqData; setData: (u: FaqData | ((p: FaqData) => FaqData)) => void; reset: () => void };
+type Ctx = { data: FaqData; setData: (u: FaqData | ((p: FaqData) => FaqData)) => void; reset: () => void; status: SaveStatus; error: string };
 const C = createContext<Ctx | null>(null);
 export function FaqProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<FaqData>(defaultFaqData);
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => { try { const raw = localStorage.getItem(KEY); if (raw) setData({ ...defaultFaqData, ...JSON.parse(raw) }); } catch { /* ignore */ } setLoaded(true); }, []);
-  useEffect(() => { if (loaded) localStorage.setItem(KEY, JSON.stringify(data)); }, [data, loaded]);
-  return <C.Provider value={{ data, setData, reset: () => setData(defaultFaqData) }}>{children}</C.Provider>;
+  const remote = useServerContent<FaqData>('faq', defaultFaqData);
+  return <C.Provider value={{ data: remote.value, setData: remote.setValue, reset: () => remote.setValue(defaultFaqData), status: remote.status, error: remote.error }}>{children}</C.Provider>;
 }
 export function useFaq() { const c = useContext(C); if (!c) throw new Error('FaqProvider missing'); return c; }
 export const faqUid = () => Math.random().toString(36).slice(2, 9);

@@ -18,6 +18,7 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
   const [notice, setNotice] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [referralCode, setReferralCode] = useState(() => typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('ref_code')?.slice(0, 32).toUpperCase() ?? '');
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const { login, register: createAccount } = useLedger();
@@ -29,7 +30,7 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
     setNotice('');
     try {
       if (register) {
-        await createAccount({ name, email, phone: identity, password });
+        await createAccount({ name, email, phone: identity, password, referralCode: referralCode.trim() || undefined });
         setNotice(tr('Akun berhasil dibuat dan menunggu verifikasi admin sebelum transaksi keuangan.'));
         await navigate({ to: '/beranda' });
       } else {
@@ -60,6 +61,7 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
           {register && <>
             <div className="account-field"><span className="account-field-icon"><Smartphone /></span><Input aria-label={tr('Nama Lengkap')} placeholder={tr('Nama Lengkap')} autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={120} required /></div>
             <div className="account-field"><span className="account-field-icon"><Mail /></span><Input aria-label={tr('Email')} placeholder={tr('Email')} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></div>
+            <div className="account-field"><Input aria-label={tr('Kode Referral (opsional)')} placeholder={tr('Kode Referral (opsional)')} autoComplete="off" value={referralCode} onChange={(event) => setReferralCode(event.target.value.toUpperCase())} maxLength={32} /></div>
           </>}
           <div className="account-field"><span className="account-field-icon"><LockKeyhole /></span><Input aria-label={tr('Kata Sandi')} placeholder={tr('Kata Sandi')} type={visible ? 'text' : 'password'} autoComplete={register ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} required /><Button type="button" variant="ghost" size="icon" className="account-eye" aria-label={tr(visible ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi')} onClick={() => setVisible(!visible)}>{visible ? <Eye /> : <EyeOff />}</Button></div>
           {register ? <>

@@ -3,6 +3,7 @@ import { CalendarDays, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useCalendarContent, type EconomicEvent } from '@/components/calendar-content';
 import { Button } from '@/components/ui/button';
+import { SaveStatusText } from '@/lib/site-content';
 
 const input = 'w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground';
 const blankEvent = (): EconomicEvent => ({
@@ -18,7 +19,7 @@ const blankEvent = (): EconomicEvent => ({
 });
 
 export function AdminCalendarEditor() {
-  const { events, setEvents } = useCalendarContent();
+  const { events, setEvents, status, error } = useCalendarContent();
   const [draft, setDraft] = useState<EconomicEvent>(blankEvent);
   const update = (id: string, patch: Partial<EconomicEvent>) => setEvents((list) => list.map((item) => item.id === id ? { ...item, ...patch } : item));
   const ordered = [...events].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
@@ -32,7 +33,7 @@ export function AdminCalendarEditor() {
       <CalendarDays className="size-5" /><h1 className="text-xl font-bold">Kelola Kalender Ekonomi</h1>
       <Button asChild variant="outline" size="sm" className="ml-auto"><Link to="/kalender-ekonomi">Buka kalender</Link></Button>
     </header>
-    <p className="mb-4 rounded-lg bg-accent px-4 py-2 text-xs text-accent-foreground">Agenda ini adalah konten contoh yang disimpan di browser ini. Perubahan tidak mengambil data pasar langsung.</p>
+    <p className="mb-4 rounded-lg bg-accent px-4 py-2 text-xs text-accent-foreground"><SaveStatusText status={status} error={error} /> Agenda dimasukkan admin; tidak ada feed peristiwa otomatis.</p>
     <section className="mb-4 grid gap-2 rounded-xl border border-border bg-background p-3 sm:grid-cols-2 lg:grid-cols-4">
       <label className="grid gap-1 text-xs">Tanggal<input type="date" className={input} value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} /></label>
       <label className="grid gap-1 text-xs">Waktu<input type="time" className={input} value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} /></label>

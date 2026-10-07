@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Users, Wallet, WalletCards, Handshake, Activity, UserPlus } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { useLedger } from '@/components/ledger-content';
+import { useReferral } from '@/components/referral-content';
 
 export const Route = createFileRoute('/admin/')({
   head: () => ({ meta: [
@@ -16,37 +18,58 @@ export const Route = createFileRoute('/admin/')({
   component: AdminDashboard,
 });
 
-const months = ['Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt'];
-const flow = months.map((m, i) => ({ month: m, deposit: [182, 214, 238, 276, 301, 342][i]!, withdraw: [96, 121, 134, 150, 171, 188][i]! }));
-const signups = months.map((m, i) => ({ month: m, users: [420, 515, 610, 702, 836, 948][i]!, referral: [88, 112, 140, 166, 201, 243][i]! }));
-const flowCfg = { deposit: { label: 'Deposit (rb $)', color: 'var(--primary)' }, withdraw: { label: 'Withdraw (rb $)', color: 'var(--destructive)' } } satisfies ChartConfig;
+const flowCfg = { deposit: { label: 'Deposit (USD)', color: 'var(--primary)' }, withdraw: { label: 'Withdraw (USD)', color: 'var(--destructive)' } } satisfies ChartConfig;
 const userCfg = { users: { label: 'User baru', color: 'var(--primary)' }, referral: { label: 'Via referral', color: 'var(--chart-2)' } } satisfies ChartConfig;
 
-const stats = [
-  { label: 'User Terdaftar', value: '12.486', delta: '+948 bulan ini', icon: Users },
-  { label: 'User Aktif (30 hari)', value: '7.203', delta: '57,7% dari total', icon: Activity },
-  { label: 'Total Deposit', value: '$1,553,000', delta: '+13,6% vs bulan lalu', icon: Wallet },
-  { label: 'Total Withdraw', value: '$860,000', delta: '+9,9% vs bulan lalu', icon: WalletCards },
-  { label: 'Mitra / IB', value: '318', delta: '+24 bulan ini', icon: Handshake },
-  { label: 'User via Referral', value: '2.950', delta: '23,6% dari total', icon: UserPlus },
-];
-const partners = [
-  { name: 'Budi Santoso', code: 'HSB-BUDI', refs: 412, volume: '$184,200' },
-  { name: 'Sari Wulandari', code: 'HSB-SARI', refs: 356, volume: '$152,900' },
-  { name: 'Andi Pratama', code: 'HSB-ANDI', refs: 298, volume: '$121,400' },
-  { name: 'Dewi Lestari', code: 'HSB-DEWI', refs: 241, volume: '$98,750' },
-];
-const recent = [
-  { user: 'rina***@mail.com', type: 'Deposit', amount: '$500', status: 'Selesai' },
-  { user: 'joko***@mail.com', type: 'Withdraw', amount: '$220', status: 'Diproses' },
-  { user: 'maya***@mail.com', type: 'Deposit', amount: '$1,200', status: 'Selesai' },
-  { user: 'agus***@mail.com', type: 'Withdraw', amount: '$75', status: 'Ditolak' },
-  { user: 'fajr***@mail.com', type: 'Deposit', amount: '$300', status: 'Selesai' },
-];
-
 function AdminDashboard() {
+  const { users, deposits, withdrawals, loading, error } = useLedger();
+  const { data: referralData, recordsStatus, recordsError } = useReferral();
+  const currency = (amount: number) => `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const monthKey = (value: string) => {
+    const date = new Date(value);
+    return Number.isNaN(date.valueOf()) ? '' : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit' }).format(date);
+  };
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 5 + index);
+    return {
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(date),
+    };
+  });
+  const flow = months.map(({ key, label }) => ({
+    month: label,
+    deposit: deposits.filter((item) => item.status === 'Disetujui' && monthKey(item.date) === key).reduce((sum, item) => sum + item.amount, 0),
+    withdraw: withdrawals.filter((item) => item.status === 'Berhasil' && monthKey(item.date) === key).reduce((sum, item) => sum + item.amount, 0),
+  }));
+  const signups = months.map(({ key, label }) => ({
+    month: label,
+    users: users.filter((user) => monthKey(user.joined) === key).length,
+    referral: referralData.referrals.filter((referral) => monthKey(referral.joined) === key).length,
+  }));
+  const totalDeposits = deposits.filter((item) => item.status === 'Disetujui').reduce((sum, item) => sum + item.amount, 0);
+  const totalWithdrawals = withdrawals.filter((item) => item.status === 'Berhasil').reduce((sum, item) => sum + item.amount, 0);
+  const partners = referralData.referrers.map((partner) => ({
+    ...partner,
+    refs: referralData.referrals.filter((item) => item.referrerId === partner.id).length,
+  })).filter((partner) => partner.refs > 0).sort((a, b) => b.refs - a.refs).slice(0, 5);
+  const recent = [
+    ...deposits.map((item) => ({ id: item.id, user: item.email, type: 'Deposit', amount: item.amount, status: item.status, date: item.date })),
+    ...withdrawals.map((item) => ({ id: item.id, user: item.email, type: 'Withdraw', amount: item.amount, status: item.status, date: item.date })),
+  ].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)).slice(0, 8);
+  const stats = [
+    { label: 'User Terdaftar', value: users.length.toLocaleString('id-ID'), delta: 'Akun di PostgreSQL', icon: Users },
+    { label: 'Akun Aktif', value: users.filter((user) => user.status === 'Aktif').length.toLocaleString('id-ID'), delta: 'Status verifikasi aktif', icon: Activity },
+    { label: 'Total Deposit Disetujui', value: currency(totalDeposits), delta: `${deposits.filter((item) => item.status === 'Disetujui').length} transaksi`, icon: Wallet },
+    { label: 'Total Withdraw Berhasil', value: currency(totalWithdrawals), delta: `${withdrawals.filter((item) => item.status === 'Berhasil').length} transaksi`, icon: WalletCards },
+    { label: 'Mitra dengan Referral', value: partners.length.toLocaleString('id-ID'), delta: 'Memiliki pendaftaran referral', icon: Handshake },
+    { label: 'User via Referral', value: referralData.referrals.length.toLocaleString('id-ID'), delta: 'Relasi akun nyata', icon: UserPlus },
+  ];
   return <main className="space-y-4 p-4 text-foreground md:p-6">
-    <div><h1 className="text-2xl font-bold">Dashboard</h1><p className="text-sm text-muted-foreground">Data contoh · belum terhubung ke server transaksi.</p></div>
+    <div><h1 className="text-2xl font-bold">Dashboard</h1><p className="text-sm text-muted-foreground">Ringkasan akun dan transaksi dari PostgreSQL. Grafik menampilkan enam bulan terakhir.</p></div>
+    {(error || recordsError) && <p role="alert" className="rounded-lg border border-destructive/40 bg-background p-3 text-sm text-destructive">{error || recordsError}</p>}
+    {(loading || recordsStatus === 'loading') && <p role="status" className="text-sm text-muted-foreground">Memuat ringkasan dari server…</p>}
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{stats.map((s) => <article key={s.label} className="rounded-xl border border-border bg-background p-4">
       <div className="flex items-center justify-between text-sm text-muted-foreground">{s.label}<s.icon className="h-5 w-5 text-primary" /></div>
       <p className="mt-2 text-2xl font-bold">{s.value}</p><p className="text-xs text-muted-foreground">{s.delta}</p>
@@ -59,11 +82,13 @@ function AdminDashboard() {
     </section>
     <section className="grid gap-4 lg:grid-cols-2">
       <article className="overflow-x-auto rounded-xl border border-border bg-background p-4"><h2 className="mb-2 font-semibold">Mitra Teratas</h2>
-        <table className="w-full text-sm"><thead className="text-left text-muted-foreground"><tr><th className="py-2">Mitra</th><th>Kode</th><th className="text-right">Referral</th><th className="text-right">Volume</th></tr></thead>
-          <tbody>{partners.map((p) => <tr key={p.code} className="border-t border-border"><td className="py-2 font-medium">{p.name}</td><td>{p.code}</td><td className="text-right">{p.refs}</td><td className="text-right">{p.volume}</td></tr>)}</tbody></table></article>
+        <table className="w-full text-sm"><thead className="text-left text-muted-foreground"><tr><th className="py-2">Mitra</th><th>Kode</th><th className="text-right">Referral</th></tr></thead>
+          <tbody>{partners.map((partner) => <tr key={partner.id} className="border-t border-border"><td className="py-2 font-medium">{partner.name}</td><td>{partner.code}</td><td className="text-right">{partner.refs}</td></tr>)}
+            {!partners.length && <tr><td colSpan={3} className="py-3 text-center text-muted-foreground">Belum ada data mitra referral.</td></tr>}</tbody></table></article>
       <article className="overflow-x-auto rounded-xl border border-border bg-background p-4"><h2 className="mb-2 font-semibold">Transaksi Terbaru</h2>
         <table className="w-full text-sm"><thead className="text-left text-muted-foreground"><tr><th className="py-2">User</th><th>Jenis</th><th className="text-right">Jumlah</th><th className="text-right">Status</th></tr></thead>
-          <tbody>{recent.map((r, i) => <tr key={i} className="border-t border-border"><td className="py-2">{r.user}</td><td>{r.type}</td><td className="text-right">{r.amount}</td><td className={`text-right ${r.status === 'Ditolak' ? 'text-destructive' : r.status === 'Selesai' ? 'text-primary' : 'text-muted-foreground'}`}>{r.status}</td></tr>)}</tbody></table></article>
+          <tbody>{recent.map((item) => <tr key={`${item.type}-${item.id}`} className="border-t border-border"><td className="py-2">{item.user}</td><td>{item.type}</td><td className="text-right">{currency(item.amount)}</td><td className={`text-right ${item.status === 'Ditolak' ? 'text-destructive' : item.status === 'Disetujui' || item.status === 'Berhasil' ? 'text-primary' : 'text-muted-foreground'}`}>{item.status}</td></tr>)}
+            {!recent.length && <tr><td colSpan={4} className="py-3 text-center text-muted-foreground">Belum ada transaksi.</td></tr>}</tbody></table></article>
     </section>
   </main>;
 }

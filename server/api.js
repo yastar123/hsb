@@ -449,6 +449,177 @@ function validateBankAccounts(value) {
     );
 }
 
+const SITE_CONTENT_KEYS = new Set([
+  "home",
+  "faq",
+  "calendar",
+  "customer-service",
+  "news",
+  "referral-program",
+]);
+
+const DEFAULT_REFERRAL_PROGRAM = {
+  title: "Ajak Teman, Dapatkan Hadiah",
+  subtitle: "Bagikan kode referral Anda. Setiap teman yang mendaftar dan deposit, Anda dan teman sama-sama mendapat hadiah.",
+  bonusPerInvite: 10,
+  friendBonus: 5,
+  minDeposit: 25,
+  defaultRate: 10,
+  terms: "Hadiah diberikan setelah teman melakukan deposit pertama minimal sesuai ketentuan. S&K berlaku.",
+  tiers: [
+    { id: "t1", invites: 5, reward: 25, label: "Bronze" },
+    { id: "t2", invites: 15, reward: 100, label: "Silver" },
+    { id: "t3", invites: 50, reward: 500, label: "Gold" },
+  ],
+};
+
+function validReferralProgram(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  for (const key of ["title", "subtitle", "terms"]) {
+    if (typeof value[key] !== "string" || value[key].length > 2000) return false;
+  }
+  for (const key of ["bonusPerInvite", "friendBonus", "minDeposit"]) {
+    if (!Number.isFinite(Number(value[key])) || Number(value[key]) < 0 || Number(value[key]) > MAX_MONEY) return false;
+  }
+  if (!Number.isFinite(Number(value.defaultRate)) || Number(value.defaultRate) < 0 || Number(value.defaultRate) > 100) return false;
+  return Array.isArray(value.tiers) &&
+    value.tiers.length <= 50 &&
+    value.tiers.every((tier) =>
+      tier &&
+      typeof tier.id === "string" && tier.id.length <= 100 &&
+      typeof tier.label === "string" && tier.label.length <= 100 &&
+      Number.isInteger(Number(tier.invites)) && Number(tier.invites) >= 0 && Number(tier.invites) <= 1_000_000 &&
+      Number.isFinite(Number(tier.reward)) && Number(tier.reward) >= 0 && Number(tier.reward) <= MAX_MONEY,
+    );
+}
+
+function validSiteContent(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value !== "object") return false;
+  try {
+    return JSON.stringify(value).length <= 1_500_000;
+  } catch {
+    return false;
+  }
+}
+
+async function getReferralProgram(pool) {
+  const result = await pool.query(
+    "SELECT value FROM public.app_settings WHERE setting_key = $1",
+    ["site-content:referral-program"],
+  );
+  const saved = result.rows[0]?.value;
+  if (!saved || typeof saved !== "object" || Array.isArray(saved)) return { ...DEFAULT_REFERRAL_PROGRAM };
+  return { ...DEFAULT_REFERRAL_PROGRAM, ...saved };
+}
+
+async function listReferralRows(pool, ownerId = null, program = DEFAULT_REFERRAL_PROGRAM) {
+  const result = await pool.query(
+    `SELECT referred.id, referred.name, referred.email, referred.created_at, referred.status,
+            owner.id AS referrer_id, owner.referral_code AS referrer_code,
+            COALESCE(owner.referral_commission_rate, $2)::numeric AS commission_rate,
+            COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit,
+            COALESCE((
+              SELECT 1 FROM public.customer_ledger_entries le
+              WHERE le.user_id = owner.id
+                AND le.entry_type = 'referral_credit'
+                AND le.source_type = 'referral'
+                AND le.source_id = owner.id::text || ':' || referred.id::text
+              LIMIT 1
+            ), 0)::numeric AS commission_paid,
+            COALESCE((
+              SELECT le.amount FROM public.customer_ledger_entries le
+              WHERE le.user_id = owner.id
+                AND le.entry_type = 'referral_credit'
+                AND le.source_type = 'referral'
+                AND le.source_id = owner.id::text || ':' || referred.id::text
+              LIMIT 1
+            ), 0)::numeric AS paid_amount
+     FROM public.customer_users referred
+     JOIN public.customer_users owner ON owner.id = referred.referred_by
+     LEFT JOIN public.customer_deposits d ON d.user_id = referred.id
+     WHERE ($1::uuid IS NULL OR owner.id = $1::uuid)
+     GROUP BY referred.id, referred.name, referred.email, referred.created_at, referred.status,
+              owner.id, owner.referral_code, owner.referral_commission_rate
+     ORDER BY referred.created_at DESC`,
+    [ownerId, Number(program.defaultRate) || 0],
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    referrerId: row.referrer_id,
+    name: row.name,
+    email: row.email,
+    joined: row.created_at,
+    deposit: Number(row.approved_deposit) || 0,
+    status: Number(row.approved_deposit) > 0 ? "Deposit" : "Terdaftar",
+    commissionPaid: Number(row.commission_paid) > 0,
+    commissionRate: Number(row.commission_rate) || 0,
+    paidAmount: Number(row.paid_amount) || 0,
+  }));
+}
+
+async function creditDepositBalance(client, userId, amount, sourceId, details) {
+  const credit = money(amount);
+  if (!credit || typeof sourceId !== "string" || sourceId.length > 150) return false;
+  const account = await client.query(
+    `SELECT a.deposit_balance, u.status
+     FROM public.customer_accounts a
+     JOIN public.customer_users u ON u.id = a.user_id
+     WHERE a.user_id = $1
+     FOR UPDATE OF a`,
+    [userId],
+  );
+  if (!account.rowCount || account.rows[0].status !== "Aktif") return false;
+  const newBalance = Math.round((Number(account.rows[0].deposit_balance) + credit) * 100) / 100;
+  if (newBalance > MAX_MONEY) throw new Error("Referral credit would exceed the supported account balance.");
+  const inserted = await client.query(
+    `INSERT INTO public.customer_ledger_entries
+       (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
+     VALUES ($1, 'referral_credit', 'deposit', $2, $3, 'referral', $4, $5::jsonb)
+     ON CONFLICT (entry_type, source_type, source_id) DO NOTHING
+     RETURNING id`,
+    [userId, credit, newBalance, sourceId, JSON.stringify(details)],
+  );
+  if (!inserted.rowCount) return false;
+  await client.query(
+    `UPDATE public.customer_accounts
+     SET deposit_balance = $2, updated_at = now()
+     WHERE user_id = $1`,
+    [userId, newBalance],
+  );
+  return true;
+}
+
+async function creditReferralCommission(client, referrerId, referredId, program) {
+  const result = await client.query(
+    `SELECT owner.status AS owner_status, owner.referral_enabled,
+            COALESCE(owner.referral_commission_rate, $3)::numeric AS commission_rate,
+            COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit
+     FROM public.customer_users referred
+     JOIN public.customer_users owner ON owner.id = referred.referred_by
+     LEFT JOIN public.customer_deposits d ON d.user_id = referred.id
+     WHERE owner.id = $1 AND referred.id = $2
+     GROUP BY owner.status, owner.referral_enabled, owner.referral_commission_rate`,
+    [referrerId, referredId, Number(program.defaultRate) || 0],
+  );
+  if (!result.rowCount) return { eligible: false, credited: false, amount: 0 };
+  const row = result.rows[0];
+  const deposit = Number(row.approved_deposit) || 0;
+  if (row.owner_status !== "Aktif" || !row.referral_enabled || deposit < Number(program.minDeposit)) {
+    return { eligible: false, credited: false, amount: 0 };
+  }
+  const amount = money(Number(program.bonusPerInvite) + deposit * Number(row.commission_rate) / 100);
+  if (!amount) return { eligible: false, credited: false, amount: 0 };
+  const credited = await creditDepositBalance(
+    client,
+    referrerId,
+    amount,
+    `${referrerId}:${referredId}`,
+    { role: "referrer", referralId: referredId, approvedDeposit: deposit, commissionRate: Number(row.commission_rate) },
+  );
+  return { eligible: true, credited, amount };
+}
+
 export function createApiRouter(pool) {
   const router = express.Router();
   router.use((request, response, next) => {
@@ -478,20 +649,37 @@ export function createApiRouter(pool) {
     const email = normalizeEmail(request.body?.email);
     const phone = normalizeIndonesianPhone(request.body?.phone);
     const password = request.body?.password;
+    const referralCode = typeof request.body?.referralCode === "string" ? request.body.referralCode.trim().toUpperCase() : "";
     if (name.length < 2 || name.length > 120) return apiError(response, 400, "Nama harus terdiri dari 2–120 karakter.");
     if (!validEmail(email)) return apiError(response, 400, "Alamat email tidak valid.");
     if (!phone) return apiError(response, 400, "Nomor telepon Indonesia tidak valid.");
     if (!validPassword(password)) return apiError(response, 400, "Password harus mengikuti semua aturan yang ditampilkan.");
+    if (referralCode.length > 32) return apiError(response, 400, "Kode referral tidak valid.");
 
     const passwordHash = await hashPassword(password);
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      let referrerId = null;
+      if (referralCode) {
+        const referrer = await client.query(
+          `SELECT id, status, referral_enabled
+           FROM public.customer_users
+           WHERE referral_code = $1
+           FOR SHARE`,
+          [referralCode],
+        );
+        if (!referrer.rowCount || referrer.rows[0].status !== "Aktif" || !referrer.rows[0].referral_enabled) {
+          await client.query("ROLLBACK");
+          return apiError(response, 400, "Kode referral tidak tersedia.");
+        }
+        referrerId = referrer.rows[0].id;
+      }
       const userResult = await client.query(
-        `INSERT INTO public.customer_users (name, email, phone, password_hash)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO public.customer_users (name, email, phone, password_hash, referred_by)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id, name, email, phone, status, created_at`,
-        [name, email, phone, passwordHash],
+        [name, email, phone, passwordHash, referrerId],
       );
       const user = userResult.rows[0];
       await client.query(
@@ -550,8 +738,171 @@ export function createApiRouter(pool) {
     return response.json(await getSiteSettings(pool));
   }));
 
+  router.get("/content/:key", asyncRoute(async (request, response) => {
+    const key = String(request.params.key ?? "");
+    if (!SITE_CONTENT_KEYS.has(key)) return apiError(response, 404, "Konten tidak ditemukan.");
+    const result = await pool.query(
+      "SELECT value FROM public.app_settings WHERE setting_key = $1",
+      [`site-content:${key}`],
+    );
+    return response.json({ value: result.rows[0]?.value ?? null });
+  }));
+
+  router.get("/referral/state", asyncRoute(async (request, response) => {
+    const program = await getReferralProgram(pool);
+    const token = readSessionToken(request);
+    if (!token) {
+      return response.json({ program, currentUserCode: "", referrers: [], referrals: [], friendBonusClaimable: false });
+    }
+    const userResult = await pool.query(
+      `SELECT u.id, u.name, u.email, u.status, u.referral_code, u.referral_commission_rate,
+              u.referral_enabled, u.referred_by
+       FROM public.customer_sessions s
+       JOIN public.customer_users u ON u.id = s.user_id
+       WHERE s.token_hash = $1 AND s.expires_at > now()`,
+      [hashSessionToken(token)],
+    );
+    const user = userResult.rows[0];
+    if (!user) {
+      return response.json({ program, currentUserCode: "", referrers: [], referrals: [], friendBonusClaimable: false });
+    }
+    const rate = Number(user.referral_commission_rate ?? program.defaultRate) || 0;
+    const referrals = await listReferralRows(pool, user.id, program);
+    const friend = await pool.query(
+      `SELECT u.status,
+              COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit,
+              EXISTS (
+                SELECT 1 FROM public.customer_ledger_entries le
+                WHERE le.user_id = u.id AND le.entry_type = 'referral_credit'
+                  AND le.source_type = 'referral' AND le.source_id = 'friend:' || u.id::text
+              ) AS bonus_paid
+       FROM public.customer_users u
+       LEFT JOIN public.customer_deposits d ON d.user_id = u.id
+       WHERE u.id = $1 AND u.referred_by IS NOT NULL
+       GROUP BY u.id, u.status`,
+      [user.id],
+    );
+    const friendEligible = Boolean(
+      friend.rowCount &&
+      friend.rows[0].status === "Aktif" &&
+      Number(friend.rows[0].approved_deposit) >= Number(program.minDeposit) &&
+      Number(program.friendBonus) > 0 &&
+      !friend.rows[0].bonus_paid,
+    );
+    return response.json({
+      program,
+      currentUserCode: user.referral_code,
+      referrers: [{
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        code: user.referral_code,
+        commissionRate: rate,
+        status: user.referral_enabled ? "Aktif" : "Nonaktif",
+      }],
+      referrals,
+      friendBonusClaimable: friendEligible,
+      friendBonusAmount: friendEligible ? Number(program.friendBonus) : 0,
+    });
+  }));
+
+  router.get("/notifications", asyncRoute(async (request, response) => {
+    let userId = null;
+    const token = readSessionToken(request);
+    if (token) {
+      const user = await pool.query(
+        `SELECT s.user_id
+         FROM public.customer_sessions s
+         WHERE s.token_hash = $1 AND s.expires_at > now()`,
+        [hashSessionToken(token)],
+      );
+      userId = user.rows[0]?.user_id ?? null;
+    }
+    const result = await pool.query(
+      `SELECT id, title, message, created_at
+       FROM public.site_notifications
+       WHERE target_user_ids IS NULL
+          OR ($1::uuid IS NOT NULL AND $1::uuid = ANY(target_user_ids))
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [userId],
+    );
+    return response.json({
+      notifications: result.rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        message: row.message,
+        target: "all",
+        createdAt: row.created_at,
+      })),
+    });
+  }));
+
   router.get("/account/state", requireCustomer(pool), asyncRoute(async (request, response) => {
     return response.json(await makeState(pool, request.customer.id));
+  }));
+
+  router.post("/account/referrals/claim", requireCustomer(pool), rateLimit("referral-claim", 10), asyncRoute(async (request, response) => {
+    const program = await getReferralProgram(pool);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const userResult = await client.query(
+        `SELECT id, status, referred_by
+         FROM public.customer_users
+         WHERE id = $1`,
+        [request.customer.id],
+      );
+      const user = userResult.rows[0];
+      if (!user || user.status !== "Aktif") {
+        await client.query("ROLLBACK");
+        return apiError(response, 403, "Akun harus aktif sebelum hadiah referral diklaim.");
+      }
+
+      const invitees = await client.query(
+        "SELECT id FROM public.customer_users WHERE referred_by = $1 ORDER BY created_at",
+        [user.id],
+      );
+      let credited = 0;
+      let rewardCount = 0;
+      for (const invitee of invitees.rows) {
+        const reward = await creditReferralCommission(client, user.id, invitee.id, program);
+        if (reward.credited) {
+          credited += reward.amount;
+          rewardCount += 1;
+        }
+      }
+
+      if (user.referred_by && Number(program.friendBonus) > 0) {
+        const friend = await client.query(
+          `SELECT COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'Disetujui'), 0)::numeric AS approved_deposit
+           FROM public.customer_deposits d
+           WHERE d.user_id = $1`,
+          [user.id],
+        );
+        if (Number(friend.rows[0]?.approved_deposit) >= Number(program.minDeposit)) {
+          const friendCredit = await creditDepositBalance(
+            client,
+            user.id,
+            Number(program.friendBonus),
+            `friend:${user.id}`,
+            { role: "invitee", referralId: user.id, approvedDeposit: Number(friend.rows[0].approved_deposit) },
+          );
+          if (friendCredit) {
+            credited += Number(program.friendBonus);
+            rewardCount += 1;
+          }
+        }
+      }
+
+      await client.query("COMMIT");
+      return response.json({ ok: true, credited: Math.round(credited * 100) / 100, rewardCount });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }));
 
   router.post("/account/deposits", requireCustomer(pool), rateLimit("deposit", 8), asyncRoute(async (request, response) => {
@@ -719,6 +1070,157 @@ export function createApiRouter(pool) {
   }));
 
   router.use("/admin", adminAuth);
+
+  router.get("/admin/content/:key", asyncRoute(async (request, response) => {
+    const key = String(request.params.key ?? "");
+    if (!SITE_CONTENT_KEYS.has(key)) return apiError(response, 404, "Konten tidak ditemukan.");
+    const result = await pool.query(
+      "SELECT value FROM public.app_settings WHERE setting_key = $1",
+      [`site-content:${key}`],
+    );
+    return response.json({ value: result.rows[0]?.value ?? null });
+  }));
+
+  router.put("/admin/content/:key", asyncRoute(async (request, response) => {
+    const key = String(request.params.key ?? "");
+    const value = request.body?.value;
+    if (!SITE_CONTENT_KEYS.has(key)) return apiError(response, 404, "Konten tidak ditemukan.");
+    if (!validSiteContent(value)) return apiError(response, 400, "Format konten tidak valid atau ukurannya terlalu besar.");
+    if (key === "referral-program" && !validReferralProgram(value)) {
+      return apiError(response, 400, "Pengaturan referral tidak valid.");
+    }
+    await pool.query(
+      `INSERT INTO public.app_settings (setting_key, value)
+       VALUES ($1, $2::jsonb)
+       ON CONFLICT (setting_key)
+       DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [`site-content:${key}`, JSON.stringify(value)],
+    );
+    await addAudit(pool, request.adminName, "site_content_updated", key, key, { bytes: JSON.stringify(value).length });
+    return response.json({ ok: true });
+  }));
+
+  router.get("/admin/notifications", asyncRoute(async (_request, response) => {
+    const result = await pool.query(
+      `SELECT id, title, message, target_user_ids, created_at
+       FROM public.site_notifications
+       ORDER BY created_at DESC
+       LIMIT 500`,
+    );
+    return response.json({
+      notifications: result.rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        message: row.message,
+        target: row.target_user_ids === null ? "all" : row.target_user_ids,
+        createdAt: row.created_at,
+      })),
+    });
+  }));
+
+  router.post("/admin/notifications", rateLimit("admin-notification", 30), asyncRoute(async (request, response) => {
+    const title = typeof request.body?.title === "string" ? request.body.title.trim() : "";
+    const message = typeof request.body?.message === "string" ? request.body.message.trim() : "";
+    const target = request.body?.target;
+    if (!title || title.length > 200 || !message || message.length > 3000) {
+      return apiError(response, 400, "Judul dan isi notifikasi wajib diisi serta tidak melebihi batas.");
+    }
+    let targetUserIds = null;
+    if (target !== "all") {
+      if (!Array.isArray(target) || target.length < 1 || target.length > 1000) {
+        return apiError(response, 400, "Pilih setidaknya satu akun tujuan yang valid.");
+      }
+      targetUserIds = [...new Set(target.map((id) => String(id)))];
+      if (targetUserIds.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+        return apiError(response, 400, "Daftar akun tujuan tidak valid.");
+      }
+      const found = await pool.query(
+        "SELECT count(*)::int AS count FROM public.customer_users WHERE id = ANY($1::uuid[])",
+        [targetUserIds],
+      );
+      if (Number(found.rows[0]?.count) !== targetUserIds.length) {
+        return apiError(response, 400, "Satu atau beberapa akun tujuan tidak ditemukan.");
+      }
+    }
+    const result = await pool.query(
+      `INSERT INTO public.site_notifications (title, message, target_user_ids)
+       VALUES ($1, $2, $3::uuid[])
+       RETURNING id, title, message, target_user_ids, created_at`,
+      [title, message, targetUserIds],
+    );
+    const row = result.rows[0];
+    await addAudit(pool, request.adminName, "notification_created", "notification", row.id, { targetCount: targetUserIds?.length ?? "all" });
+    return response.status(201).json({
+      notification: { id: row.id, title: row.title, message: row.message, target: row.target_user_ids ?? "all", createdAt: row.created_at },
+    });
+  }));
+
+  router.delete("/admin/notifications/:id", asyncRoute(async (request, response) => {
+    const result = await pool.query(
+      "DELETE FROM public.site_notifications WHERE id = $1 RETURNING id",
+      [request.params.id],
+    );
+    if (!result.rowCount) return apiError(response, 404, "Notifikasi tidak ditemukan.");
+    await addAudit(pool, request.adminName, "notification_deleted", "notification", request.params.id, {});
+    return response.json({ ok: true });
+  }));
+
+  router.get("/admin/referrals", asyncRoute(async (_request, response) => {
+    const program = await getReferralProgram(pool);
+    const [partners, referrals] = await Promise.all([
+      pool.query(
+        `SELECT id, name, email, referral_code, referral_commission_rate, referral_enabled
+         FROM public.customer_users
+         ORDER BY created_at DESC`,
+      ),
+      listReferralRows(pool, null, program),
+    ]);
+    return response.json({
+      program,
+      currentUserCode: "",
+      referrers: partners.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        code: row.referral_code,
+        commissionRate: Number(row.referral_commission_rate ?? program.defaultRate) || 0,
+        status: row.referral_enabled ? "Aktif" : "Nonaktif",
+        customCommissionRate: row.referral_commission_rate === null ? null : Number(row.referral_commission_rate),
+      })),
+      referrals,
+    });
+  }));
+
+  router.patch("/admin/referrals/partners/:id", asyncRoute(async (request, response) => {
+    const id = String(request.params.id ?? "");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+      return apiError(response, 400, "ID mitra tidak valid.");
+    }
+    const updates = [];
+    const values = [];
+    if (request.body?.commissionRate !== undefined) {
+      const rate = Number(request.body.commissionRate);
+      if (!Number.isFinite(rate) || rate < 0 || rate > 100) return apiError(response, 400, "Komisi mitra harus antara 0–100%.");
+      values.push(rate);
+      updates.push(`referral_commission_rate = $${values.length}`);
+    }
+    if (request.body?.status !== undefined) {
+      if (!["Aktif", "Nonaktif"].includes(request.body.status)) return apiError(response, 400, "Status mitra tidak valid.");
+      values.push(request.body.status === "Aktif");
+      updates.push(`referral_enabled = $${values.length}`);
+    }
+    if (!updates.length) return apiError(response, 400, "Tidak ada perubahan mitra.");
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE public.customer_users SET ${updates.join(", ")}
+       WHERE id = $${values.length}
+       RETURNING id`,
+      values,
+    );
+    if (!result.rowCount) return apiError(response, 404, "Akun mitra tidak ditemukan.");
+    await addAudit(pool, request.adminName, "referral_partner_updated", "user", id, request.body);
+    return response.json({ ok: true });
+  }));
 
   router.get("/admin/state", asyncRoute(async (request, response) => {
     return response.json(await makeState(pool, null, true));
@@ -935,47 +1437,26 @@ export function createApiRouter(pool) {
   router.post("/admin/referrals/credit", asyncRoute(async (request, response) => {
     const userId = String(request.body?.userId ?? "");
     const referralId = String(request.body?.referralId ?? "").trim();
-    const amount = money(request.body?.amount);
-    if (!userId || !referralId || referralId.length > 150 || !amount) {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuid.test(userId) || !uuid.test(referralId)) {
       return apiError(response, 400, "Data kredit referral tidak valid.");
     }
-    const sourceId = `${userId}:${referralId}`;
+    const program = await getReferralProgram(pool);
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      const account = await client.query(
-        `SELECT a.deposit_balance, u.status
-         FROM public.customer_accounts a
-         JOIN public.customer_users u ON u.id = a.user_id
-         WHERE a.user_id = $1 FOR UPDATE OF a`,
-        [userId],
-      );
-      if (!account.rowCount || account.rows[0].status !== "Aktif") {
+      const reward = await creditReferralCommission(client, userId, referralId, program);
+      if (!reward.eligible) {
         await client.query("ROLLBACK");
-        return apiError(response, 409, "Akun referral tidak ditemukan atau belum aktif.");
+        return apiError(response, 409, "Referral belum memenuhi syarat deposit atau mitra tidak aktif.");
       }
-      const newBalance = Math.round((Number(account.rows[0].deposit_balance) + amount) * 100) / 100;
-      const inserted = await client.query(
-        `INSERT INTO public.customer_ledger_entries
-           (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
-         VALUES ($1, 'referral_credit', 'deposit', $2, $3, 'referral', $4, $5::jsonb)
-         ON CONFLICT (entry_type, source_type, source_id) DO NOTHING
-         RETURNING id`,
-        [userId, amount, newBalance, sourceId, JSON.stringify({ referralId })],
-      );
-      if (!inserted.rowCount) {
+      if (!reward.credited) {
         await client.query("ROLLBACK");
         return apiError(response, 409, "Kredit referral ini sudah pernah diberikan.");
       }
-      await client.query(
-        `UPDATE public.customer_accounts
-         SET deposit_balance = $2, updated_at = now()
-         WHERE user_id = $1`,
-        [userId, newBalance],
-      );
-      await addAudit(client, request.adminName, "referral_credit", "user", userId, { referralId, amount });
+      await addAudit(client, request.adminName, "referral_credit", "user", userId, { referralId, amount: reward.amount });
       await client.query("COMMIT");
-      return response.json({ ok: true });
+      return response.json({ ok: true, amount: reward.amount });
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

@@ -143,7 +143,7 @@ type Ctx = LedgerData & {
   loading: boolean;
   error: string;
   refresh: () => Promise<void>;
-  register: (details: { name: string; email: string; phone: string; password: string }) => Promise<void>;
+  register: (details: { name: string; email: string; phone: string; password: string; referralCode?: string }) => Promise<void>;
   login: (identity: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setCurrentEmail: (email: string) => void;
@@ -154,7 +154,7 @@ type Ctx = LedgerData & {
   setCompound: (compound: Partial<CompoundSettings>) => Promise<void>;
   runCompound: () => Promise<{ applied: number; date: string }>;
   transferDepositToMain: (userId: string) => Promise<number>;
-  creditReferralDeposit: (userId: string, amount: number, referralId: string) => Promise<boolean>;
+  creditReferralDeposit: (userId: string, amount: number, referralId: string) => Promise<number>;
   requestWithdrawal: (userId: string, details: { bank: string; account: string; amount: number }) => Promise<string | null>;
   reviewWithdrawal: (id: string, status: WithdrawalStatus, confirmPayout?: boolean, note?: string) => Promise<void>;
 };
@@ -200,7 +200,7 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     }), []);
 
-  const register = useCallback(async (details: { name: string; email: string; phone: string; password: string }) => {
+  const register = useCallback(async (details: { name: string; email: string; phone: string; password: string; referralCode?: string }) => {
     await post('/api/auth/register', details);
     await refresh();
   }, [post, refresh]);
@@ -263,9 +263,9 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   }, [post, refresh]);
 
   const creditReferralDeposit = useCallback(async (userId: string, amount: number, referralId: string) => {
-    await post('/api/admin/referrals/credit', { userId, amount, referralId });
+    const result = await post<{ amount: number }>('/api/admin/referrals/credit', { userId, amount, referralId });
     await refresh();
-    return true;
+    return result.amount;
   }, [post, refresh]);
 
   const requestWithdrawal = useCallback(async (_userId: string, details: { bank: string; account: string; amount: number }) => {

@@ -1,30 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useServerContent } from '@/lib/site-content';
 import { newsArticles, type NewsArticle } from '@/lib/news-data';
 
-const KEY = 'hsb-news-v1';
-const EVT = 'hsb-news-change';
-
-function load(): NewsArticle[] {
-  try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : newsArticles; } catch { return newsArticles; }
-}
-
-/** Browser-saved news list shared by /berita and /admin/berita. Falls back to sample articles. */
+/** PostgreSQL-backed news content shared by /berita and /admin/berita. */
 export function useNews() {
-  const [list, setList] = useState<NewsArticle[]>(newsArticles);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const sync = () => setList(load());
-    sync(); setReady(true);
-    window.addEventListener(EVT, sync);
-    window.addEventListener('storage', sync);
-    return () => { window.removeEventListener(EVT, sync); window.removeEventListener('storage', sync); };
-  }, []);
-  const save = (n: NewsArticle[]) => {
-    try { localStorage.setItem(KEY, JSON.stringify(n)); } catch { alert('Penyimpanan browser penuh. Gunakan gambar yang lebih kecil.'); return; }
-    setList(n); window.dispatchEvent(new Event(EVT));
+  const remote = useServerContent<NewsArticle[]>('news', newsArticles);
+  return {
+    list: remote.value,
+    save: remote.setValue,
+    reset: () => remote.setValue(newsArticles),
+    ready: remote.loaded,
+    status: remote.status,
+    error: remote.error,
   };
-  const reset = () => { localStorage.removeItem(KEY); setList(newsArticles); window.dispatchEvent(new Event(EVT)); };
-  return { list, save, reset, ready };
 }
 
 /** Resize an uploaded image and return it as a compact data URL. */

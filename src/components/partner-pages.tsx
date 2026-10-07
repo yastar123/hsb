@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { BadgeDollarSign, CalendarDays, ChartLine, CircleHelp, Copy, Download, Filter, House, Image as ImageIcon, Instagram, Music2, Package, UserRoundSearch, Users, Video, Wallet } from 'lucide-react';
 import { Gift, Share2, Trophy } from 'lucide-react';
 import { commissionOf, useReferral } from '@/components/referral-content';
-import { useLedger } from '@/components/ledger-content';
+import { postJson } from '@/lib/site-content';
 import { Button } from '@/components/ui/button';
 import { BottomNav, Notice } from '@/components/account-pages';
 import { useAppPreferences, translate } from '@/components/app-preferences';
@@ -39,43 +39,48 @@ const d = (days: number) => { const t = new Date('2026-10-06T00:00:00Z'); t.setU
 export function PartnerScreen() {
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
-  const { data, setData } = useReferral();
-  const { users, currentEmail, creditReferralDeposit } = useLedger();
+  const { data, refresh } = useReferral();
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState('');
+  const [claimBusy, setClaimBusy] = useState(false);
   const me = data.referrers.find((r) => r.code === data.currentUserCode);
   const mine = data.referrals.filter((r) => r.referrerId === me?.id);
   const earned = mine.reduce((s, r) => s + commissionOf(data, r), 0);
-  const recipient = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase())
-    ?? users.find((u) => u.email.toLowerCase() === me?.email.toLowerCase())
-    ?? users[0];
-  const claimableReferrals = mine.filter((r) => r.deposit >= data.minDeposit && !recipient?.creditedReferralIds?.includes(r.id));
-  const claimable = claimableReferrals.reduce((s, r) => s + commissionOf(data, r), 0);
-  const link = `https://client.hsb.co.id/id/register?ref_code=${data.currentUserCode}`;
+  const claimableReferrals = mine.filter((r) => r.deposit >= data.minDeposit && !r.commissionPaid);
+  const claimable = claimableReferrals.reduce((s, r) => s + commissionOf(data, r), 0)
+    + (data.friendBonusClaimable ? Number(data.friendBonusAmount ?? data.friendBonus) : 0);
+  const link = data.currentUserCode
+    ? `${window.location.origin}/register?ref_code=${encodeURIComponent(data.currentUserCode)}`
+    : '';
   const next = data.tiers.slice().sort((a, b) => a.invites - b.invites).find((t) => t.invites > mine.length);
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }
     catch { setNotice('Belum dapat disalin di perangkat ini.'); }
   };
   const share = async () => {
+    if (!link) {
+      setNotice(tr('Masuk ke akun untuk mendapatkan kode referral Anda.'));
+      return;
+    }
     try { if (navigator.share) await navigator.share({ title: 'HSB Trading', text: `Daftar di HSB dengan kode ${data.currentUserCode} dan dapatkan bonus $${data.friendBonus}!`, url: link }); else await copy(link); } catch { /* dibatalkan */ }
   };
-  const addRewardsToDeposit = () => {
-    if (!recipient || claimableReferrals.length === 0) {
+  const addRewardsToDeposit = async () => {
+    if (!claimable) {
       setNotice(tr('Belum ada komisi referral yang dapat ditambahkan ke saldo deposit.'));
       return;
     }
-    const credited = claimableReferrals.reduce((sum, referral) => {
-      const amount = commissionOf(data, referral);
-      return creditReferralDeposit(recipient.id, amount, referral.id) ? sum + amount : sum;
-    }, 0);
-    if (credited <= 0) {
-      setNotice(tr('Komisi referral tidak dapat ditambahkan.'));
-      return;
+    setClaimBusy(true);
+    try {
+      const result = await postJson<{ credited: number }>('/api/account/referrals/claim');
+      await refresh();
+      setNotice(result.credited > 0
+        ? `${tr('Hadiah referral berhasil ditambahkan ke saldo deposit')} $${result.credited.toFixed(2)}.`
+        : tr('Belum ada hadiah referral yang dapat diklaim.'));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : tr('Komisi referral tidak dapat ditambahkan.'));
+    } finally {
+      setClaimBusy(false);
     }
-    const ids = new Set(claimableReferrals.map((referral) => referral.id));
-    setData((current) => ({ ...current, referrals: current.referrals.map((referral) => ids.has(referral.id) ? { ...referral, commissionPaid: true } : referral) }));
-    setNotice(`${tr('Komisi referral simulasi ditambahkan ke saldo deposit')} $${credited.toFixed(2)}.`);
   };
   return <main className="home-page"><div className="home-shell partner-shell">
     <PartnerNav active="/mitra" />
@@ -83,7 +88,7 @@ export function PartnerScreen() {
       <div className="partner-coins"><span><Gift /></span><span><BadgeDollarSign /></span><span><Users /></span></div>
       <h2>{data.title}</h2>
       <p className="partner-note">{data.subtitle}</p>
-      <div className="partner-hero-actions"><Button onClick={share}><Share2 /> {tr('AJAK TEMAN SEKARANG')}</Button></div>
+      <div className="partner-hero-actions"><Button onClick={share} disabled={!data.currentUserCode}><Share2 /> {tr('AJAK TEMAN SEKARANG')}</Button></div>
       <small>*{data.terms}</small>
     </section>
     <section className="partner-card">
@@ -95,9 +100,9 @@ export function PartnerScreen() {
     <section className="partner-card">
       <div className="partner-card-heading"><i><Users /></i>{tr('Kode & Link Referral')}</div>
       <p className="partner-ref-label">{tr('Kode Referral')}</p>
-      <div className="partner-ref-link"><code>{data.currentUserCode}</code><Button variant="outline" onClick={() => copy(data.currentUserCode)}><Copy /> {tr('Salin')}</Button></div>
+       <div className="partner-ref-link"><code>{data.currentUserCode || tr('Masuk untuk melihat kode')}</code><Button variant="outline" disabled={!data.currentUserCode} onClick={() => copy(data.currentUserCode)}><Copy /> {tr('Salin')}</Button></div>
       <p className="partner-ref-label">{tr('Link Referral')}</p>
-      <div className="partner-ref-link"><code>{link}</code><Button variant="outline" onClick={() => copy(link)}>{copied ? <>{tr('Tersalin')}</> : <><Copy /> {tr('Salin')}</>}</Button></div>
+       <div className="partner-ref-link"><code>{link || tr('Link referral tersedia setelah masuk')}</code><Button variant="outline" disabled={!link} onClick={() => copy(link)}>{copied ? <>{tr('Tersalin')}</> : <><Copy /> {tr('Salin')}</>}</Button></div>
       <Button asChild variant="outline" className="partner-wide"><Link to="/alat-pemasaran">{tr('Materi Promosi')}</Link></Button>
     </section>
     <section className="partner-card">
@@ -105,7 +110,7 @@ export function PartnerScreen() {
       <p className="partner-income-value">${earned.toFixed(2)} <small>USD</small></p>
       <p className="partner-income-note">{mine.length} teman diajak · {mine.filter((r) => r.deposit >= data.minDeposit).length} sudah deposit</p>
       <p className="partner-income-note">{tr('Belum ditambahkan ke saldo deposit')}: ${claimable.toFixed(2)}</p>
-      <Button className="partner-wide" disabled={!claimable || !recipient} onClick={addRewardsToDeposit}>{tr('Tambahkan ke Saldo Deposit')}</Button>
+       <Button className="partner-wide" disabled={!claimable || claimBusy} onClick={() => { void addRewardsToDeposit(); }}>{claimBusy ? tr('Memproses...') : tr('Tambahkan ke Saldo Deposit')}</Button>
     </section>
     <section className="partner-section">
       <div className="partner-section-heading"><i><Trophy /></i>{tr('Bonus Level')}</div>

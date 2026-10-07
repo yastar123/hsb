@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import { useServerContent, type SaveStatus } from '@/lib/site-content';
 import bonusAsset from '@/assets/home-bonus.jpg';
 import newsAsset from '@/assets/trading-news.jpg';
 import demoAsset from '@/assets/welcome-demo.jpg';
@@ -59,19 +60,12 @@ export const defaultHomeContent: HomeContent = {
   ],
 };
 
-const KEY = 'hsb-home-content-v1';
-type Ctx = { content: HomeContent; setContent: (c: HomeContent | ((p: HomeContent) => HomeContent)) => void; reset: () => void };
+type Ctx = { content: HomeContent; setContent: (c: HomeContent | ((p: HomeContent) => HomeContent)) => void; reset: () => void; status: SaveStatus; error: string };
 const HomeContentContext = createContext<Ctx | null>(null);
 
 export function HomeContentProvider({ children }: { children: ReactNode }) {
-  const [content, setContent] = useState<HomeContent>(defaultHomeContent);
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    try { const raw = localStorage.getItem(KEY); if (raw) setContent({ ...defaultHomeContent, ...JSON.parse(raw) }); } catch { /* ignore */ }
-    setLoaded(true);
-  }, []);
-  useEffect(() => { if (loaded) localStorage.setItem(KEY, JSON.stringify(content)); }, [content, loaded]);
-  return <HomeContentContext.Provider value={{ content, setContent, reset: () => setContent(defaultHomeContent) }}>{children}</HomeContentContext.Provider>;
+  const remote = useServerContent<HomeContent>('home', defaultHomeContent);
+  return <HomeContentContext.Provider value={{ content: remote.value, setContent: remote.setValue, reset: () => remote.setValue(defaultHomeContent), status: remote.status, error: remote.error }}>{children}</HomeContentContext.Provider>;
 }
 
 export function useHomeContent() {

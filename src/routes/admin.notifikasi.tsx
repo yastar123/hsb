@@ -1,9 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Pagination, usePagination } from '@/components/pagination';
 import { useNotifs } from '@/lib/notifications';
+import { useLedger } from '@/components/ledger-content';
+import { SaveStatusText } from '@/lib/site-content';
 
 export const Route = createFileRoute('/admin/notifikasi')({
   head: () => ({ meta: [
@@ -18,36 +20,32 @@ export const Route = createFileRoute('/admin/notifikasi')({
   component: AdminNotif,
 });
 
-type U = { id: string; name: string; email: string };
-const seed: U[] = [
-  { id: 'u1', name: 'Budi Santoso', email: 'budi@contoh.com' },
-  { id: 'u2', name: 'Siti Rahma', email: 'siti@contoh.com' },
-  { id: 'u3', name: 'Andi Wijaya', email: 'andi@contoh.com' },
-];
 const inp = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
 
 function AdminNotif() {
-  const [list, setList] = useNotifs();
-  const [users, setUsers] = useState<U[]>(seed);
+  const { list, status, error, create, remove } = useNotifs();
+  const { users } = useLedger();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [mode, setMode] = useState<'all' | 'some'>('all');
   const [picked, setPicked] = useState<string[]>([]);
   const [q, setQ] = useState('');
-  useEffect(() => { try { const r = localStorage.getItem('hsb-admin-users-v1'); if (r) setUsers(JSON.parse(r)); } catch { /* ignore */ } }, []);
 
   const name = (id: string) => users.find((u) => u.id === id)?.name ?? 'User terhapus';
   const canSend = title.trim() && message.trim() && (mode === 'all' || picked.length > 0);
   const pg = usePagination(list);
-  const send = () => {
+  const send = async () => {
     if (!canSend) return;
-    setList([{ id: Math.random().toString(36).slice(2, 9), title: title.trim(), message: message.trim(), target: mode === 'all' ? 'all' : picked, createdAt: new Date().toISOString() }, ...list]);
-    setTitle(''); setMessage(''); setPicked([]);
+    try {
+      await create({ title: title.trim(), message: message.trim(), target: mode === 'all' ? 'all' : picked });
+      setTitle(''); setMessage(''); setPicked([]);
+    } catch { /* error is displayed from the notification store */ }
   };
   const shown = users.filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(q.toLowerCase()));
 
   return <main className="space-y-4 p-4 text-foreground md:p-6">
-    <div><h1 className="text-2xl font-bold">Kelola Notifikasi</h1><p className="text-sm text-muted-foreground">Tersimpan di browser ini · belum terhubung ke server.</p></div>
+    <div><h1 className="text-2xl font-bold">Kelola Notifikasi</h1><p className="text-sm text-muted-foreground"><SaveStatusText status={status} error={error} /></p></div>
+    {error && <p className="rounded-lg border border-destructive/40 bg-background p-3 text-sm text-destructive" role="alert">{error}</p>}
     <article className="space-y-3 rounded-xl border border-border bg-background p-4">
       <h2 className="font-semibold">Kirim Notifikasi Baru</h2>
       <input className={inp} placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Judul" />
@@ -64,7 +62,7 @@ function AdminNotif() {
           {!shown.length && <p className="text-sm text-muted-foreground">User tidak ditemukan.</p>}</div>
         <p className="text-xs text-muted-foreground">{picked.length} user dipilih</p>
       </div>}
-      <Button disabled={!canSend} onClick={send}><Send /> Kirim</Button>
+      <Button disabled={!canSend || status === 'saving'} onClick={() => { void send(); }}><Send /> Kirim</Button>
     </article>
     <article className="rounded-xl border border-border bg-background p-4">
       <h2 className="mb-2 font-semibold">Riwayat Notifikasi ({list.length})</h2>
@@ -72,7 +70,7 @@ function AdminNotif() {
       <ul className="divide-y divide-border">{pg.pageItems.map((n) => <li key={n.id} className="flex items-start justify-between gap-2 py-2">
         <div className="min-w-0"><p className="font-medium">{n.title}</p><p className="text-sm">{n.message}</p>
           <p className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString('id-ID')} · Ke: {n.target === 'all' ? 'Semua user' : n.target.map(name).join(', ')}</p></div>
-        <Button size="icon" variant="ghost" aria-label="Hapus" onClick={() => setList(list.filter((x) => x.id !== n.id))}><Trash2 /></Button>
+         <Button size="icon" variant="ghost" aria-label="Hapus" disabled={status === 'saving'} onClick={() => { void remove(n.id).catch(() => {}); }}><Trash2 /></Button>
       </li>)}</ul>
       <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} onPage={pg.setPage} />
     </article>

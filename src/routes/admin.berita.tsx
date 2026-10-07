@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Pagination, usePagination } from '@/components/pagination';
 import { newsCategories, type NewsArticle } from '@/lib/news-data';
 import { fileToDataUrl, useNews } from '@/lib/news-store';
+import { SaveStatusText } from '@/lib/site-content';
 
 export const Route = createFileRoute('/admin/berita')({
   head: () => ({ meta: [
@@ -25,7 +26,7 @@ const today = () => new Date().toLocaleDateString('id-ID', { day: 'numeric', mon
 type Draft = Omit<NewsArticle, 'body'> & { bodyText: string };
 
 function AdminBerita() {
-  const { list, save } = useNews();
+  const { list, save, status, error } = useNews();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [q, setQ] = useState('');
   const set = (p: Partial<Draft>) => setDraft((d) => d && { ...d, ...p });
@@ -46,7 +47,7 @@ function AdminBerita() {
 
   return <main className="space-y-4 p-4 text-foreground md:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h1 className="text-2xl font-bold">Kelola Berita</h1><p className="text-sm text-muted-foreground">Tersimpan di browser ini · belum terhubung ke server.</p></div>
+      <div><h1 className="text-2xl font-bold">Kelola Berita</h1><p className="text-sm text-muted-foreground"><SaveStatusText status={status} error={error} /></p></div>
       <Button onClick={openNew}><Plus /> Tambah Berita</Button>
     </div>
 

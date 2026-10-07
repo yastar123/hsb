@@ -34,6 +34,15 @@ export function HomeScreen() {
   const activeBanner = banners[Math.min(banner, Math.max(banners.length - 1, 0))];
   const [dialog, setDialog] = useState<{ title: string; text: string } | null>(null);
   const [copied, setCopied] = useState('');
+  const open = (title: string, text = 'Layanan ini belum terhubung. Saat ini tersedia tampilan pratinjau.') => setDialog({ title, text });
+  const showNotifications = async () => {
+    try {
+      const n = await loadNotifs();
+      open(tr('Notifikasi'), n.length ? n.map((item) => `${item.title}: ${item.message}`).join('\n\n') : tr('Belum ada notifikasi.'));
+    } catch {
+      open(tr('Notifikasi'), tr('Notifikasi tidak dapat dimuat dari server.'));
+    }
+  };
   const toLive = () => markets.map((m) => { const p = parseFloat(m.price.replace(/,/g, '')) || 0; return { ...m, base: p, value: p, pct: parseFloat(m.change) || 0 }; });
   const [live, setLive] = useState(toLive);
   useEffect(() => { setLive(toLive()); }, [markets]);
@@ -48,13 +57,12 @@ export function HomeScreen() {
     return () => clearInterval(t);
   }, []);
   const fmt = (m: { price: string; value: number }) => { const d = Math.min(Math.max((m.price.split('.')[1] ?? '').length, 2), 5); return m.value.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
-  const open = (title: string, text = 'Layanan ini belum terhubung. Saat ini tersedia tampilan pratinjau.') => setDialog({ title, text });
   const copySignal = async (signal: Signal) => {
     try { await navigator.clipboard.writeText(`${signal.symbol} | ${signal.sell ? 'SELL' : 'BUY'} | Open ${signal.open} | TP ${signal.tp} | SL ${signal.sl}`); setCopied(signal.id); }
     catch { open('Salin Sinyal', `${signal.symbol} · Open ${signal.open} · TP ${signal.tp} · SL ${signal.sl}`); }
   };
   return <main className="home-page"><div className="home-shell">
-    <header className="home-header"><Link to="/beranda" aria-label={`HSB ${tr('Beranda')}`}><img src="/hsb-mark.svg" alt="HSB" width="23" height="23" /></Link><div><Button variant="ghost" size="icon" aria-label={tr('Notifikasi')} onClick={() => { const n = loadNotifs().filter((x) => x.target === 'all'); open(tr('Notifikasi'), n.length ? n.map((x) => `${x.title}: ${x.message}`).join('\n\n') : tr('Belum ada notifikasi.')); }}><Bell /></Button><Button variant="ghost" size="icon" aria-label={tr('Bantuan')} onClick={() => open(tr('Pusat Bantuan'), tr('Untuk pertanyaan umum, buka menu FAQ. Layanan bantuan pelanggan belum terhubung.'))}><Headphones /></Button></div></header>
+    <header className="home-header"><Link to="/beranda" aria-label={`HSB ${tr('Beranda')}`}><img src="/hsb-mark.svg" alt="HSB" width="23" height="23" /></Link><div><Button variant="ghost" size="icon" aria-label={tr('Notifikasi')} onClick={() => { void showNotifications(); }}><Bell /></Button><Button variant="ghost" size="icon" aria-label={tr('Bantuan')} onClick={() => open(tr('Pusat Bantuan'), tr('Untuk pertanyaan umum, buka menu FAQ. Layanan bantuan pelanggan belum terhubung.'))}><Headphones /></Button></div></header>
     {activeBanner && <section className={`home-hero home-carousel ${activeBanner.dark ? '' : 'home-hero-light'}`} aria-label={tr('Promo HSB')} aria-roledescription="carousel" data-slide={banner} onKeyDown={(e) => { if (e.key === 'ArrowRight') setBanner((v) => (v + 1) % banners.length); if (e.key === 'ArrowLeft') setBanner((v) => (v + banners.length - 1) % banners.length); }}>
       {banners.map((item, index) => <div key={item.id} className={`home-banner-slide ${item === activeBanner ? 'is-active' : ''}`} aria-hidden={item !== activeBanner}><img src={resolveImage(item.image)} alt={item.alt} width="1536" height="768" /></div>)}
       <div className="home-hero-copy"><h1>{lines(activeBanner.heading)}</h1><p>{lines(activeBanner.text)}</p>{activeBanner.button && <Button variant={activeBanner.dark ? 'heroLime' : 'default'} asChild><Link to={activeBanner.link as AppPath}>{activeBanner.button} <ArrowUpRight /></Link></Button>}{activeBanner.note && <small>{activeBanner.note}</small>}</div>

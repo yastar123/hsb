@@ -4,6 +4,7 @@ import { Plus, Trash2, ArrowUp, ArrowDown, ChevronLeft, Monitor } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { HomeScreen } from '@/components/home-screen';
 import { useHomeContent, imageLibrary, resolveImage, uid, type HomeContent } from '@/components/home-content';
+import { SaveStatusText } from '@/lib/site-content';
 
 type FieldType = 'text' | 'textarea' | 'checkbox' | 'image' | 'link';
 type Field = { key: string; label: string; type?: FieldType };
@@ -37,7 +38,7 @@ const sections: { key: SectionKey; label: string; titleKey: string; fields: Fiel
 const input = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground';
 
 export function AdminHomeEditor() {
-  const { content, setContent } = useHomeContent();
+  const { content, setContent, status, error } = useHomeContent();
   const [tab, setTab] = useState<SectionKey>('banners');
   const [openId, setOpenId] = useState<string | null>(null);
   const section = sections.find((s) => s.key === tab)!;
@@ -54,7 +55,7 @@ export function AdminHomeEditor() {
         <Button asChild size="sm"><Link to="/beranda"><Monitor /> Buka Beranda</Link></Button>
       </div>
     </header>
-    <p className="bg-accent px-4 py-2 text-xs text-accent-foreground">Perubahan tersimpan otomatis di browser ini saja (belum terhubung ke server).</p>
+    <p className="bg-accent px-4 py-2 text-xs text-accent-foreground"><SaveStatusText status={status} error={error} /></p>
     <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_420px]">
       <section className="min-w-0 rounded-xl border border-border bg-background p-4">
         <nav className="mb-4 flex flex-wrap gap-2">{sections.map((s) => <Button key={s.key} size="sm" variant={tab === s.key ? 'default' : 'outline'} onClick={() => { setTab(s.key); setOpenId(null); }}>{s.label} <span className="opacity-70">({(content[s.key] as unknown[]).length})</span></Button>)}</nav>
