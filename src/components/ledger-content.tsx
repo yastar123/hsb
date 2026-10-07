@@ -1,284 +1,338 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useRouterState } from '@tanstack/react-router';
 
 export type UserStatus = 'Aktif' | 'Belum Verifikasi' | 'Diblokir';
-export type AppUser = { id: string; name: string; email: string; phone: string; joined: string; balance: number; deposit?: number; profit?: number; dailyProfit?: number; dailyProfitDate?: string; creditedReferralIds?: string[]; rate?: number | null; lastCompound?: string; status: UserStatus };
+export type AppUser = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  joined: string;
+  balance: number;
+  deposit: number;
+  profit: number;
+  dailyProfit: number;
+  dailyProfitDate: string;
+  rate: number | null;
+  effectiveRate?: number;
+  lastCompound: string;
+  status: UserStatus;
+};
 export type CompoundSettings = { globalRate: number; enabled: boolean };
 export type DepositStatus = 'Menunggu' | 'Disetujui' | 'Ditolak';
-export type DepositReq = { id: string; name: string; email: string; bankName?: string; accountNumber?: string; method: string; amount: number; proof: string; date: string; status: DepositStatus; note?: string | undefined };
-export type WithdrawalStatus = 'Menunggu' | 'Diproses' | 'Berhasil' | 'Ditolak';
-export type WithdrawalReq = { id: string; userId?: string; name: string; email: string; bank: string; account: string; amount: number; date: string; status: WithdrawalStatus };
-export type LedgerData = { users: AppUser[]; deposits: DepositReq[]; withdrawals: WithdrawalReq[]; compound: CompoundSettings };
-
-export const uid = () => Math.random().toString(36).slice(2, 9);
-const today = () => {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+export type DepositReq = {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  bankName: string;
+  accountNumber: string;
+  transferredAmountIdr: number;
+  destinationAccountId: string;
+  method: string;
+  amount: number;
+  proof?: string;
+  proofAvailable: boolean;
+  date: string;
+  status: DepositStatus;
+  note?: string;
 };
+export type WithdrawalStatus = 'Menunggu' | 'Diproses' | 'Berhasil' | 'Ditolak';
+export type WithdrawalReq = {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  bank: string;
+  account: string;
+  amount: number;
+  date: string;
+  status: WithdrawalStatus;
+  note?: string;
+};
+export type LedgerData = {
+  users: AppUser[];
+  deposits: DepositReq[];
+  withdrawals: WithdrawalReq[];
+  compound: CompoundSettings;
+};
+export type DepositInput = {
+  name: string;
+  bankName: string;
+  accountNumber: string;
+  transferredAmountIdr: number;
+  destinationAccountId: string;
+  method: string;
+  amount: number;
+  proof: string;
+};
+export type SessionUser = Pick<AppUser, 'id' | 'name' | 'email' | 'phone' | 'status'> & { created_at?: string };
+
+const emptyData: LedgerData = {
+  users: [],
+  deposits: [],
+  withdrawals: [],
+  compound: { globalRate: 0, enabled: false },
+};
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
 const money = (value: number) => Math.round(value * 100) / 100;
-export const seedUsers: AppUser[] = [
-  { id: 'u1', name: 'Budi Santoso', email: 'budi@contoh.com', phone: '081234567890', joined: '2026-08-12', balance: 0, deposit: 1500, profit: 0, dailyProfit: 0, status: 'Aktif' },
-  { id: 'u2', name: 'Siti Rahma', email: 'siti@contoh.com', phone: '081298765432', joined: '2026-09-03', balance: 0, deposit: 320, profit: 0, dailyProfit: 0, status: 'Belum Verifikasi' },
-  { id: 'u3', name: 'Andi Wijaya', email: 'andi@contoh.com', phone: '085611223344', joined: '2026-09-21', balance: 0, deposit: 0, profit: 0, dailyProfit: 0, status: 'Diblokir' },
-];
-const seed: LedgerData = { users: seedUsers, deposits: [], withdrawals: [], compound: { globalRate: 1, enabled: true } };
-export const depOf = (u: AppUser) => u.deposit ?? u.balance;
-export const profitOf = (u: AppUser) => u.profit ?? 0;
-export const dailyProfitOf = (u: AppUser) => u.dailyProfitDate === today() ? (u.dailyProfit ?? 0) : 0;
-export const mainOf = (u: AppUser) => u.balance;
-export const rateOf = (u: AppUser, c: CompoundSettings) => (u.rate ?? null) === null ? c.globalRate : (u.rate as number);
-const dayDiff = (a: string, b: string) => Math.max(0, Math.floor((Date.parse(b) - Date.parse(a)) / 86400000));
-/** Applies daily compounding (on saldo utama) for every full day elapsed since the user's last run. */
-export function compoundAll(d: LedgerData, force = false, date = today()): LedgerData {
-  const t = date;
-  if (!d.compound.enabled && !force) {
-    const users = d.users.map((u) => u.lastCompound === t && u.dailyProfitDate === t
-      ? u
-      : { ...u, lastCompound: t, dailyProfit: 0, dailyProfitDate: t });
-    return users.every((u, i) => u === d.users[i]) ? d : { ...d, users };
-  }
-  let changed = false;
-  const users = d.users.map((u) => {
-    const last = u.lastCompound ?? t;
-    const days = force ? 1 : dayDiff(last, t);
-    if (!u.lastCompound) { changed = true; return { ...u, deposit: depOf(u), profit: profitOf(u), dailyProfit: 0, dailyProfitDate: t, lastCompound: t }; }
-    if (!days) {
-      if (u.dailyProfitDate === t) return u;
-      changed = true;
-      return { ...u, dailyProfit: 0, dailyProfitDate: t };
-    }
-    changed = true;
-    if (u.status === 'Diblokir' || mainOf(u) <= 0) return { ...u, dailyProfit: 0, dailyProfitDate: t, lastCompound: t };
-    const main = mainOf(u);
-    const rate = Math.max(0, rateOf(u, d.compound)) / 100;
-    let balance = main;
-    let gain = 0;
-    let dailyGain = 0;
-    for (let day = 0; day < days; day++) {
-      dailyGain = money(balance * rate);
-      balance = money(balance + dailyGain);
-      gain = money(gain + dailyGain);
-    }
-    const todayCarry = force && u.dailyProfitDate === t ? (u.dailyProfit ?? 0) : 0;
-    return { ...u, deposit: depOf(u), profit: money(profitOf(u) + gain), dailyProfit: money(todayCarry + dailyGain), dailyProfitDate: t, balance, lastCompound: t };
-  });
-  return changed ? { ...d, users } : d;
-}
-const KEY = 'hsb-ledger-v2';
-const LEGACY_LEDGER_KEY = 'hsb-ledger-v1';
-const LEGACY_WITHDRAWAL_KEY = 'hsb-admin-withdraw-v1';
 
-export function migrateUsers(value: unknown) {
-  if (!Array.isArray(value)) return seedUsers;
-  const t = today();
-  return (value as AppUser[]).map((user) => {
-    const oldDeposit = Math.max(0, Number(user.deposit ?? user.balance) || 0);
-    const oldMainTotal = Math.max(0, Number(user.balance) || 0);
-    const oldMain = user.deposit === undefined ? 0 : Math.max(0, oldMainTotal - oldDeposit);
+export const uid = () => crypto.randomUUID();
+export const depOf = (user: AppUser) => user.deposit ?? 0;
+export const profitOf = (user: AppUser) => user.profit ?? 0;
+export const dailyProfitOf = (user: AppUser) => user.dailyProfitDate === today() ? (user.dailyProfit ?? 0) : 0;
+export const mainOf = (user: AppUser) => user.balance;
+export const rateOf = (user: AppUser, compound: CompoundSettings) => user.rate ?? compound.globalRate;
+const dayDiff = (start: string, end: string) => Math.max(0, Math.floor((Date.parse(end) - Date.parse(start)) / 86400000));
+
+/** Kept for deterministic model tests; production accrual is written once by the server. */
+export function compoundAll(data: LedgerData, force = false, date = today()): LedgerData {
+  if (!data.compound.enabled && !force) {
     return {
-      ...user,
-      balance: money(oldMain),
-      deposit: money(oldDeposit),
-      profit: money(Math.max(0, Number(user.profit) || 0)),
-      dailyProfit: 0,
-      dailyProfitDate: t,
-      creditedReferralIds: user.creditedReferralIds ?? [],
-      lastCompound: t,
+      ...data,
+      users: data.users.map((user) => ({ ...user, dailyProfit: 0, dailyProfitDate: date })),
     };
-  });
+  }
+  return {
+    ...data,
+    users: data.users.map((user) => {
+      const days = force ? 1 : dayDiff(user.lastCompound || date, date);
+      if (!days || user.status !== 'Aktif' || user.balance <= 0) {
+        return { ...user, dailyProfit: 0, dailyProfitDate: date, lastCompound: date };
+      }
+      const rate = Math.min(100, Math.max(0, rateOf(user, data.compound))) / 100;
+      let balance = user.balance;
+      let total = 0;
+      let daily = 0;
+      for (let index = 0; index < days; index += 1) {
+        daily = money(balance * rate);
+        balance = money(balance + daily);
+        total = money(total + daily);
+      }
+      return {
+        ...user,
+        balance,
+        profit: money(user.profit + total),
+        dailyProfit: daily,
+        dailyProfitDate: date,
+        lastCompound: date,
+      };
+    }),
+  };
 }
 
-function migrateWithdrawals(value: unknown): WithdrawalReq[] {
-  if (!Array.isArray(value)) return [];
-  const allowed: WithdrawalStatus[] = ['Menunggu', 'Diproses', 'Berhasil', 'Ditolak'];
-  return value.flatMap((item) => {
-    if (!item || typeof item !== 'object') return [];
-    const row = item as Partial<WithdrawalReq>;
-    if (typeof row.id !== 'string' || typeof row.amount !== 'number') return [];
-    return [{
-      id: row.id,
-      ...(typeof row.userId === 'string' ? { userId: row.userId } : {}),
-      name: row.name ?? '',
-      email: row.email ?? '',
-      bank: row.bank ?? '',
-      account: row.account ?? '',
-      amount: row.amount,
-      date: row.date ?? today(),
-      status: allowed.includes(row.status as WithdrawalStatus) ? row.status as WithdrawalStatus : 'Menunggu',
-    }];
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    credentials: 'same-origin',
+    ...init,
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
   });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(typeof payload?.error === 'string' ? payload.error : `Permintaan gagal (${response.status}).`);
+  }
+  return payload as T;
 }
 
 type Ctx = LedgerData & {
-  setUsers: (f: (u: AppUser[]) => AppUser[]) => void;
-  submitDeposit: (d: Omit<DepositReq, 'id' | 'date' | 'status'>) => void;
-  review: (id: string, approve: boolean, note?: string) => void;
-  removeDeposit: (id: string) => void;
-  resetUsers: () => void;
-  setCompound: (c: Partial<CompoundSettings>) => void;
-  runCompound: () => void;
-  transferDepositToMain: (userId: string) => number;
-  creditReferralDeposit: (userId: string, amount: number, referralId: string) => boolean;
-  requestWithdrawal: (userId: string, details: { bank: string; account: string; amount: number }) => string | null;
-  reviewWithdrawal: (id: string, status: WithdrawalStatus) => void;
-  updateWithdrawal: (id: string, patch: Partial<Pick<WithdrawalReq, 'name' | 'email' | 'bank' | 'account' | 'date'>>) => void;
-  deleteWithdrawal: (id: string) => boolean;
   currentEmail: string;
-  setCurrentEmail: (e: string) => void;
+  currentUser: SessionUser | null;
+  loading: boolean;
+  error: string;
+  refresh: () => Promise<void>;
+  register: (details: { name: string; email: string; phone: string; password: string }) => Promise<void>;
+  login: (identity: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  setCurrentEmail: (email: string) => void;
+  submitDeposit: (details: DepositInput) => Promise<void>;
+  getDepositProof: (id: string) => Promise<string>;
+  review: (id: string, approve: boolean, note?: string) => Promise<void>;
+  updateUser: (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate'>>) => Promise<void>;
+  setCompound: (compound: Partial<CompoundSettings>) => Promise<void>;
+  runCompound: () => Promise<{ applied: number; date: string }>;
+  transferDepositToMain: (userId: string) => Promise<number>;
+  creditReferralDeposit: (userId: string, amount: number, referralId: string) => Promise<boolean>;
+  requestWithdrawal: (userId: string, details: { bank: string; account: string; amount: number }) => Promise<string | null>;
+  reviewWithdrawal: (id: string, status: WithdrawalStatus, confirmPayout?: boolean, note?: string) => Promise<void>;
 };
-const C = createContext<Ctx | null>(null);
+
+const LedgerContext = createContext<Ctx | null>(null);
 
 export function LedgerProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<LedgerData>(seed);
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const [data, setData] = useState<LedgerData>(emptyData);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const r = localStorage.getItem(KEY);
-      if (r) {
-        const saved = JSON.parse(r) as Partial<LedgerData>;
-        setData(compoundAll({ ...seed, ...saved, users: Array.isArray(saved.users) ? saved.users : seed.users, withdrawals: Array.isArray(saved.withdrawals) ? saved.withdrawals : [] }));
+      const auth = await requestJson<{ user: SessionUser | null }>('/api/auth/me');
+      setCurrentUser(auth.user);
+      if (pathname.startsWith('/admin')) {
+        setData(await requestJson<LedgerData & { bankAccounts?: unknown[]; depositContent?: unknown }>('/api/admin/state'));
+      } else if (auth.user) {
+        setData(await requestJson<LedgerData>('/api/account/state'));
       } else {
-        const oldLedger = localStorage.getItem(LEGACY_LEDGER_KEY);
-        const oldData = oldLedger ? JSON.parse(oldLedger) as Partial<LedgerData> : null;
-        const oldAdminUsers = !oldData ? localStorage.getItem('hsb-admin-users-v1') : null;
-        const oldWithdrawals = localStorage.getItem(LEGACY_WITHDRAWAL_KEY);
-        setData({
-          ...seed,
-          ...(oldData ?? {}),
-          users: migrateUsers(oldData?.users ?? (oldAdminUsers ? JSON.parse(oldAdminUsers) : seedUsers)),
-          deposits: Array.isArray(oldData?.deposits) ? oldData.deposits : [],
-          withdrawals: migrateWithdrawals(oldData?.withdrawals ?? (oldWithdrawals ? JSON.parse(oldWithdrawals) : [])),
-        });
+        setData(emptyData);
       }
-    } catch { /* ignore */ }
-    setLoaded(true);
+    } catch (cause) {
+      setData(emptyData);
+      setError(cause instanceof Error ? cause.message : 'Tidak dapat memuat akun.');
+    } finally {
+      setLoading(false);
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const currentEmail = currentUser?.email ?? '';
+  const post = useCallback(<T,>(url: string, body?: unknown, method = 'POST') =>
+    requestJson<T>(url, {
+      method,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    }), []);
+
+  const register = useCallback(async (details: { name: string; email: string; phone: string; password: string }) => {
+    await post('/api/auth/register', details);
+    await refresh();
+  }, [post, refresh]);
+
+  const login = useCallback(async (identity: string, password: string) => {
+    await post('/api/auth/login', { identity, password });
+    await refresh();
+  }, [post, refresh]);
+
+  const logout = useCallback(async () => {
+    try {
+      await post('/api/auth/logout');
+    } finally {
+      setCurrentUser(null);
+      setData(emptyData);
+      setError('');
+    }
+  }, [post]);
+
+  const setCurrentEmail = useCallback((email: string) => {
+    if (!email) void logout();
+  }, [logout]);
+
+  const submitDeposit = useCallback(async (details: DepositInput) => {
+    await post('/api/account/deposits', details);
+    await refresh();
+  }, [post, refresh]);
+
+  const getDepositProof = useCallback(async (id: string) => {
+    const result = await requestJson<{ proof: string }>(`/api/admin/deposits/${encodeURIComponent(id)}/proof`);
+    return result.proof;
   }, []);
-  useEffect(() => { if (!loaded) return; try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* storage full */ } }, [data, loaded]);
 
-  const [currentEmail, setCur] = useState('');
-  useEffect(() => { setCur(localStorage.getItem('hsb-current-email') || ''); }, []);
-  const setCurrentEmail = (e: string) => { setCur(e); try { if (e) localStorage.setItem('hsb-current-email', e); else localStorage.removeItem('hsb-current-email'); } catch { /* ignore */ } };
-  useEffect(() => { const t = setInterval(() => setData((p) => compoundAll(p)), 60000); return () => clearInterval(t); }, []);
-  const review = (id: string, approve: boolean, note?: string) => setData((p) => {
-    const d = p.deposits.find((x) => x.id === id);
-    if (!d || d.status !== 'Menunggu') return p;
-    const deposits = p.deposits.map((x) => x.id === id ? { ...x, status: (approve ? 'Disetujui' : 'Ditolak') as DepositStatus, note } : x);
-    if (!approve) return { ...p, deposits };
-    const key = (d.email || d.name).trim().toLowerCase();
-    const exists = p.users.some((u) => (u.email || u.name).trim().toLowerCase() === key);
-    const users = exists
-      ? p.users.map((u) => (u.email || u.name).trim().toLowerCase() === key ? { ...u, deposit: money(depOf(u) + d.amount) } : u)
-      : [{ id: uid(), name: d.name, email: d.email, phone: '', joined: today(), balance: 0, deposit: d.amount, profit: 0, dailyProfit: 0, dailyProfitDate: today(), lastCompound: today(), status: 'Aktif' as UserStatus }, ...p.users];
-    return { ...p, users, deposits };
-  });
+  const review = useCallback(async (id: string, approve: boolean, note = '') => {
+    await post(`/api/admin/deposits/${encodeURIComponent(id)}/review`, { approved: approve, note });
+    await refresh();
+  }, [post, refresh]);
 
-  const transferDepositToMain = (userId: string) => {
-    const user = data.users.find((item) => item.id === userId);
-    const amount = user ? depOf(user) : 0;
-    if (!user || user.status !== 'Aktif' || !data.compound.enabled || amount <= 0) return 0;
-    setData((p) => {
-      const current = p.users.find((item) => item.id === userId);
-      if (!current || current.status !== 'Aktif' || !p.compound.enabled || depOf(current) <= 0) return p;
-      const moved = depOf(current);
-      return { ...p, users: p.users.map((item) => item.id === userId ? { ...item, balance: money(mainOf(item) + moved), deposit: 0, dailyProfit: dailyProfitOf(item), dailyProfitDate: today(), lastCompound: today() } : item) };
-    });
-    return amount;
-  };
+  const updateUser = useCallback(async (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate'>>) => {
+    await post(`/api/admin/users/${encodeURIComponent(id)}`, patch, 'PATCH');
+    await refresh();
+  }, [post, refresh]);
 
-  const creditReferralDeposit = (userId: string, amount: number, referralId: string) => {
-    const user = data.users.find((item) => item.id === userId);
-    if (!user || amount <= 0 || !Number.isFinite(amount)) return false;
-    if (user.creditedReferralIds?.includes(referralId)) return true;
-    setData((p) => ({
-      ...p,
-      users: p.users.map((item) => {
-        if (item.id !== userId || item.creditedReferralIds?.includes(referralId)) return item;
-        return { ...item, deposit: money(depOf(item) + amount), creditedReferralIds: [...(item.creditedReferralIds ?? []), referralId] };
-      }),
-    }));
+  const setCompound = useCallback(async (patch: Partial<CompoundSettings>) => {
+    const next = { ...data.compound, ...patch };
+    await post('/api/admin/compound/settings', next, 'PATCH');
+    await refresh();
+  }, [data.compound, post, refresh]);
+
+  const runCompound = useCallback(async () => {
+    const result = await post<{ applied: number; date: string }>('/api/admin/compound/run');
+    await refresh();
+    return result;
+  }, [post, refresh]);
+
+  const transferDepositToMain = useCallback(async (_userId: string) => {
+    const result = await post<{ moved: number }>('/api/account/transfer-deposit');
+    await refresh();
+    return result.moved;
+  }, [post, refresh]);
+
+  const creditReferralDeposit = useCallback(async (userId: string, amount: number, referralId: string) => {
+    await post('/api/admin/referrals/credit', { userId, amount, referralId });
+    await refresh();
     return true;
-  };
+  }, [post, refresh]);
 
-  const requestWithdrawal = (userId: string, details: { bank: string; account: string; amount: number }) => {
-    const user = data.users.find((item) => item.id === userId);
-    const amount = money(details.amount);
-    if (!user || user.status !== 'Aktif' || !Number.isFinite(amount) || amount <= 0 || amount > mainOf(user)) return null;
-    const id = uid();
-    const request: WithdrawalReq = { id, userId, name: user.name, email: user.email, bank: details.bank, account: details.account, amount, date: today(), status: 'Menunggu' };
-    setData((p) => {
-      const current = p.users.find((item) => item.id === userId);
-      if (!current || current.status !== 'Aktif' || amount > mainOf(current)) return p;
-      return {
-        ...p,
-        users: p.users.map((item) => item.id === userId ? { ...item, balance: money(mainOf(item) - amount) } : item),
-        withdrawals: [request, ...p.withdrawals],
-      };
-    });
-    return id;
-  };
+  const requestWithdrawal = useCallback(async (_userId: string, details: { bank: string; account: string; amount: number }) => {
+    const result = await post<{ id: string }>('/api/account/withdrawals', details);
+    await refresh();
+    return result.id;
+  }, [post, refresh]);
 
-  const reviewWithdrawal = (id: string, status: WithdrawalStatus) => setData((p) => {
-    const request = p.withdrawals.find((item) => item.id === id);
-    if (!request || request.status === status) return p;
-    if (request.userId && (request.status === 'Berhasil' || request.status === 'Ditolak')) return p;
-    const users = status === 'Ditolak' && request.userId
-      ? p.users.map((user) => user.id === request.userId ? { ...user, balance: money(mainOf(user) + request.amount) } : user)
-      : p.users;
-    return { ...p, users, withdrawals: p.withdrawals.map((item) => item.id === id ? { ...item, status } : item) };
-  });
+  const reviewWithdrawal = useCallback(async (id: string, status: WithdrawalStatus, confirmPayout = false, note = '') => {
+    await post(`/api/admin/withdrawals/${encodeURIComponent(id)}/review`, { status, confirmPayout, note });
+    await refresh();
+  }, [post, refresh]);
 
-  const updateWithdrawal = (id: string, patch: Partial<Pick<WithdrawalReq, 'name' | 'email' | 'bank' | 'account' | 'date'>>) => setData((p) => ({
-    ...p,
-    withdrawals: p.withdrawals.map((item) => item.id === id ? { ...item, ...patch } : item),
-  }));
-
-  const deleteWithdrawal = (id: string) => {
-    const request = data.withdrawals.find((item) => item.id === id);
-    if (!request || (request.userId && request.status === 'Berhasil')) return false;
-    setData((p) => {
-      const current = p.withdrawals.find((item) => item.id === id);
-      if (!current || (current.userId && current.status === 'Berhasil')) return p;
-      const users = current.userId && current.status !== 'Ditolak'
-        ? p.users.map((user) => user.id === current.userId ? { ...user, balance: money(mainOf(user) + current.amount) } : user)
-        : p.users;
-      return { ...p, users, withdrawals: p.withdrawals.filter((item) => item.id !== id) };
-    });
-    return true;
-  };
-
-  return <C.Provider value={{
+  const value = useMemo<Ctx>(() => ({
     ...data,
-    setUsers: (f) => setData((p) => ({ ...p, users: f(p.users) })),
-    currentEmail, setCurrentEmail,
-    setCompound: (c) => setData((p) => ({ ...p, compound: { ...p.compound, ...c } })),
-    runCompound: () => setData((p) => compoundAll(p, true)),
+    currentEmail,
+    currentUser,
+    loading,
+    error,
+    refresh,
+    register,
+    login,
+    logout,
+    setCurrentEmail,
+    submitDeposit,
+    getDepositProof,
+    review,
+    updateUser,
+    setCompound,
+    runCompound,
     transferDepositToMain,
     creditReferralDeposit,
     requestWithdrawal,
     reviewWithdrawal,
-    updateWithdrawal,
-    deleteWithdrawal,
-    submitDeposit: (d) => { setCurrentEmail(d.email); setData((p) => ({ ...p, deposits: [{ ...d, id: uid(), date: new Date().toISOString(), status: 'Menunggu' }, ...p.deposits] })); },
-    review,
-    removeDeposit: (id) => setData((p) => ({ ...p, deposits: p.deposits.filter((x) => x.id !== id) })),
-    resetUsers: () => setData((p) => ({ ...p, users: seedUsers })),
-  }}>{children}</C.Provider>;
-}
-export function useLedger() { const c = useContext(C); if (!c) throw new Error('LedgerProvider missing'); return c; }
+  }), [
+    data, currentEmail, currentUser, loading, error, refresh, register, login, logout,
+    setCurrentEmail, submitDeposit, getDepositProof, review, updateUser, setCompound,
+    runCompound, transferDepositToMain, creditReferralDeposit, requestWithdrawal, reviewWithdrawal,
+  ]);
 
-/** Shrinks an uploaded image to a small JPEG data URL so it fits in browser storage. */
+  return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;
+}
+
+export function useLedger() {
+  const context = useContext(LedgerContext);
+  if (!context) throw new Error('LedgerProvider missing');
+  return context;
+}
+
+/** Shrinks an uploaded proof to a smaller JPEG before encrypted database storage. */
 export function compressImage(file: File, max = 900): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const s = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
-      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(c.toDataURL('image/jpeg', 0.7));
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gambar tidak valid')); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Gambar tidak valid'));
+    };
     img.src = url;
   });
 }

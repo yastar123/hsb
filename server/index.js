@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { createServer as createViteServer } from "vite";
+import { createApiRouter } from "./api.js";
 
 const { Pool } = pg;
 const app = express();
@@ -18,7 +19,8 @@ const databaseUrl = process.env.DATABASE_URL?.trim();
 const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "2mb" }));
+app.set("trust proxy", process.env.NODE_ENV === "production" ? 1 : false);
+app.use(express.json({ limit: "3mb" }));
 
 app.get("/api/health", async (_request, response) => {
   if (!pool) {
@@ -33,6 +35,8 @@ app.get("/api/health", async (_request, response) => {
     return response.status(503).json({ status: "error", database: "disconnected" });
   }
 });
+
+app.use("/api", createApiRouter(pool));
 
 app.use("/api", (_request, response) => {
   response.status(404).json({ error: "API route not found" });

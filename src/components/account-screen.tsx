@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { isValidPassword, passwordRules } from '@/lib/account-validation';
 import { useLedger } from '@/components/ledger-content';
-import { demoAccounts, findDemoAccount } from '@/lib/demo-accounts';
 import { useAppPreferences, translate } from '@/components/app-preferences';
 
 export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
@@ -14,38 +13,34 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
   const [visible, setVisible] = useState(false);
-  const [invitation, setInvitation] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [dialog, setDialog] = useState<'privacy' | 'forgot' | null>(null);
   const [notice, setNotice] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const { setCurrentEmail } = useLedger();
+  const { login, register: createAccount } = useLedger();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
-  const signInDemo = (account: (typeof demoAccounts)[number]) => {
-    setCurrentEmail(account.role === 'user' ? account.email : '');
-    if (account.role === 'admin') {
-      void navigate({ to: '/admin' });
-    } else {
-      void navigate({ to: '/beranda' });
-    }
-  };
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (register) {
-      setNotice(tr('Pendaftaran belum terhubung ke layanan akun.'));
-      return;
+    setBusy(true);
+    setNotice('');
+    try {
+      if (register) {
+        await createAccount({ name, email, phone: identity, password });
+        setNotice(tr('Akun berhasil dibuat dan menunggu verifikasi admin sebelum transaksi keuangan.'));
+        await navigate({ to: '/beranda' });
+      } else {
+        await login(identity, password);
+        await navigate({ to: '/beranda' });
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : tr('Permintaan gagal. Periksa data dan coba lagi.'));
+    } finally {
+      setBusy(false);
     }
-    if (!import.meta.env.DEV) {
-      setNotice(tr('Login belum terhubung ke layanan akun.'));
-      return;
-    }
-    const account = findDemoAccount(identity, password);
-    if (!account) {
-      setNotice(tr('Email atau kata sandi akun demo tidak valid.'));
-      return;
-    }
-    signInDemo(account);
   };
 
   return <main className="account-page">
@@ -54,7 +49,7 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
         <Link to="/beranda" className="account-brand" aria-label="HSB — Beranda"><img src="/hsb-mark.svg" width="25" height="25" alt="" />HSB</Link>
         <div className="account-award"><span>❧</span><div>MOST<br /><b>Innovative</b><br />Broker<br />2024</div><span>❧</span></div>
       </header>
-      <section className={`account-content ${register ? 'account-registration' : 'account-signin'} ${!register && import.meta.env.DEV ? 'account-signin-demo' : ''}`}>
+      <section className={`account-content ${register ? 'account-registration' : 'account-signin'}`}>
         <div className="account-heading"><Button asChild variant="ghost" size="icon"><Link to="/" aria-label={tr('Kembali ke welcome')}><ArrowLeft /></Link></Button><h1>{tr(register ? 'Buka Akun' : 'Masuk')}</h1></div>
         {!register && <div className="account-tabs" role="tablist" aria-label={tr('Metode masuk')}>{[{ id: 'phone', label: 'Nomor Telepon' }, { id: 'email', label: 'Email' }].map((item) => <Button key={item.id} variant="ghost" role="tab" aria-selected={tab === item.id} onClick={() => { setTab(item.id); setIdentity(''); setNotice(''); }}>{tr(item.label)}</Button>)}</div>}
         <form onSubmit={submit} className="account-form">
@@ -62,24 +57,18 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
             {(register || tab === 'phone') && <div className="account-country" aria-label="Indonesia, kode negara +62"><span className="account-flag" />+62</div>}
             <div className="account-field"><span className="account-field-icon">{tab === 'email' && !register ? <Mail /> : <Smartphone />}</span><Input aria-label={tab === 'email' && !register ? tr('Email') : tr('Nomor Telepon')} placeholder={tab === 'email' && !register ? tr('Email') : tr('Nomor Telepon')} type={tab === 'email' && !register ? 'email' : 'text'} inputMode={tab === 'email' && !register ? 'email' : 'numeric'} autoComplete={tab === 'email' && !register ? 'email' : 'tel-national'} value={identity} onChange={(event) => setIdentity(event.target.value)} required /></div>
           </div>
+          {register && <>
+            <div className="account-field"><span className="account-field-icon"><Smartphone /></span><Input aria-label={tr('Nama Lengkap')} placeholder={tr('Nama Lengkap')} autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={120} required /></div>
+            <div className="account-field"><span className="account-field-icon"><Mail /></span><Input aria-label={tr('Email')} placeholder={tr('Email')} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} required /></div>
+          </>}
           <div className="account-field"><span className="account-field-icon"><LockKeyhole /></span><Input aria-label={tr('Kata Sandi')} placeholder={tr('Kata Sandi')} type={visible ? 'text' : 'password'} autoComplete={register ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} required /><Button type="button" variant="ghost" size="icon" className="account-eye" aria-label={tr(visible ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi')} onClick={() => setVisible(!visible)}>{visible ? <Eye /> : <EyeOff />}</Button></div>
           {register ? <>
             <ul className="account-password-rules">{passwordRules.map((rule) => <li key={rule.label} className={rule.valid(password) ? 'account-rule-valid' : ''}><Check />{tr(rule.label)}</li>)}</ul>
-            <Button type="button" variant="ghost" className="account-invitation" aria-expanded={invitation} onClick={() => setInvitation(!invitation)}>{tr('Kode Undangan (Opsional)')}<ChevronDown className={invitation ? 'rotate-180' : ''} /></Button>
-            {invitation && <div className="account-field"><Input aria-label={tr('Kode Undangan')} placeholder={tr('Masukkan kode undangan')} /></div>}
             <label className="account-consent"><input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} /><span>{tr('Saya telah membaca dan menyetujui')} <Button type="button" variant="link" onClick={() => setDialog('privacy')}>{tr('Kebijakan Privasi')}</Button> HSB.</span></label>
           </> : <div className="account-forgot"><Button type="button" variant="link" onClick={() => setDialog('forgot')}>{tr('Lupa Kata Sandi')}</Button></div>}
-          <Button type="submit" className="account-submit" disabled={register && (!identity.trim() || !isValidPassword(password) || !agreed)}>{tr(register ? 'Daftar' : 'Masuk')}</Button>
+          <Button type="submit" className="account-submit" disabled={busy || (register && (!identity.trim() || !name.trim() || !email.trim() || !isValidPassword(password) || !agreed))}>{busy ? tr('Memproses...') : tr(register ? 'Daftar' : 'Masuk')}</Button>
           {notice && <p className="account-notice" role="status">{notice}</p>}
         </form>
-        {!register && import.meta.env.DEV && <section className="account-demo" aria-labelledby="account-demo-title">
-          <div className="account-demo-heading"><h2 id="account-demo-title">{tr('Akun Demo')}</h2><span>{tr('Pratinjau lokal')}</span></div>
-          <p>{tr('Akun simulasi untuk mencoba tampilan pengguna dan admin. Bukan untuk transaksi nyata.')}</p>
-          <div className="account-demo-list">{demoAccounts.map((account) => <article className="account-demo-card" key={account.role}>
-            <div><strong>{account.label}</strong><span>Email: <code>{account.email}</code></span><span>Kata sandi: <code>{account.password}</code></span></div>
-            <Button type="button" variant="outline" size="sm" onClick={() => signInDemo(account)}>Masuk sebagai {account.label}</Button>
-          </article>)}</div>
-        </section>}
          <div className="account-switch">{tr(register ? 'Sudah punya akun?' : 'Belum punya akun?')}<Button variant="link" asChild><Link to={register ? '/login' : '/register'}>{tr(register ? 'Masuk Sekarang' : 'Daftar di Sini')}</Link></Button></div>
         <div className="account-browse"><Button variant="link" asChild><Link to="/beranda">{tr('Lihat Beranda')}</Link></Button></div>
         <footer className="account-partners" aria-label="Lembaga terkait"><div><Landmark /><span>KEMENTERIAN<br />PERDAGANGAN<small>REPUBLIK INDONESIA</small></span></div><div className="account-icdx"><b>ICDX</b><small>TRADE THE SOURCE</small></div><div><Layers /><span>INDONESIA<br />CLEARING<br />HOUSE</span></div><div><ShieldCheck /><span>ASPEBTINDO</span></div></footer>
