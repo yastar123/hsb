@@ -1,2 +1,2 @@
-- [Demo financial-data integrity](financial-preview-integrity.md) — Keep preview accounts and money flows clearly labeled until authoritative backend and payment connections exist.
+- [Real-finance integrity](financial-preview-integrity.md) — Honor the no-demo direction; never present unverified balances, prices, or transactions as real.
 - [npm portability on Replit and VPS](npm-runtime.md) — Keep Node available in workflows and keep lockfile tarballs accessible outside Replit.

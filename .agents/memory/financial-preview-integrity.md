@@ -1,10 +1,10 @@
 ---
-name: Demo financial-data integrity
-description: Constraints for demo accounts, balances, prices, deposits, withdrawals, and trading.
+name: Real-finance integrity
+description: The user's no-demo product direction and safeguards for real financial activity.
 ---
 
-Keep disclosures that accounts, prices, balances, deposits, withdrawals, and trading are simulated until real services are connected end to end. Do not present browser-local state as actual user funds, or treat receipt uploads and admin clicks as confirmed cash transfers.
+The user wants no demo flows in this product ("tidak ada demo, semua real"). Do not present simulated balances, prices, deposits, withdrawals, trade executions, or compounding results as real.
 
-**Why:** this project does not yet have an authoritative production identity, payment, market-data, or brokerage integration; browser-only values cannot verify real financial activity.
+**Why:** the current app has browser-local financial state and no connected identity, payment, live-market, or brokerage service. The user asked for real operation, so unverified features must not imply real outcomes.
 
-**How to apply:** retain demo labels and disable real order actions until secure server-side services and independently verifiable transaction status are implemented.
+**How to apply:** enable live flows only through authoritative providers or explicit, auditable manual settlement. Until the needed service and verification exist, keep live actions unavailable or clearly identify test-only behavior. Do not claim regulatory status or guaranteed returns without verified evidence.
