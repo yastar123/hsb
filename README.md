@@ -1,29 +1,27 @@
-# Welcome to your Lovable project
+# HSB Trading
 
-This project was built with [Lovable](https://lovable.dev).
+React, TypeScript, and TanStack Router frontend with an Express API and PostgreSQL connection.
 
-## Build with Lovable
+## Run locally
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Install dependencies with Bun and start the combined Express/Vite development server:
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install
+bun run dev
 ```
 
-## Built with
+The site is served on port 5000. The API health endpoint is `/api/health`.
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+## PostgreSQL
+
+Replit supplies the PostgreSQL connection as `DATABASE_URL` at runtime. For local development, copy `.env.example` to `.env` and replace the example URL with a PostgreSQL connection string. Never commit `.env` or real credentials.
+
+The app's current demo content and account flows still use browser storage. The Express/PostgreSQL connection is available and checked by `/api/health`; product-specific database tables and APIs should be added when those data requirements are defined.
+
+## Production build
+
+```sh
+bun run build
+bun run start
+```

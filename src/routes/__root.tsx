@@ -3,21 +3,20 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  useRouter,
   HeadContent,
-  Scripts,
+  useRouter,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
-import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { MarketProvider } from '@/components/market-context';
-import { HomeContentProvider } from '@/components/home-content';
-import { DepositContentProvider } from '@/components/deposit-content';
-import { ReferralProvider } from '@/components/referral-content';
-import { FaqProvider } from '@/components/faq-content';
-import { LedgerProvider } from '@/components/ledger-content';
+import { MarketProvider } from "@/components/market-context";
+import { HomeContentProvider } from "@/components/home-content";
+import { DepositContentProvider } from "@/components/deposit-content";
+import { ReferralProvider } from "@/components/referral-content";
+import { FaqProvider } from "@/components/faq-content";
+import { LedgerProvider } from "@/components/ledger-content";
 
 function NotFoundComponent() {
   return (
@@ -87,42 +86,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-    links: [
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;650;700&display=swap" },
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/hsb-mark.svg", type: "image/svg+xml" },
-    ],
+    links: [{ rel: "icon", href: "/hsb-mark.svg", type: "image/svg+xml" }],
   }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: ReactNode }) {
-  return (
-    <html lang="id">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
+      {createPortal(<HeadContent />, document.head)}
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <MarketProvider><HomeContentProvider><DepositContentProvider><ReferralProvider><FaqProvider><LedgerProvider><Outlet /></LedgerProvider></FaqProvider></ReferralProvider></DepositContentProvider></HomeContentProvider></MarketProvider>
+      <MarketProvider>
+        <HomeContentProvider>
+          <DepositContentProvider>
+            <ReferralProvider>
+              <FaqProvider>
+                <LedgerProvider>
+                  <Outlet />
+                </LedgerProvider>
+              </FaqProvider>
+            </ReferralProvider>
+          </DepositContentProvider>
+        </HomeContentProvider>
+      </MarketProvider>
     </QueryClientProvider>
   );
 }
