@@ -74,7 +74,6 @@ export function MarketDetailScreen({ product }: { product: Product }) {
           <span>{(product.spread / 10 ** product.decimals).toFixed(product.decimals)}</span>
           <Button variant="marketBuy" disabled title={tr('Trading tidak tersedia di pratinjau demo')}>{tr('BELI')}<small>{liveAsk.toFixed(product.decimals)}</small></Button>
         </div>
-        <DemoStrip />
       </div>
     </div>
   </main>;

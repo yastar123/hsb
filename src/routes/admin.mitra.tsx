@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { commissionOf, uid, useReferral, type Referral, type Referrer } from '@/components/referral-content';
+import { useLedger } from '@/components/ledger-content';
 
 export const Route = createFileRoute('/admin/mitra')({
   head: () => ({ meta: [
@@ -22,19 +23,41 @@ const tabs = ['Ringkasan Komisi', 'Mitra', 'User Diajak', 'Pengaturan Program'] 
 
 function AdminMitra() {
   const { data, setData } = useReferral();
+  const { users: ledgerUsers, currentEmail, creditReferralDeposit } = useLedger();
   const [tab, setTab] = useState<(typeof tabs)[number]>('Ringkasan Komisi');
   const [filter, setFilter] = useState('');
+  const [notice, setNotice] = useState('');
   const set = <K extends keyof typeof data>(k: K, v: (typeof data)[K]) => setData((p) => ({ ...p, [k]: v }));
   const updRef = (id: string, patch: Partial<Referrer>) => set('referrers', data.referrers.map((r) => r.id === id ? { ...r, ...patch } : r));
   const updUser = (id: string, patch: Partial<Referral>) => set('referrals', data.referrals.map((r) => r.id === id ? { ...r, ...patch } : r));
   const total = data.referrals.reduce((s, r) => s + commissionOf(data, r), 0);
   const paid = data.referrals.filter((r) => r.commissionPaid).reduce((s, r) => s + commissionOf(data, r), 0);
   const users = data.referrals.filter((r) => !filter || r.referrerId === filter);
+  const payReferral = (referral: Referral) => {
+    if (referral.commissionPaid) return;
+    if (referral.deposit < data.minDeposit) {
+      setNotice('Komisi baru dapat dikreditkan setelah deposit referral mencapai batas minimum.');
+      return;
+    }
+    const referrer = data.referrers.find((item) => item.id === referral.referrerId);
+    const recipient = ledgerUsers.find((item) => item.email.toLowerCase() === referrer?.email.toLowerCase())
+      ?? (referrer?.code === data.currentUserCode
+        ? ledgerUsers.find((item) => item.email.toLowerCase() === currentEmail.toLowerCase()) ?? ledgerUsers[0]
+        : undefined);
+    const amount = commissionOf(data, referral);
+    if (!recipient || amount <= 0 || !creditReferralDeposit(recipient.id, amount, referral.id)) {
+      setNotice('Akun saldo untuk mitra ini belum ditemukan; komisi belum ditandai dibayar.');
+      return;
+    }
+    updUser(referral.id, { commissionPaid: true });
+    setNotice(`Komisi simulasi $${amount.toFixed(2)} ditambahkan ke saldo deposit ${recipient.name}.`);
+  };
 
   return <main className="space-y-4 p-4 text-foreground md:p-6">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h1 className="text-2xl font-bold">Kelola Mitra &amp; Referral</h1><p className="text-sm text-muted-foreground">Tersimpan di browser ini · belum terhubung ke server.</p></div>
     </div>
+    {notice && <p role="status" className="rounded-lg border border-border bg-background p-3 text-sm">{notice}</p>}
     <div className="flex flex-wrap gap-2">{tabs.map((t) => <Button key={t} variant={tab === t ? 'default' : 'outline'} size="sm" onClick={() => setTab(t)}>{t}</Button>)}</div>
 
     {tab === 'Ringkasan Komisi' && <>
@@ -74,7 +97,7 @@ function AdminMitra() {
           <td className="pr-1"><input type="number" className={inp} value={u.deposit} onChange={(e) => updUser(u.id, { deposit: Number(e.target.value) })} aria-label="Deposit" /></td>
           <td className="pr-1"><select className={inp} value={u.status} onChange={(e) => updUser(u.id, { status: e.target.value as Referral['status'] })} aria-label="Status"><option>Terdaftar</option><option>Deposit</option><option>Aktif Trading</option></select></td>
           <td className="pr-1 font-medium">${commissionOf(data, u).toFixed(2)}</td>
-          <td><input type="checkbox" checked={u.commissionPaid} onChange={(e) => updUser(u.id, { commissionPaid: e.target.checked })} aria-label="Komisi dibayar" /></td>
+          <td><input type="checkbox" checked={u.commissionPaid} disabled={u.commissionPaid || u.deposit < data.minDeposit} onChange={() => payReferral(u)} aria-label="Komisi dikreditkan ke saldo deposit" title="Centang untuk mengkreditkan komisi ke saldo deposit mitra" /></td>
           <td><Button size="icon" variant="ghost" aria-label="Hapus" onClick={() => set('referrals', data.referrals.filter((r) => r.id !== u.id))}><Trash2 /></Button></td>
         </tr>)}</tbody></table></article>}
 

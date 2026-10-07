@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { ArrowLeft, ArrowLeftRight, CircleHelp, Wallet, ReceiptText, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, ChevronRight, ShieldCheck, CalendarDays, PackageOpen, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDepositContent } from '@/components/deposit-content';
-import { useLedger, compressImage, depOf, profitOf, mainOf, rateOf } from '@/components/ledger-content';
+import { useLedger, compressImage, depOf, profitOf, dailyProfitOf, mainOf, rateOf } from '@/components/ledger-content';
 import { useBankAccounts } from '@/lib/bank-accounts';
 import { useAppPreferences, translate } from '@/components/app-preferences';
 import { ArrowUpFromLine } from 'lucide-react';
@@ -34,20 +34,26 @@ function PageHeader({ title }: { title: string }) {
 export function PositionScreen() {
   const [tab, setTab] = useState<'Posisi' | 'Riwayat'>('Posisi');
   const [notice, setNotice] = useState('');
-  const { users, compound, currentEmail, setCurrentEmail } = useLedger();
+  const { users, compound, currentEmail, transferDepositToMain } = useLedger();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
   const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase()) ?? users[0];
   const f = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const switchAcc = () => { if (!users.length) return; const i = users.findIndex((u) => u.id === me?.id); setCurrentEmail(users[(i + 1) % users.length]?.email ?? ""); };
-  const marquee = me ? `Compounding harian ${rateOf(me, compound)}% dari saldo utama · ` : 'Lakukan deposit untuk mulai · ';
+  const compoundNow = () => {
+    if (!me) return;
+    const moved = transferDepositToMain(me.id);
+    if (moved > 0) setNotice(`${tr('Saldo deposit')} $${f(moved)} ${tr('dipindahkan ke saldo utama. Profit mengikuti siklus compounding harian yang aktif.')}`);
+    else if (!compound.enabled) setNotice(tr('Compounding sedang dinonaktifkan admin.'));
+    else if (me.status !== 'Aktif') setNotice(tr('Akun belum aktif untuk compounding.'));
+    else setNotice(tr('Tidak ada saldo deposit yang dapat dipindahkan.'));
+  };
+  const marquee = me ? `SIMULASI · saldo lokal, bukan dana sungguhan · Compounding harian ${rateOf(me, compound)}% dari saldo utama · ` : 'SIMULASI · saldo lokal · Lakukan deposit untuk mulai · ';
   return <main className="home-page"><div className="home-shell acct-shell">
     <section className="acct-card">
-      <div className="acct-id"><div><h1>{me?.name || 'Belum ada akun'} <small>USD</small></h1><span className="acct-demo-tag">{me?.email || 'Akun'}</span></div><Button variant="outline" size="sm" onClick={users.length > 1 ? switchAcc : () => setNotice('Belum ada akun lain.')}><ArrowLeftRight /> {tr('Ganti Akun')}</Button></div>
-      <div className="acct-equity"><div><small>{tr('Saldo Utama')} <CircleHelp /></small><b>{f(me ? mainOf(me) : 0)}</b></div><div><small>{tr('Saldo Profit')} <CircleHelp /></small><b>{f(me ? profitOf(me) : 0)}</b></div></div>
-      <div className="acct-margins">{[['Saldo Deposit', f(me ? depOf(me) : 0)], ['Saldo Profit', f(me ? profitOf(me) : 0)], ['Compounding', `${me ? rateOf(me, compound) : 0} % / hari`]].map(([k, v]) => <div key={k}><small>{tr(String(k))} <CircleHelp /></small><b>{v}</b></div>)}</div>
+      <div className="acct-equity"><div><small>{tr('Saldo Utama')} <CircleHelp /></small><b>{f(me ? mainOf(me) : 0)}</b></div><div><small>{tr('Saldo Profit Harian')} <CircleHelp /></small><b>{f(me ? dailyProfitOf(me) : 0)}</b></div></div>
+      <div className="acct-margins">{[['Saldo Deposit', f(me ? depOf(me) : 0)], ['Saldo Total Profit', f(me ? profitOf(me) : 0)], ['Compounding', `${me ? rateOf(me, compound) : 0} % / hari`]].map(([k, v]) => <div key={k}><small>{tr(String(k))} <CircleHelp /></small><b>{v}</b></div>)}</div>
     </section>
-    <section className="acct-real"><span className="acct-real-tag">Akun Demo</span><div className="acct-marquee"><span>{marquee.repeat(6)}</span></div><Button asChild variant="outline"><Link to="/withdraw">{tr('Withdraw')}</Link></Button></section>
+    <section className="acct-real"><div className="acct-marquee"><span>{marquee.repeat(6)}</span></div><Button variant="outline" disabled={!me || depOf(me) <= 0 || !compound.enabled || me.status !== 'Aktif'} onClick={compoundNow}><ArrowLeftRight /> {tr('Compounding')}</Button></section>
     <nav className="acct-actions"><Link to="/withdraw"><span className="acct-icon"><ArrowUpFromLine /></span>{tr('Withdraw')}</Link><Link to="/deposit"><span className="acct-icon"><Wallet /></span>{tr('Deposit')}</Link><Link to="/riwayat-pembayaran"><span className="acct-icon"><ReceiptText /></span>{tr('Riwayat Pembayaran')}</Link></nav>
     <div className="acct-tabs" role="tablist">{(['Posisi', 'Riwayat'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>{tr(t)}{t === 'Posisi' && <em>0</em>}</button>)}</div>
     <section className="acct-empty"><PackageOpen /><p>{tr(tab === 'Posisi' ? 'Belum ada posisi terbuka.' : 'Belum ada riwayat transaksi.')}<br />{tr('Pilih pasar dan lakukan trading pertama Anda.')}</p><Button asChild className="acct-pill"><Link to="/pasar">{tr('Trade Sekarang')}</Link></Button></section>
@@ -124,17 +130,36 @@ export function PaymentHistoryScreen() {
   const [tab, setTab] = useState<'Setoran' | 'Penarikan'>('Setoran');
   const [status, setStatus] = useState('Semua');
   const [from, setFrom] = useState('2026-09-06');
-  const [to, setTo] = useState('2026-10-06');
+  const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [applied, setApplied] = useState(false);
+  const { deposits, withdrawals, users, currentEmail } = useLedger();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
+  const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase()) ?? users[0];
+  const rows = tab === 'Setoran'
+    ? deposits.filter((r) => r.email.toLowerCase() === me?.email.toLowerCase())
+    : withdrawals.filter((r) => r.userId === me?.id);
+  const visibleRows = rows.filter((r) => {
+    const date = r.date.slice(0, 10);
+    if (applied && (date < from || date > to)) return false;
+    if (status === 'Semua') return true;
+    if (tab === 'Setoran') return status === 'Gagal' ? r.status === 'Ditolak' : status === r.status;
+    if (status === 'Disetujui') return r.status === 'Berhasil';
+    if (status === 'Gagal') return r.status === 'Ditolak';
+    return status === r.status;
+  });
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">
     <PageHeader title="Riwayat Pembayaran" />
     <div className="acct-tabs acct-tabs-left" role="tablist">{(['Setoran', 'Penarikan'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => { setTab(t); setApplied(false); }}>{tr(t)}</button>)}</div>
     <div className="acct-filter">
-      <div><small>{tr('Status Pembayaran')}</small><div className="acct-chips">{['Semua', 'Menunggu', 'Disetujui', 'Gagal'].map((s) => <button key={s} aria-pressed={status === s} onClick={() => setStatus(s)}>{tr(s)}</button>)}</div></div>
+      <div><small>{tr('Status Pembayaran')}</small><div className="acct-chips">{['Semua', 'Menunggu', 'Diproses', 'Disetujui', 'Gagal'].map((s) => <button key={s} aria-pressed={status === s} onClick={() => setStatus(s)}>{tr(s)}</button>)}</div></div>
       <div><small>{tr('Tanggal Permintaan')}</small><div className="acct-dates"><label><CalendarDays /><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={tr('Dari tanggal')} /> - <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label={tr('Sampai tanggal')} /></label><Button onClick={() => setApplied(true)}>{tr('Terapkan')}</Button></div></div>
     </div>
-    {applied && <p className="acct-history-empty">Tidak ada {tab.toLowerCase()} dengan status “{status}” pada {from} – {to}.</p>}
+    <p className="prof-hint">{tr('Riwayat ini adalah simulasi lokal, bukan konfirmasi pembayaran sungguhan.')}</p>
+    {visibleRows.length ? <section className="space-y-2">{visibleRows.map((row) => <article key={row.id} className="rounded-xl border border-border bg-background p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2"><b>{tab === 'Setoran' ? (row as (typeof deposits)[number]).method : (row as (typeof withdrawals)[number]).bank}</b><b>${row.amount.toFixed(2)} USD</b></div>
+      <p className="mt-1 text-sm text-muted-foreground">{new Date(row.date).toLocaleString('id-ID')} · {row.status}</p>
+      {tab === 'Penarikan' && <p className="mt-1 text-sm">{(row as (typeof withdrawals)[number]).account}</p>}
+    </article>)}</section> : <p className="acct-history-empty">{applied ? `Tidak ada ${tab.toLowerCase()} dengan status “${status}” pada ${from} – ${to}.` : `Belum ada riwayat ${tab.toLowerCase()}.`}</p>}
   </div></main>;
 }

@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Trash2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Pagination, usePagination } from '@/components/pagination';
+import { useLedger, type WithdrawalReq, type WithdrawalStatus } from '@/components/ledger-content';
 
 export const Route = createFileRoute('/admin/withdraw')({
   head: () => ({ meta: [
@@ -17,31 +18,15 @@ export const Route = createFileRoute('/admin/withdraw')({
   component: AdminWithdraw,
 });
 
-type Status = 'Menunggu' | 'Diproses' | 'Berhasil' | 'Ditolak';
-type Wd = { id: string; name: string; email: string; bank: string; account: string; amount: number; date: string; status: Status };
-
-const KEY = 'hsb-admin-withdraw-v1';
-const uid = () => Math.random().toString(36).slice(2, 9);
-const seed: Wd[] = [
-  { id: 'w1', name: 'Budi Santoso', email: 'budi@contoh.com', bank: 'BCA', account: '1234567890', amount: 500, date: '2026-09-15', status: 'Berhasil' },
-  { id: 'w2', name: 'Budi Santoso', email: 'budi@contoh.com', bank: 'BCA', account: '1234567890', amount: 250, date: '2026-10-02', status: 'Berhasil' },
-  { id: 'w3', name: 'Siti Rahma', email: 'siti@contoh.com', bank: 'Mandiri', account: '9876543210', amount: 120, date: '2026-10-05', status: 'Diproses' },
-  { id: 'w4', name: 'Andi Wijaya', email: 'andi@contoh.com', bank: 'BRI', account: '5566778899', amount: 300, date: '2026-10-06', status: 'Ditolak' },
-  { id: 'w5', name: 'Siti Rahma', email: 'siti@contoh.com', bank: 'Mandiri', account: '9876543210', amount: 80, date: '2026-10-07', status: 'Menunggu' },
-];
-const statuses: Status[] = ['Menunggu', 'Diproses', 'Berhasil', 'Ditolak'];
+const statuses: WithdrawalStatus[] = ['Menunggu', 'Diproses', 'Berhasil', 'Ditolak'];
 const inp = 'w-full rounded-md border border-input bg-background px-2 py-1 text-sm';
 const usd = (n: number) => `$${n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function AdminWithdraw() {
-  const [rows, setRows] = useState<Wd[]>(seed);
-  const [loaded, setLoaded] = useState(false);
+  const { withdrawals: rows, reviewWithdrawal, updateWithdrawal, deleteWithdrawal } = useLedger();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
-  useEffect(() => { try { const r = localStorage.getItem(KEY); if (r) setRows(JSON.parse(r)); } catch { /* ignore */ } setLoaded(true); }, []);
-  useEffect(() => { if (loaded) localStorage.setItem(KEY, JSON.stringify(rows)); }, [rows, loaded]);
-
-  const upd = (id: string, p: Partial<Wd>) => setRows((rs) => rs.map((r) => r.id === id ? { ...r, ...p } : r));
+  const upd = (id: string, p: Partial<Pick<WithdrawalReq, 'name' | 'email' | 'bank' | 'account' | 'date'>>) => updateWithdrawal(id, p);
   const done = rows.filter((r) => r.status === 'Berhasil');
   const totalDone = done.reduce((s, r) => s + r.amount, 0);
   const pending = rows.filter((r) => r.status === 'Menunggu' || r.status === 'Diproses').reduce((s, r) => s + r.amount, 0);
@@ -80,7 +65,7 @@ function AdminWithdraw() {
         <div className="flex flex-wrap gap-2">
           <label className="relative"><Search className="absolute left-2 top-1.5 size-4 text-muted-foreground" /><input className={`${inp} pl-8`} placeholder="Cari nama, email, bank" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Cari" /></label>
           <select className={inp + ' w-auto'} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter status"><option value="">Semua status</option>{statuses.map((s) => <option key={s}>{s}</option>)}</select>
-          <Button size="sm" onClick={() => setRows((rs) => [{ id: uid(), name: 'User', email: '', bank: '', account: '', amount: 0, date: new Date().toISOString().slice(0, 10), status: 'Menunggu' }, ...rs])}><Plus /> Tambah</Button>
+          <span className="text-xs text-muted-foreground">Permintaan dibuat dari halaman Withdraw pengguna.</span>
         </div>
       </div>
       <table className="w-full min-w-[960px] text-sm"><thead className="text-left text-muted-foreground"><tr><th className="py-2">Tanggal</th><th>Nama</th><th>Email</th><th>Bank</th><th>No. Rekening</th><th>Jumlah $</th><th>Status</th><th /></tr></thead>
@@ -90,9 +75,9 @@ function AdminWithdraw() {
           <td className="pr-1"><input className={inp} value={r.email} onChange={(e) => upd(r.id, { email: e.target.value })} aria-label="Email" /></td>
           <td className="pr-1"><input className={inp} value={r.bank} onChange={(e) => upd(r.id, { bank: e.target.value })} aria-label="Bank" /></td>
           <td className="pr-1"><input className={inp} value={r.account} onChange={(e) => upd(r.id, { account: e.target.value })} aria-label="Rekening" /></td>
-          <td className="pr-1"><input type="number" className={inp} value={r.amount} onChange={(e) => upd(r.id, { amount: Number(e.target.value) })} aria-label="Jumlah" /></td>
-          <td className="pr-1"><select className={inp} value={r.status} onChange={(e) => upd(r.id, { status: e.target.value as Status })} aria-label="Status">{statuses.map((s) => <option key={s}>{s}</option>)}</select></td>
-          <td><Button size="icon" variant="ghost" aria-label="Hapus" onClick={() => { if (confirm('Hapus transaksi ini?')) setRows((rs) => rs.filter((x) => x.id !== r.id)); }}><Trash2 /></Button></td>
+          <td className="pr-1">{usd(r.amount)}</td>
+          <td className="pr-1"><select className={inp} value={r.status} disabled={Boolean(r.userId && (r.status === 'Berhasil' || r.status === 'Ditolak'))} onChange={(e) => reviewWithdrawal(r.id, e.target.value as WithdrawalStatus)} aria-label="Status">{statuses.map((s) => <option key={s}>{s}</option>)}</select></td>
+          <td><Button size="icon" variant="ghost" aria-label="Hapus" disabled={Boolean(r.userId && r.status === 'Berhasil')} onClick={() => { if (confirm('Hapus transaksi ini? Permintaan aktif akan dikembalikan ke saldo utama.')) deleteWithdrawal(r.id); }}><Trash2 /></Button></td>
         </tr>)}
         {!shown.length && <tr><td colSpan={8} className="py-6 text-center text-muted-foreground">Tidak ada transaksi.</td></tr>}</tbody></table>
       <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} onPage={pg.setPage} />

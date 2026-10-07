@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { BadgeDollarSign, CalendarDays, ChartLine, CircleHelp, Copy, Download, Filter, House, Image as ImageIcon, Instagram, Music2, Package, UserRoundSearch, Users, Video, Wallet } from 'lucide-react';
 import { Gift, Share2, Trophy } from 'lucide-react';
 import { commissionOf, useReferral } from '@/components/referral-content';
+import { useLedger } from '@/components/ledger-content';
 import { Button } from '@/components/ui/button';
 import { BottomNav, Notice } from '@/components/account-pages';
 import { useAppPreferences, translate } from '@/components/app-preferences';
@@ -38,12 +39,18 @@ const d = (days: number) => { const t = new Date('2026-10-06T00:00:00Z'); t.setU
 export function PartnerScreen() {
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
-  const { data } = useReferral();
+  const { data, setData } = useReferral();
+  const { users, currentEmail, creditReferralDeposit } = useLedger();
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState('');
   const me = data.referrers.find((r) => r.code === data.currentUserCode);
   const mine = data.referrals.filter((r) => r.referrerId === me?.id);
   const earned = mine.reduce((s, r) => s + commissionOf(data, r), 0);
+  const recipient = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase())
+    ?? users.find((u) => u.email.toLowerCase() === me?.email.toLowerCase())
+    ?? users[0];
+  const claimableReferrals = mine.filter((r) => r.deposit >= data.minDeposit && !recipient?.creditedReferralIds?.includes(r.id));
+  const claimable = claimableReferrals.reduce((s, r) => s + commissionOf(data, r), 0);
   const link = `https://client.hsb.co.id/id/register?ref_code=${data.currentUserCode}`;
   const next = data.tiers.slice().sort((a, b) => a.invites - b.invites).find((t) => t.invites > mine.length);
   const copy = async (text: string) => {
@@ -52,6 +59,23 @@ export function PartnerScreen() {
   };
   const share = async () => {
     try { if (navigator.share) await navigator.share({ title: 'HSB Trading', text: `Daftar di HSB dengan kode ${data.currentUserCode} dan dapatkan bonus $${data.friendBonus}!`, url: link }); else await copy(link); } catch { /* dibatalkan */ }
+  };
+  const addRewardsToDeposit = () => {
+    if (!recipient || claimableReferrals.length === 0) {
+      setNotice(tr('Belum ada komisi referral yang dapat ditambahkan ke saldo deposit.'));
+      return;
+    }
+    const credited = claimableReferrals.reduce((sum, referral) => {
+      const amount = commissionOf(data, referral);
+      return creditReferralDeposit(recipient.id, amount, referral.id) ? sum + amount : sum;
+    }, 0);
+    if (credited <= 0) {
+      setNotice(tr('Komisi referral tidak dapat ditambahkan.'));
+      return;
+    }
+    const ids = new Set(claimableReferrals.map((referral) => referral.id));
+    setData((current) => ({ ...current, referrals: current.referrals.map((referral) => ids.has(referral.id) ? { ...referral, commissionPaid: true } : referral) }));
+    setNotice(`${tr('Komisi referral simulasi ditambahkan ke saldo deposit')} $${credited.toFixed(2)}.`);
   };
   return <main className="home-page"><div className="home-shell partner-shell">
     <PartnerNav active="/mitra" />
@@ -80,7 +104,8 @@ export function PartnerScreen() {
       <div className="partner-card-heading"><i><Wallet /></i>{tr('Hadiah Saya')}</div>
       <p className="partner-income-value">${earned.toFixed(2)} <small>USD</small></p>
       <p className="partner-income-note">{mine.length} teman diajak · {mine.filter((r) => r.deposit >= data.minDeposit).length} sudah deposit</p>
-      <Button className="partner-wide" onClick={() => setNotice(tr('Penarikan hadiah belum terhubung. Ini adalah tampilan pratinjau.'))}>{tr('Tarik Hadiah')}</Button>
+      <p className="partner-income-note">{tr('Belum ditambahkan ke saldo deposit')}: ${claimable.toFixed(2)}</p>
+      <Button className="partner-wide" disabled={!claimable || !recipient} onClick={addRewardsToDeposit}>{tr('Tambahkan ke Saldo Deposit')}</Button>
     </section>
     <section className="partner-section">
       <div className="partner-section-heading"><i><Trophy /></i>{tr('Bonus Level')}</div>
