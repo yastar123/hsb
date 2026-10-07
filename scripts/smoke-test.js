@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -68,7 +69,9 @@ try {
   const productionScripts = (await readdir(productionAssetsDirectory))
     .filter((name) => name.endsWith(".js"))
     .map((name) => path.join(productionAssetsDirectory, name));
-  const productionBundle = (await Promise.all(productionScripts.map((file) => readFile(file, "utf8")))).join("\n");
+  const productionBundle = (
+    await Promise.all(productionScripts.map((file) => readFile(file, "utf8")))
+  ).join("\n");
   for (const demoCredential of ["admin@demo.test", "Demo@1234", "Admin@123"]) {
     assert(
       !productionBundle.includes(demoCredential),
@@ -77,16 +80,16 @@ try {
   }
 
   if (!configuredBaseUrl) {
-    serverProcess = Bun.spawn(["bun", "run", "start"], {
+    serverProcess = spawn(process.execPath, ["server/index.js"], {
       cwd: projectRoot,
       env: {
         ...process.env,
+        NODE_ENV: "production",
         PORT: String(port),
         ADMIN_USERNAME: adminUsername,
         ADMIN_PASSWORD: adminPassword,
       },
-      stdout: "inherit",
-      stderr: "inherit",
+      stdio: "inherit",
     });
   }
 
@@ -95,7 +98,10 @@ try {
 
   const adminUrl = new URL("/admin", baseUrl);
   const anonymousAdminResponse = await fetch(adminUrl);
-  assert(anonymousAdminResponse.status === 401, "Production admin page was accessible without credentials.");
+  assert(
+    anonymousAdminResponse.status === 401,
+    "Production admin page was accessible without credentials.",
+  );
   const adminAuthorization = Buffer.from(`${adminUsername}:${adminPassword}`).toString("base64");
   const authenticatedAdminResponse = await fetch(adminUrl, {
     headers: { Authorization: `Basic ${adminAuthorization}` },
@@ -129,12 +135,18 @@ try {
       waitUntil: "domcontentloaded",
       timeout: 20_000,
     });
-    assert(response?.status() === 200, `${route} returned HTTP ${response?.status() ?? "no response"}.`);
+    assert(
+      response?.status() === 200,
+      `${route} returned HTTP ${response?.status() ?? "no response"}.`,
+    );
     await page.locator("#root main").first().waitFor({ state: "visible", timeout: 10_000 });
 
     const content = await page.locator("#root").innerText();
     assert(content.trim().length > 0, `${route} rendered an empty page.`);
-    assert(!/Page not found|This page didn't load/.test(content), `${route} rendered an error page.`);
+    assert(
+      !/Page not found|This page didn't load/.test(content),
+      `${route} rendered an error page.`,
+    );
     assert(
       browserErrors.length === errorCountBeforeNavigation,
       `${route} produced a browser error: ${browserErrors.slice(errorCountBeforeNavigation).join("; ")}`,
@@ -144,7 +156,10 @@ try {
 
   await page.goto(new URL("/", baseUrl).href);
   await page.getByRole("button", { name: "Slide 2: Belajar dengan akun demo" }).click();
-  assert(/Akun Demo/i.test(await page.locator("h1").innerText()), "Welcome carousel did not change slides.");
+  assert(
+    /Akun Demo/i.test(await page.locator("h1").innerText()),
+    "Welcome carousel did not change slides.",
+  );
 
   await page.goto(new URL("/login", baseUrl).href);
   assert(
@@ -156,18 +171,27 @@ try {
     "Development demo credentials were exposed in the production login page.",
   );
   await page.getByRole("tab", { name: "Email" }).click();
-  assert(await page.getByRole("textbox", { name: "Email" }).isVisible(), "Email login tab did not switch.");
+  assert(
+    await page.getByRole("textbox", { name: "Email" }).isVisible(),
+    "Email login tab did not switch.",
+  );
   await page.getByRole("button", { name: "Lupa Kata Sandi" }).click();
   assert(await page.getByRole("dialog").isVisible(), "Forgot-password dialog did not open.");
   await page.getByRole("button", { name: "Kembali", exact: true }).click();
 
   await page.goto(new URL("/register", baseUrl).href);
   const registerButton = page.getByRole("button", { name: "Daftar", exact: true });
-  assert(await registerButton.isDisabled(), "Registration was enabled before required fields were complete.");
+  assert(
+    await registerButton.isDisabled(),
+    "Registration was enabled before required fields were complete.",
+  );
   await page.getByRole("textbox", { name: "Nomor Telepon" }).fill("81234567890");
   await page.getByRole("textbox", { name: "Kata Sandi" }).fill("Ab1!abcd");
   await page.locator('input[type="checkbox"]').check();
-  assert(await registerButton.isEnabled(), "Registration did not enable after valid required fields were filled.");
+  assert(
+    await registerButton.isEnabled(),
+    "Registration did not enable after valid required fields were filled.",
+  );
   await registerButton.click();
   assert(
     (await page.getByRole("status").innerText()).includes("belum terhubung"),
@@ -198,20 +222,32 @@ try {
   await page.goto(new URL("/cari-produk", baseUrl).href);
   const search = page.getByRole("textbox", { name: "Pencarian Cepat" });
   await search.fill("XAUUSD");
-  assert((await page.locator(".market-row").count()) === 1, "Market search did not filter to the requested product.");
+  assert(
+    (await page.locator(".market-row").count()) === 1,
+    "Market search did not filter to the requested product.",
+  );
   await page.getByRole("button", { name: "Hapus pencarian" }).click();
-  assert((await page.locator(".market-row").count()) > 1, "Clearing market search did not restore the product list.");
+  assert(
+    (await page.locator(".market-row").count()) > 1,
+    "Clearing market search did not restore the product list.",
+  );
 
   await page.goto(new URL("/admin", baseUrl).href);
   await page.getByRole("link", { name: "Kelola Pasar" }).click();
   await page.waitForURL("**/admin/pasar");
-  assert((await page.locator("#root").innerText()).includes("Kelola Pasar"), "Admin navigation did not open market management.");
+  assert(
+    (await page.locator("#root").innerText()).includes("Kelola Pasar"),
+    "Admin navigation did not open market management.",
+  );
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(new URL("/beranda", baseUrl).href);
   const mobileNavigation = page.getByRole("navigation", { name: "Navigasi utama" });
   await mobileNavigation.waitFor({ state: "visible", timeout: 10_000 });
-  assert(await mobileNavigation.isVisible(), "Primary navigation is not visible at a mobile viewport.");
+  assert(
+    await mobileNavigation.isVisible(),
+    "Primary navigation is not visible at a mobile viewport.",
+  );
 
   await page.goto(new URL("/bahasa", baseUrl).href);
   await page.getByRole("radio", { name: "English" }).click();
@@ -255,7 +291,9 @@ try {
   await page.goto(new URL("/profil", baseUrl).href);
   await page.getByRole("button", { name: "Aktifkan mode gelap" }).click();
   await page.waitForFunction(() => document.documentElement.classList.contains("dark"));
+  await page.waitForFunction(() => localStorage.getItem("hsb-theme") === "dark");
   await page.reload();
+  await page.waitForFunction(() => document.documentElement.classList.contains("dark"));
   assert(
     await page.locator("html").evaluate((element) => element.classList.contains("dark")),
     "Dark mode did not persist after reload.",
@@ -265,12 +303,17 @@ try {
 
   assert(browserErrors.length === 0, `Browser reported errors: ${browserErrors.join("; ")}`);
 
-  console.log("Interactions: carousel, login, registration validation, market tabs/favorites/search, admin navigation, mobile navigation, language switching, and dark mode passed.");
-  console.log("Note: login/registration remain demo-only and display their existing not-connected notices.");
+  console.log(
+    "Interactions: carousel, login, registration validation, market tabs/favorites/search, admin navigation, mobile navigation, language switching, and dark mode passed.",
+  );
+  console.log(
+    "Note: login/registration remain demo-only and display their existing not-connected notices.",
+  );
 } finally {
   await browser?.close();
   if (serverProcess && serverProcess.exitCode === null) {
+    const exit = new Promise((resolve) => serverProcess.once("exit", resolve));
     serverProcess.kill();
-    await serverProcess.exited;
+    await exit;
   }
 }

@@ -1,1 +1,2 @@
 - [Demo financial-data integrity](financial-preview-integrity.md) — Keep preview accounts and money flows clearly labeled until authoritative backend and payment connections exist.
+- [npm runtime on Replit](npm-runtime.md) — This project needs the `nodejs_20` Nix package for npm commands in workflows and the shell.
