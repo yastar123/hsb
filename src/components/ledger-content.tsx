@@ -66,7 +66,16 @@ export type DepositInput = {
   amount: number;
   proof: string;
 };
-export type SessionUser = Pick<AppUser, 'id' | 'name' | 'email' | 'phone' | 'status'> & { created_at?: string };
+export type SessionUser = Pick<AppUser, 'id' | 'name' | 'email' | 'phone' | 'status'> & {
+  created_at?: string;
+  role?: string;
+  isAdmin?: boolean;
+};
+export type LoginResult = {
+  user: SessionUser;
+  isAdmin?: boolean;
+  redirectTo?: string;
+};
 
 const emptyData: LedgerData = {
   users: [],
@@ -144,7 +153,7 @@ type Ctx = LedgerData & {
   error: string;
   refresh: () => Promise<void>;
   register: (details: { name: string; email: string; phone: string; password: string; referralCode?: string }) => Promise<void>;
-  login: (identity: string, password: string) => Promise<void>;
+  login: (identity: string, password: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   setCurrentEmail: (email: string) => void;
   submitDeposit: (details: DepositInput) => Promise<void>;
@@ -206,8 +215,9 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   }, [post, refresh]);
 
   const login = useCallback(async (identity: string, password: string) => {
-    await post('/api/auth/login', { identity, password });
+    const result = await post<LoginResult>('/api/auth/login', { identity, password });
     await refresh();
+    return result;
   }, [post, refresh]);
 
   const logout = useCallback(async () => {

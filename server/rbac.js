@@ -1,4 +1,11 @@
-import { hasConfiguredAdminCredentials, verifyAdminCredentials } from "./auth.js";
+import {
+  createAdminSession,
+  hasConfiguredAdminCredentials,
+  readSessionToken,
+  sessionCookie,
+  verifyAdminCredentials,
+  verifyAdminSession,
+} from "./auth.js";
 
 export const ROLES = Object.freeze({
   ADMIN: "admin",
@@ -39,7 +46,7 @@ function recordAdminFailure(key, now) {
   current.count += 1;
 }
 
-export function requireAdminAuthentication(request, response, next) {
+export async function requireAdminAuthentication(request, response, next) {
   response.setHeader("Cache-Control", "no-store");
 
   if (!hasConfiguredAdminCredentials()) {
@@ -49,6 +56,24 @@ export function requireAdminAuthentication(request, response, next) {
       .send(
         "Admin access is disabled until a valid identifier and a password of at least 16 characters are configured.",
       );
+  }
+
+  if (request.auth?.role === ROLES.ADMIN) {
+    return next();
+  }
+
+  const token = readSessionToken(request);
+  if (token) {
+    try {
+      const adminSession = await verifyAdminSession(token);
+      if (adminSession) {
+        request.adminName = adminSession.adminName;
+        request.auth = { role: ROLES.ADMIN, subject: adminSession.adminName };
+        return next();
+      }
+    } catch {
+      // Fallback to basic auth
+    }
   }
 
   const key = failureKey(request);
@@ -73,6 +98,12 @@ export function requireAdminAuthentication(request, response, next) {
         const suppliedPassword = credentials.slice(separator + 1);
         if (verifyAdminCredentials(suppliedUsername, suppliedPassword)) {
           adminFailures.delete(key);
+          try {
+            const { token: sessionTok } = await createAdminSession(suppliedUsername);
+            response.setHeader("Set-Cookie", sessionCookie(sessionTok));
+          } catch {
+            // Ignore cookie setting errors
+          }
           request.adminName = suppliedUsername;
           request.auth = { role: ROLES.ADMIN, subject: suppliedUsername };
           return next();

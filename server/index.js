@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { createServer as createViteServer } from "vite";
 import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
+import { setAdminDbPool } from "./auth.js";
 import { createApiRouter } from "./api.js";
 
 const { Pool } = pg;
@@ -17,6 +18,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const port = process.env.PORT && process.env.PORT !== "8080" ? Number(process.env.PORT) : 3000;
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
+setAdminDbPool(pool);
 
 app.disable("x-powered-by");
 app.set(
@@ -58,7 +60,11 @@ app.use("/api", (_request, response) => {
   response.status(404).json({ error: "API route not found" });
 });
 
-app.use("/admin", requireAdminAuthentication, requireRole(ROLES.ADMIN));
+app.use(
+  "/admin",
+  (req, res, next) => Promise.resolve(requireAdminAuthentication(req, res, next)).catch(next),
+  requireRole(ROLES.ADMIN),
+);
 
 if (process.env.NODE_ENV === "production") {
   const buildDirectory = path.join(projectRoot, "dist");

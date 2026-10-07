@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { ArrowLeft, Check, ChevronDown, Eye, EyeOff, LockKeyhole, Mail, Smartphone, Landmark, Layers, ShieldCheck, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,9 +21,16 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
   const [referralCode, setReferralCode] = useState(() => typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('ref_code')?.slice(0, 32).toUpperCase() ?? '');
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const { login, register: createAccount } = useLedger();
+  const { currentUser, login, register: createAccount } = useLedger();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
+
+  useEffect(() => {
+    if (!register && (currentUser?.role === 'admin' || currentUser?.isAdmin)) {
+      void navigate({ to: '/admin' });
+    }
+  }, [currentUser, navigate, register]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
@@ -35,8 +42,12 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
         setNotice(tr('Akun berhasil dibuat dan menunggu verifikasi admin sebelum transaksi keuangan.'));
         await navigate({ to: '/beranda' });
       } else {
-        await login(identity, password);
-        await navigate({ to: '/beranda' });
+        const result = await login(identity, password);
+        if (result?.user?.role === 'admin' || result?.isAdmin || result?.redirectTo === '/admin') {
+          await navigate({ to: '/admin' });
+        } else {
+          await navigate({ to: '/beranda' });
+        }
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : tr('Permintaan gagal. Periksa data dan coba lagi.'));

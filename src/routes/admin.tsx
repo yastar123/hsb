@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { LayoutDashboard, House, ExternalLink, ChartNoAxesColumn, Wallet, Handshake, CircleHelp, Users, ArrowUpFromLine, Bell, Newspaper, CalendarDays, Headset, ClipboardCheck, LogOut, TrendingUp } from 'lucide-react';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
@@ -29,7 +30,7 @@ const items = [
 function AdminSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname.replace(/\/$/, '') || '/' });
   const navigate = useNavigate();
-  const { setCurrentEmail } = useLedger();
+  const { logout } = useLedger();
   return <Sidebar collapsible="icon">
     <SidebarHeader><div className="flex items-center gap-2 px-1 py-1"><img src="/hsb-mark.svg" alt="" width="24" height="24" /><span className="font-bold group-data-[collapsible=icon]:hidden">HSB Admin</span></div></SidebarHeader>
     <SidebarContent>
@@ -43,7 +44,7 @@ function AdminSidebar() {
         <SidebarGroupLabel>Situs</SidebarGroupLabel>
         <SidebarGroupContent><SidebarMenu>
           <SidebarMenuItem><SidebarMenuButton asChild tooltip="Lihat Beranda"><Link to="/beranda"><ExternalLink /><span>Lihat Beranda</span></Link></SidebarMenuButton></SidebarMenuItem>
-          <SidebarMenuItem><SidebarMenuButton tooltip="Keluar" onClick={() => { setCurrentEmail(''); navigate({ to: '/login' }); }}><LogOut /><span>Keluar</span></SidebarMenuButton></SidebarMenuItem>
+          <SidebarMenuItem><SidebarMenuButton tooltip="Keluar" onClick={async () => { await logout(); void navigate({ to: '/login' }); }}><LogOut /><span>Keluar</span></SidebarMenuButton></SidebarMenuItem>
         </SidebarMenu></SidebarGroupContent>
       </SidebarGroup>
     </SidebarContent>
@@ -51,6 +52,15 @@ function AdminSidebar() {
 }
 
 function AdminLayout() {
+  const { currentUser, loading } = useLedger();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && currentUser && currentUser.role !== 'admin' && !currentUser.isAdmin) {
+      void navigate({ to: '/login' });
+    }
+  }, [currentUser, loading, navigate]);
+
   return <SidebarProvider>
     <div className="flex min-h-screen w-full bg-muted">
       <AdminSidebar />

@@ -8,7 +8,7 @@ import { useAppPreferences, translate } from '@/components/app-preferences';
 
 const shortcutIcons: Record<string, typeof Wallet> = { Withdraw: WalletCards, FAQ: BadgeHelp, Deposit: Wallet, Promo: BadgePercent, 'Proteksi Dana': ShieldCheck };
 const lines = (t: string) => t.split('\n').map((l, i, a) => <span key={i}>{l}{i < a.length - 1 && <br />}</span>);
-type AppPath = '/withdraw' | '/faq' | '/deposit' | '/promo' | '/proteksi-dana' | '/pasar' | '/berita' | '/posisi' | '/mitra' | '/profil' | '/sinyal-trading' | '/kalender-ekonomi' | '/beranda';
+type AppPath = '/withdraw' | '/faq' | '/deposit' | '/promo' | '/proteksi-dana' | '/pasar' | '/berita' | '/posisi' | '/mitra' | '/profil' | '/sinyal-trading' | '/kalender-ekonomi' | '/beranda' | '/layanan-pelanggan';
 export function HomeScreen() {
   const { content } = useHomeContent();
   const { language } = useAppPreferences();
@@ -62,7 +62,7 @@ export function HomeScreen() {
     catch { open('Salin Sinyal', `${signal.symbol} · Open ${signal.open} · TP ${signal.tp} · SL ${signal.sl}`); }
   };
   return <main className="home-page"><div className="home-shell">
-    <header className="home-header"><Link to="/beranda" aria-label={`HSB ${tr('Beranda')}`}><img src="/hsb-mark.svg" alt="HSB" width="23" height="23" /></Link><div><Button variant="ghost" size="icon" aria-label={tr('Notifikasi')} onClick={() => { void showNotifications(); }}><Bell /></Button><Button variant="ghost" size="icon" aria-label={tr('Bantuan')} onClick={() => open(tr('Pusat Bantuan'), tr('Untuk pertanyaan umum, buka menu FAQ. Layanan bantuan pelanggan belum terhubung.'))}><Headphones /></Button></div></header>
+    <header className="home-header"><Link to="/beranda" aria-label={`HSB ${tr('Beranda')}`}><img src="/hsb-mark.svg" alt="HSB" width="23" height="23" /></Link><div><Button variant="ghost" size="icon" aria-label={tr('Notifikasi')} onClick={() => { void showNotifications(); }}><Bell /></Button><Button asChild variant="ghost" size="icon" aria-label={tr('Pusat Bantuan')}><Link to="/layanan-pelanggan"><Headphones /></Link></Button></div></header>
     {activeBanner && <section className={`home-hero home-carousel ${activeBanner.dark ? '' : 'home-hero-light'}`} aria-label={tr('Promo HSB')} aria-roledescription="carousel" data-slide={banner} onKeyDown={(e) => { if (e.key === 'ArrowRight') setBanner((v) => (v + 1) % banners.length); if (e.key === 'ArrowLeft') setBanner((v) => (v + banners.length - 1) % banners.length); }}>
       {banners.map((item, index) => <div key={item.id} className={`home-banner-slide ${item === activeBanner ? 'is-active' : ''}`} aria-hidden={item !== activeBanner}><img src={resolveImage(item.image)} alt={item.alt} width="1536" height="768" /></div>)}
       <div className="home-hero-copy"><h1>{lines(activeBanner.heading)}</h1><p>{lines(activeBanner.text)}</p>{activeBanner.button && <Button variant={activeBanner.dark ? 'heroLime' : 'default'} asChild><Link to={activeBanner.link as AppPath}>{activeBanner.button} <ArrowUpRight /></Link></Button>}{activeBanner.note && <small>{activeBanner.note}</small>}</div>

@@ -229,3 +229,98 @@ export function verifyAdminCredentials(identity, password) {
   const passwordMatches = timingSafeTextEqual(String(password ?? ""), configuredPassword);
   return identityMatches && passwordMatches;
 }
+
+let adminDbPool = null;
+
+export function setAdminDbPool(pool) {
+  adminDbPool = pool;
+}
+
+export function getPrimaryAdminEmail() {
+  return process.env.ADMIN_EMAIL?.trim() || "admin@webullxau.com";
+}
+
+const activeAdminSessions = new Map();
+
+export async function createAdminSession(adminName, pool = adminDbPool) {
+  const token = newSessionToken();
+  const tokenHash = hashSessionToken(token);
+  const expiresAt = sessionExpiry();
+  const sessionData = {
+    adminName: adminName || "Administrator",
+    expiresAt: expiresAt.toISOString(),
+  };
+  activeAdminSessions.set(tokenHash, sessionData);
+
+  const targetPool = pool || adminDbPool;
+  if (targetPool) {
+    try {
+      await targetPool.query(
+        `INSERT INTO public.app_settings (setting_key, value, updated_at)
+         VALUES ($1, $2, now())
+         ON CONFLICT (setting_key) DO UPDATE SET value = $2, updated_at = now()`,
+        [`admin-session:${tokenHash}`, JSON.stringify(sessionData)],
+      );
+    } catch {
+      // In-memory fallback
+    }
+  }
+
+  return { token, expiresAt, tokenHash };
+}
+
+export async function verifyAdminSession(token, pool = adminDbPool) {
+  if (!token || typeof token !== "string") return null;
+  const tokenHash = hashSessionToken(token);
+  const now = new Date();
+
+  const mem = activeAdminSessions.get(tokenHash);
+  if (mem) {
+    if (new Date(mem.expiresAt) > now) {
+      return mem;
+    }
+    activeAdminSessions.delete(tokenHash);
+  }
+
+  const targetPool = pool || adminDbPool;
+  if (targetPool) {
+    try {
+      const res = await targetPool.query(
+        "SELECT value FROM public.app_settings WHERE setting_key = $1",
+        [`admin-session:${tokenHash}`],
+      );
+      if (res.rowCount) {
+        const raw = res.rows[0].value;
+        const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (new Date(data.expiresAt) > now) {
+          activeAdminSessions.set(tokenHash, data);
+          return data;
+        } else {
+          await targetPool
+            .query("DELETE FROM public.app_settings WHERE setting_key = $1", [`admin-session:${tokenHash}`])
+            .catch(() => {});
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  return null;
+}
+
+export async function destroyAdminSession(token, pool = adminDbPool) {
+  if (!token || typeof token !== "string") return;
+  const tokenHash = hashSessionToken(token);
+  activeAdminSessions.delete(tokenHash);
+  const targetPool = pool || adminDbPool;
+  if (targetPool) {
+    try {
+      await targetPool
+        .query("DELETE FROM public.app_settings WHERE setting_key = $1", [`admin-session:${tokenHash}`])
+        .catch(() => {});
+    } catch {
+      // Ignore
+    }
+  }
+}

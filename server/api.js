@@ -3,8 +3,11 @@ import { randomUUID } from "node:crypto";
 import {
   clearSessionCookie,
   ConfigurationError,
+  createAdminSession,
   decryptPrivate,
+  destroyAdminSession,
   encryptPrivate,
+  getPrimaryAdminEmail,
   hashPassword,
   hashSessionToken,
   newSessionToken,
@@ -15,6 +18,8 @@ import {
   sessionExpiry,
   validEmail,
   validPassword,
+  verifyAdminCredentials,
+  verifyAdminSession,
   verifyPassword,
 } from "./auth.js";
 import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
@@ -1169,6 +1174,20 @@ export function createApiRouter(pool) {
     asyncRoute(async (request, response) => {
       const token = readSessionToken(request);
       if (!token) return response.json({ user: null });
+      const adminSession = await verifyAdminSession(token, pool);
+      if (adminSession) {
+        return response.json({
+          user: {
+            id: "admin",
+            name: "Administrator",
+            email: getPrimaryAdminEmail(),
+            phone: process.env.ADMIN_PHONE || "",
+            status: "Aktif",
+            role: ROLES.ADMIN,
+            isAdmin: true,
+          },
+        });
+      }
       const tokenHash = hashSessionToken(token);
       if (pool) {
         try {
@@ -1299,6 +1318,24 @@ export function createApiRouter(pool) {
       if (!identity || typeof password !== "string" || password.length > 128) {
         return apiError(response, 400, "Email/nomor telepon dan password wajib diisi.");
       }
+      if (verifyAdminCredentials(identity, password)) {
+        const adminEmail = getPrimaryAdminEmail();
+        const { token } = await createAdminSession(identity, pool);
+        response.setHeader("Set-Cookie", sessionCookie(token));
+        return response.json({
+          user: {
+            id: "admin",
+            name: "Administrator",
+            email: adminEmail,
+            phone: process.env.ADMIN_PHONE || "",
+            status: "Aktif",
+            role: ROLES.ADMIN,
+            isAdmin: true,
+          },
+          isAdmin: true,
+          redirectTo: "/admin",
+        });
+      }
       const lookup = identity.includes("@")
         ? ["email", normalizeEmail(identity)]
         : ["phone", normalizeIndonesianPhone(identity)];
@@ -1335,6 +1372,7 @@ export function createApiRouter(pool) {
     asyncRoute(async (request, response) => {
       const token = readSessionToken(request);
       if (token) {
+        await destroyAdminSession(token, pool);
         if (pool) {
           await pool
             .query("DELETE FROM public.customer_sessions WHERE token_hash = $1", [
@@ -1823,7 +1861,7 @@ export function createApiRouter(pool) {
     }),
   );
 
-  router.use("/admin", adminAuth, requireRole(ROLES.ADMIN));
+  router.use("/admin", (req, res, next) => Promise.resolve(adminAuth(req, res, next)).catch(next), requireRole(ROLES.ADMIN));
 
   router.put(
     "/admin/market",
