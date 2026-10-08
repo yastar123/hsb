@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import safeImageAsset from "@/assets/images/welcome_safe_dark_1791423690885.jpg";
+import safeImageAsset from "@/assets/images/welcome_safe_yellow_1791431063575.jpg";
 const safeImage = safeImageAsset;
-import demoImageAsset from "@/assets/images/welcome_demo_dark_1791423701685.jpg";
+import demoImageAsset from "@/assets/images/welcome_demo_yellow_1791431074942.jpg";
 const demoImage = demoImageAsset;
-import bonusImageAsset from "@/assets/images/welcome_bonus_dark_1791423712597.jpg";
+import bonusImageAsset from "@/assets/images/welcome_bonus_yellow_1791431085533.jpg";
 const bonusImage = bonusImageAsset;
-import rewardsImageAsset from "@/assets/images/welcome_rewards_dark_1791423721931.jpg";
+import rewardsImageAsset from "@/assets/images/welcome_rewards_yellow_1791431096756.jpg";
 const rewardsImage = rewardsImageAsset;
 
 export const Route = createFileRoute("/")({

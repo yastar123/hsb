@@ -1,11 +1,11 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { useServerContent, type SaveStatus } from '@/lib/site-content';
-import bonusAsset from '@/assets/home-bonus.jpg';
-import newsAsset from '@/assets/trading-news.jpg';
-import demoAsset from '@/assets/images/welcome_demo_dark_1791423701685.jpg';
-import rewardsAsset from '@/assets/images/welcome_rewards_dark_1791423721931.jpg';
-import safeAsset from '@/assets/images/welcome_safe_dark_1791423690885.jpg';
-import welcomeBonusAsset from '@/assets/images/welcome_bonus_dark_1791423712597.jpg';
+import bonusAsset from '@/assets/images/home_bonus_yellow_1791431110550.jpg';
+import newsAsset from '@/assets/images/trading_news_yellow_1791431122495.jpg';
+import demoAsset from '@/assets/images/welcome_demo_yellow_1791431074942.jpg';
+import rewardsAsset from '@/assets/images/welcome_rewards_yellow_1791431096756.jpg';
+import safeAsset from '@/assets/images/welcome_safe_yellow_1791431063575.jpg';
+import welcomeBonusAsset from '@/assets/images/welcome_bonus_yellow_1791431085533.jpg';
 
 export const imageLibrary: Record<string, string> = {
   'home-bonus': bonusAsset,
