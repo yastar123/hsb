@@ -22,16 +22,27 @@ export function ProfileScreen() {
   const { language, theme, toggleTheme } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
   const shortcuts = [
-    { label: 'Trade', icon: CandlestickChart, to: '/pasar' as const },
-    { label: 'Copy Signals', icon: Compass, to: '/sinyal-trading' as const },
-    { label: 'Deposit', icon: ArrowUpRight, to: '/deposit' as const },
-    { label: 'Kalender Ekonomi', icon: CalendarDays, to: '/kalender-ekonomi' as const },
-    { label: 'Daily Report', icon: FileBarChart, to: '/daily-report' as const },
-    { label: 'Withdraw', icon: ArrowDownLeft, to: '/withdraw' as const },
-    { label: 'Promo', icon: Percent, to: '/promo' as const },
-    { label: 'Smart Trader', icon: Cpu, to: '/smart-trader' as const },
+    { label: 'Trade', icon: CandlestickChart, to: '/pasar' as const, subtitle: 'Terminal Pasar' },
+    { label: 'Copy Signals', icon: Compass, to: '/sinyal-trading' as const, subtitle: 'Ikuti Analis Utama' },
+    { label: 'Deposit', icon: ArrowUpRight, to: '/deposit' as const, subtitle: 'Isi Saldo' },
+    { label: 'Kalender Ekonomi', icon: CalendarDays, to: '/kalender-ekonomi' as const, subtitle: 'Agenda Pasar' },
+    { label: 'Daily Report', icon: FileBarChart, to: '/daily-report' as const, subtitle: 'Analisa Harian' },
+    { label: 'Withdraw', icon: ArrowDownLeft, to: '/withdraw' as const, subtitle: 'Tarik Saldo' },
+    { label: 'Promo', icon: Percent, to: '/promo' as const, subtitle: 'Bonus & Event' },
+    { label: 'Smart Trader', icon: Cpu, to: '/smart-trader' as const, subtitle: 'Alat Analisa' },
   ];
   const copy = async () => { try { await navigator.clipboard.writeText(UID); setNotice('UID disalin.'); } catch { setNotice('UID belum dapat disalin.'); } };
+  
+  const linkOf = (lbl: string) => shortcuts.find(s => s.label === lbl)!;
+  const tradeL = linkOf('Trade');
+  const copyL = linkOf('Copy Signals');
+  const depL = linkOf('Deposit');
+  const calL = linkOf('Kalender Ekonomi');
+  const rptL = linkOf('Daily Report');
+  const wdL = linkOf('Withdraw');
+  const promoL = linkOf('Promo');
+  const smartL = linkOf('Smart Trader');
+
   return <main className="home-page"><div className="home-shell prof-shell">
     <section className="prof-head">
       <img src="/hsb-mark.svg" width="34" height="34" alt="" />
@@ -39,21 +50,104 @@ export function ProfileScreen() {
       <Button variant="ghost" size="icon" className="prof-moon" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
     </section>
     
-    <nav className="grid grid-cols-2 gap-3 p-4 border-b border-border/80">
-      {shortcuts.map(({ label, icon: Icon, to }) => (
+    <nav className="p-4 border-b border-border/80 space-y-3.5">
+      {/* Financial Quick Cards */}
+      <div className="grid grid-cols-2 gap-3">
         <Link 
-          key={label} 
-          to={to}
-          className="flex items-center gap-3 p-3 bg-card border border-border/80 rounded-xl hover:border-primary/40 hover:bg-secondary/40 transition-all text-left group"
+          to={depL.to}
+          className="flex flex-col justify-between p-3.5 bg-amber-400/5 border border-amber-400/20 hover:border-amber-400/50 rounded-xl transition-all text-left group min-h-[96px] shadow-sm shadow-amber-400/5"
+        >
+          <div className="flex items-center justify-between w-full">
+            <span className="p-2 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/20 group-hover:scale-105 transition-transform duration-200">
+              <ArrowUpRight className="h-5 w-5" />
+            </span>
+            <span className="text-[10px] text-amber-400 font-bold tracking-wide uppercase">{tr('Instant')}</span>
+          </div>
+          <div className="mt-3">
+            <span className="block text-xs font-bold text-foreground">{tr(depL.label)}</span>
+            <span className="block text-[9px] text-muted-foreground mt-0.5">{tr(depL.subtitle)}</span>
+          </div>
+        </Link>
+
+        <Link 
+          to={wdL.to}
+          className="flex flex-col justify-between p-3.5 bg-card border border-border/80 hover:border-primary/30 rounded-xl transition-all text-left group min-h-[96px]"
+        >
+          <div className="flex items-center justify-between w-full">
+            <span className="p-2 rounded-lg bg-primary/10 text-primary border border-primary/10 group-hover:scale-105 transition-transform duration-200">
+              <ArrowDownLeft className="h-5 w-5" />
+            </span>
+            <span className="text-[10px] text-muted-foreground font-semibold tracking-wide uppercase">{tr('Secure')}</span>
+          </div>
+          <div className="mt-3">
+            <span className="block text-xs font-bold text-foreground">{tr(wdL.label)}</span>
+            <span className="block text-[9px] text-muted-foreground mt-0.5">{tr(wdL.subtitle)}</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Main Trading Terminal Bento */}
+      <Link 
+        to={tradeL.to}
+        className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-400/10 to-transparent border border-amber-400/30 hover:border-amber-400/60 rounded-xl transition-all text-left group shadow-md shadow-amber-400/5"
+      >
+        <div className="flex items-center gap-3.5">
+          <span className="p-2.5 rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/30 group-hover:scale-105 transition-transform duration-200">
+            <CandlestickChart className="h-6 w-6" />
+          </span>
+          <div>
+            <span className="block text-sm font-black text-foreground uppercase tracking-tight">{tr(tradeL.label)}</span>
+            <span className="block text-[10px] text-muted-foreground mt-0.5">{tr(tradeL.subtitle)}</span>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 text-amber-400 opacity-60 group-hover:translate-x-1 transition-transform" />
+      </Link>
+
+      {/* Secondary Tools Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link 
+          to={copyL.to}
+          className="flex items-center gap-3 p-3 bg-card border border-border hover:border-primary/40 rounded-xl transition-all text-left group"
         >
           <span className="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 group-hover:scale-105 transition-transform duration-200">
-            <Icon className="h-5 w-5" />
+            <Compass className="h-4.5 w-4.5" />
           </span>
-          <span className="text-xs font-bold text-foreground tracking-tight line-clamp-1">
-            {tr(label)}
-          </span>
+          <div>
+            <span className="block text-xs font-bold text-foreground line-clamp-1">{tr(copyL.label)}</span>
+            <span className="block text-[9px] text-muted-foreground line-clamp-1 mt-0.5">{tr(copyL.subtitle)}</span>
+          </div>
         </Link>
-      ))}
+
+        <Link 
+          to={smartL.to}
+          className="flex items-center gap-3 p-3 bg-card border border-border hover:border-primary/40 rounded-xl transition-all text-left group"
+        >
+          <span className="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 group-hover:scale-105 transition-transform duration-200">
+            <Cpu className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <span className="block text-xs font-bold text-foreground line-clamp-1">{tr(smartL.label)}</span>
+            <span className="block text-[9px] text-muted-foreground line-clamp-1 mt-0.5">{tr(smartL.subtitle)}</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Bottom Auxiliary Insights */}
+      <div className="grid grid-cols-3 gap-2 pt-0.5">
+        {[calL, rptL, promoL].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link 
+              key={item.label}
+              to={item.to}
+              className="flex flex-col items-center justify-center p-2.5 bg-secondary/30 hover:bg-secondary/60 border border-border/80 hover:border-primary/20 rounded-xl transition-all text-center group"
+            >
+              <Icon className="h-4.5 w-4.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              <span className="block text-[10px] font-bold text-foreground mt-1.5 line-clamp-1">{tr(item.label)}</span>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
     <section className="prof-list">
       <h2>{tr('Pusat Klien')}</h2>

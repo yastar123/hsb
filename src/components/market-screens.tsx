@@ -228,8 +228,8 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
     const finalProfit = pnl > 0 ? pnl : 8.75;
     setSimulatedProfit((prev) => prev + finalProfit);
     setDialog({
-      title: 'Eksekusi Berhasil!',
-      text: `Posisi LONG ${activeProduct.symbol} Kontrak Berjangka Anda telah ditutup pada harga pasar.\n\nProfit Bersih: +$${finalProfit.toFixed(2)} USD\n\nDana hasil perdagangan telah dikreditkan langsung ke Ekuitas Akun Anda.`
+      title: tr('Eksekusi Berhasil!'),
+      text: `${tr('Posisi LONG')} ${activeProduct.symbol} ${tr('Kontrak Berjangka Anda telah ditutup pada harga pasar.')}\n\n${tr('Profit Bersih:')} +$${finalProfit.toFixed(2)} USD\n\n${tr('Dana hasil perdagangan telah dikreditkan langsung ke Ekuitas Akun Anda.')}`
     });
     setPnl(0);
   };

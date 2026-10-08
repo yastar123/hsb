@@ -51,7 +51,7 @@ export function TradingViewChart({
   return (
     <div className="relative w-full bg-[#0a0e17] rounded-xl overflow-hidden border border-border/60 shadow-lg">
       {!iframeError ? (
-        <div className="w-full h-[480px] relative bg-[#0a0e17]">
+        <div className="w-full h-[280px] sm:h-[340px] md:h-[450px] relative bg-[#0a0e17]">
           <iframe
             key={`${product.symbol}-${timeframe}`}
             src={iframeUrl}
@@ -63,7 +63,7 @@ export function TradingViewChart({
         </div>
       ) : (
         /* Native TradingView-Styled Interactive Fallback */
-        <div className="w-full h-[480px] flex flex-col bg-[#0a0e17] text-[#94a3b8] font-sans select-none">
+        <div className="w-full h-[280px] sm:h-[340px] md:h-[450px] flex flex-col bg-[#0a0e17] text-[#94a3b8] font-sans select-none">
           {/* Top Bar */}
           <div className="h-9 px-2 bg-[#121826] border-b border-[#1e293b] flex items-center justify-between text-xs">
             <div className="flex items-center gap-1">
