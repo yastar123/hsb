@@ -2,10 +2,10 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { useServerContent, type SaveStatus } from '@/lib/site-content';
 import bonusAsset from '@/assets/home-bonus.jpg';
 import newsAsset from '@/assets/trading-news.jpg';
-import demoAsset from '@/assets/welcome-demo.jpg';
-import rewardsAsset from '@/assets/welcome-rewards.jpg';
-import safeAsset from '@/assets/welcome-safe.jpg';
-import welcomeBonusAsset from '@/assets/welcome-bonus.jpg';
+import demoAsset from '@/assets/images/welcome_demo_dark_1791423701685.jpg';
+import rewardsAsset from '@/assets/images/welcome_rewards_dark_1791423721931.jpg';
+import safeAsset from '@/assets/images/welcome_safe_dark_1791423690885.jpg';
+import welcomeBonusAsset from '@/assets/images/welcome_bonus_dark_1791423712597.jpg';
 
 export const imageLibrary: Record<string, string> = {
   'home-bonus': bonusAsset,
@@ -30,8 +30,8 @@ export const uid = () => Math.random().toString(36).slice(2, 9);
 export const defaultHomeContent: HomeContent = {
   banners: [
     { id: 'b1', image: 'home-bonus', alt: 'Welcome bonus hingga 350 dolar', title: 'Welcome Bonus', heading: 'TRADING\nIS NOT SCARY', text: 'Add Welcome Bonus Buat\nTambahan Modal Awalmu', button: 'MULAI & DEPOSIT', link: '/deposit', dark: true, note: '*S&K Berlaku' },
-    { id: 'b2', image: 'welcome-demo', alt: 'Belajar trading dengan akun demo', title: 'Akun Demo', heading: 'BELAJAR\nTRADING', text: 'Berlatih dengan\nAkun Demo HSB', button: 'LIHAT PASAR', link: '/pasar', dark: false, note: '' },
-    { id: 'b3', image: 'welcome-rewards', alt: 'Hadiah dan poin Smart Reward', title: 'Smart Reward', heading: 'SMART\nREWARD', text: 'Nikmati promo menarik\nuntuk setiap trader', button: 'LIHAT PROMO', link: '/promo', dark: false, note: '' },
+    { id: 'b2', image: 'welcome-demo', alt: 'Belajar trading dengan akun demo', title: 'Akun Demo', heading: 'BELAJAR\nTRADING', text: 'Berlatih dengan\nAkun Demo HSB', button: 'LIHAT PASAR', link: '/pasar', dark: true, note: '' },
+    { id: 'b3', image: 'welcome-rewards', alt: 'Hadiah dan poin Smart Reward', title: 'Smart Reward', heading: 'SMART\nREWARD', text: 'Nikmati promo menarik\nuntuk setiap trader', button: 'LIHAT PROMO', link: '/promo', dark: true, note: '' },
   ],
   markets: [
     { id: 'm1', symbol: 'XAUUSD', price: '4168.26', change: '0.69' },
