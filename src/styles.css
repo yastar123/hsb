@@ -450,6 +450,11 @@ html, body { overflow-x: clip; }
 .market-order-dialog label { display:block; font-size:12px; margin:14px 0; }.market-order-dialog input { margin-top:8px; }.market-order-dialog > button:not(.account-dialog-close) { width:100%; }
 @media(max-width:360px){.market-tabs button{padding:0 7px;font-size:11px}.market-detail-tabs button{padding:0 4px;font-size:10px}.market-table-head,.market-product-link{grid-template-columns:minmax(0,1fr) 67px 41px 50px}.market-product-link b{font-size:12px}.market-demo-strip{gap:5px}}
 
+.market-ticker-marquee { overflow: hidden; position: relative; background: var(--background); border-bottom: 1px solid var(--border); padding: 8px 0; }
+.market-ticker-track { display: flex; align-items: center; gap: 8px; width: max-content; animation: market-ticker-scroll 32s linear infinite; }
+.market-ticker-marquee:hover .market-ticker-track { animation-play-state: paused; }
+@keyframes market-ticker-scroll { 0% { transform: translateX(-50%); } 100% { transform: translateX(0%); } }
+
 /* Account pages: posisi, deposit, riwayat */
 .acct-shell { background: var(--home-band); padding-bottom: 80px; min-height: 100vh; }
 .acct-plain { background: var(--background); display: flex; flex-direction: column; padding-bottom: 0; }

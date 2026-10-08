@@ -12,7 +12,63 @@ import { useLedger, mainOf, depOf, profitOf, dailyProfitOf, rateOf } from '@/com
 
 export function MarketHeader({title,back=true,children}:{title:string;back?:boolean;children?:React.ReactNode}){const {language}=useAppPreferences();const tr=(text:string)=>translate(text,language);return <header className="market-header">{back&&<Button asChild variant="ghost" size="icon"><Link to="/pasar" aria-label={tr('Kembali ke pasar')}><ArrowLeft/></Link></Button>}<h1>{tr(title)}</h1><div className="market-header-actions">{children}</div></header>;}
 function MarketNav(){const [notice,setNotice]=useState('');const {language}=useAppPreferences();const tr=(text:string)=>translate(text,language);return <><nav className="home-bottom-nav" aria-label={tr('Navigasi utama')}><Button asChild variant="ghost"><Link to="/beranda"><House/><span>{tr('Beranda')}</span></Link></Button><Button asChild variant="ghost"><Link to="/pasar" aria-current="page"><ChartNoAxesColumn/><span>{tr('Pasar')}</span></Link></Button><Button asChild variant="ghost"><Link to="/posisi"><BriefcaseBusiness/><span>{tr('Posisi')}</span></Link></Button><Button variant="ghost" onClick={()=>setNotice(tr('Layanan mitra belum terhubung.'))}><Users/><span>{tr('Mitra')}</span></Button><Button asChild variant="ghost"><Link to="/profil"><UserRound/><span>{tr('Profil')}</span></Link></Button></nav>{notice&&<div className="account-dialog-backdrop"><section className="account-dialog" role="dialog" aria-modal="true" aria-label={tr('Informasi')}><p>{notice}</p><Button onClick={()=>setNotice('')}>{tr('Tutup')}</Button></section></div>}</>;}
-function ProductTable({items}:{items:Product[]}){const {favorites,toggleFavorite,products}=useMarket();const {language}=useAppPreferences();const tr=(text:string)=>translate(text,language);const [sort,setSort]=useState<'symbol'|'change'>('symbol');const [descending,setDescending]=useState(false);const order=(key:'symbol'|'change')=>{setDescending(sort===key?!descending:false);setSort(key);};const sorted=[...items].sort((a,b)=>(sort==='symbol'?a.symbol.localeCompare(b.symbol):a.change-b.change)*(descending?-1:1));return <div className="market-table"><div className="market-table-head"><Button variant="ghost" onClick={()=>order('symbol')}>↕ {tr('Simbol')}</Button><span>{tr('Ask Price')}<br/>{tr('Bid Price')}</span><span>{tr('Spread')}</span><Button variant="ghost" onClick={()=>order('change')}>↕ {tr('Chg')}</Button></div>{sorted.map(p=><div className="market-row" key={p.symbol}><Button variant="ghost" size="icon" className={`market-star ${favorites.includes(p.symbol)?'is-favorite':''}`} aria-label={`${favorites.includes(p.symbol)?tr('Hapus'):tr('Tambah')} ${tr('Favorit')} ${p.symbol}`} aria-pressed={favorites.includes(p.symbol)} onClick={()=>toggleFavorite(p.symbol)}><Star/></Button><Link to="/pasar/$symbol" params={{symbol:p.symbol}} className="market-product-link"><b>{p.symbol}</b><span className="market-quotes"><span className="market-up">{p.ask.toFixed(p.decimals)}</span><span className="market-down">{bidPrice(p).toFixed(p.decimals)}</span></span><span className="market-spread">{p.spread}</span><span className={`market-change ${p.change>=0?'positive':'negative'}`}>{p.change>=0?'+':''}{p.change.toFixed(2)}%</span></Link></div>)}{!sorted.length&&<div className="market-empty">{tr(items===products?'Produk tidak ditemukan':'Belum ada produk')}<small>—</small></div>}</div>;}
+export function ProductTable({items}:{items:Product[]}){const {favorites,toggleFavorite,products}=useMarket();const {language}=useAppPreferences();const tr=(text:string)=>translate(text,language);const [sort,setSort]=useState<'symbol'|'change'>('symbol');const [descending,setDescending]=useState(false);const order=(key:'symbol'|'change')=>{setDescending(sort===key?!descending:false);setSort(key);};const sorted=[...items].sort((a,b)=>(sort==='symbol'?a.symbol.localeCompare(b.symbol):a.change-b.change)*(descending?-1:1));return <div className="market-table"><div className="market-table-head"><Button variant="ghost" onClick={()=>order('symbol')}>↕ {tr('Simbol')}</Button><span>{tr('Ask Price')}<br/>{tr('Bid Price')}</span><span>{tr('Spread')}</span><Button variant="ghost" onClick={()=>order('change')}>↕ {tr('Chg')}</Button></div>{sorted.map(p=><div className="market-row" key={p.symbol}><Button variant="ghost" size="icon" className={`market-star ${favorites.includes(p.symbol)?'is-favorite':''}`} aria-label={`${favorites.includes(p.symbol)?tr('Hapus'):tr('Tambah')} ${tr('Favorit')} ${p.symbol}`} aria-pressed={favorites.includes(p.symbol)} onClick={()=>toggleFavorite(p.symbol)}><Star/></Button><Link to="/pasar/$symbol" params={{symbol:p.symbol}} className="market-product-link"><b>{p.symbol}</b><span className="market-quotes"><span className="market-up">{p.ask.toFixed(p.decimals)}</span><span className="market-down">{bidPrice(p).toFixed(p.decimals)}</span></span><span className="market-spread">{p.spread}</span><span className={`market-change ${p.change>=0?'positive':'negative'}`}>{p.change>=0?'+':''}{p.change.toFixed(2)}%</span></Link></div>)}{!sorted.length&&<div className="market-empty">{tr(items===products?'Produk tidak ditemukan':'Belum ada produk')}<small>—</small></div>}</div>;}
+
+export function MarketCatalogSection() {
+  const { favorites, groups, products, loading, error, refresh } = useMarket();
+  const { language } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
+  const [group, setGroup] = useState('');
+  const [visible, setVisible] = useState(8);
+
+  useEffect(() => {
+    if (!loading && !group) setGroup(groups.includes('Forex') ? 'Forex' : (groups[0] ?? 'Favorit'));
+  }, [group, groups, loading]);
+
+  const setCategory = (next: string) => {
+    setGroup(next);
+    setVisible(8);
+  };
+  const list = products.filter((product) =>
+    group === 'Favorit'
+      ? favorites.includes(product.symbol)
+      : product.group === group,
+  );
+
+  if (loading) return <p className="market-empty" role="status">{tr('Memuat katalog pasar...')}</p>;
+  if (error) return (
+    <div className="market-empty" role="alert">
+      {tr(error)}
+      <Button variant="outline" className="mt-3" onClick={() => void refresh().catch(() => {})}>{tr('Coba lagi')}</Button>
+    </div>
+  );
+
+  return (
+    <section className="market-catalog-section my-3">
+      <div className="market-tabs" role="tablist" aria-label={tr('Kategori pasar')}>
+        {['Favorit', ...groups].map((item) => (
+          <Button
+            variant="ghost"
+            role="tab"
+            aria-selected={item === group}
+            key={item}
+            onClick={() => setCategory(item)}
+          >
+            {tr(item)}
+          </Button>
+        ))}
+      </div>
+      <ProductTable items={list.slice(0, visible)} />
+      {list.length > visible && (
+        <div className="flex justify-center p-3">
+          <Button variant="outline" onClick={() => setVisible((value) => value + 8)}>
+            {tr('Load more')} ({list.length - visible} {tr('lagi')})
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
 export function MarketScreen() {
   const { favorites, groups, products, loading, error, refresh } = useMarket();
   const { language } = useAppPreferences();
@@ -247,28 +303,32 @@ export function MarketDetailScreen({ product }: { product: Product }) {
           </div>
         </section>
 
-        {/* Horizontal Instrument Ticker */}
-        <section className="p-2 border-b border-border bg-background overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-2 min-w-max">
-            {tickerProducts.map((item) => (
-              <button
-                key={item.symbol}
-                onClick={() => {
-                  setCurrentProduct(item);
-                  void navigate({ to: '/pasar/$symbol', params: { symbol: item.symbol } });
-                }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-left transition-all ${
-                  item.symbol === currentProduct.symbol
-                    ? 'bg-primary/15 border-primary text-foreground shadow-sm'
-                    : 'bg-card border-border hover:border-primary/40 text-muted-foreground'
-                }`}
-              >
-                <span className="text-[11px] font-bold text-foreground">{item.symbol}</span>
-                <span className="text-xs font-bold font-mono text-foreground">{item.ask.toFixed(item.decimals)}</span>
-                <span className={`text-[10px] font-mono font-bold ${item.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}%
-                </span>
-              </button>
+        {/* Horizontal Instrument Ticker - Infinite Auto Marquee */}
+        <section className="market-ticker-marquee" role="region" aria-label={tr('Pergerakan Harga Pasar')}>
+          <div className="market-ticker-track">
+            {[0, 1].map((copyIndex) => (
+              <div key={copyIndex} className="flex items-center gap-2">
+                {tickerProducts.map((item) => (
+                  <button
+                    key={`${copyIndex}-${item.symbol}`}
+                    onClick={() => {
+                      setCurrentProduct(item);
+                      void navigate({ to: '/pasar/$symbol', params: { symbol: item.symbol } });
+                    }}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-left transition-all ${
+                      item.symbol === currentProduct.symbol
+                        ? 'bg-primary/15 border-primary text-foreground shadow-sm'
+                        : 'bg-card border-border hover:border-primary/40 text-muted-foreground'
+                    }`}
+                  >
+                    <span className="text-[11px] font-bold text-foreground">{item.symbol}</span>
+                    <span className="text-xs font-bold font-mono text-foreground">{item.ask.toFixed(item.decimals)}</span>
+                    <span className={`text-[10px] font-mono font-bold ${item.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}%
+                    </span>
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         </section>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { loadNotifs } from '@/lib/notifications';
 import { Link } from '@tanstack/react-router';
-import { Bell, Headphones, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, BadgeHelp, Wallet, BadgePercent, ShieldCheck, WalletCards, Sparkles, Newspaper, ArrowDown, ArrowUpRight, Check, X, Pause, Play } from 'lucide-react';
+import { Bell, Headphones, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, BadgeHelp, Wallet, BadgePercent, ShieldCheck, WalletCards, Sparkles, Newspaper, ArrowDown, ArrowUpRight, Check, X, Pause, Play, CircleHelp, ArrowLeftRight, ArrowUpFromLine, ReceiptText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useHomeContent, resolveImage, type Signal } from '@/components/home-content';
 import { useAppPreferences, translate } from '@/components/app-preferences';
+import { useLedger, mainOf, depOf, profitOf, dailyProfitOf, rateOf } from '@/components/ledger-content';
+import { MarketCatalogSection } from '@/components/market-screens';
 
 const shortcutIcons: Record<string, typeof Wallet> = { Withdraw: WalletCards, FAQ: BadgeHelp, Deposit: Wallet, Promo: BadgePercent, 'Proteksi Dana': ShieldCheck };
 const lines = (t: string) => t.split('\n').map((l, i, a) => <span key={i}>{l}{i < a.length - 1 && <br />}</span>);
@@ -61,6 +63,23 @@ export function HomeScreen() {
     try { await navigator.clipboard.writeText(`${signal.symbol} | ${signal.sell ? 'SELL' : 'BUY'} | Open ${signal.open} | TP ${signal.tp} | SL ${signal.sl}`); setCopied(signal.id); }
     catch { open('Salin Sinyal', `${signal.symbol} · Open ${signal.open} · TP ${signal.tp} · SL ${signal.sl}`); }
   };
+  const { users, compound, currentEmail, transferDepositToMain } = useLedger();
+  const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase());
+  const f = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const compoundNow = async () => {
+    if (!me) return;
+    try {
+      const moved = await transferDepositToMain(me.id);
+      if (moved > 0) open(tr('Compounding'), `${tr('Saldo deposit')} $${f(moved)} ${tr('dipindahkan ke saldo utama. Akrual harian mengikuti tarif admin.')}`);
+      else if (!compound.enabled) open(tr('Compounding'), tr('Compounding sedang dinonaktifkan admin.'));
+      else if (me.status !== 'Aktif') open(tr('Compounding'), tr('Akun belum aktif untuk compounding.'));
+      else open(tr('Compounding'), tr('Tidak ada saldo deposit yang dapat dipindahkan.'));
+    } catch (error) {
+      open(tr('Compounding'), error instanceof Error ? error.message : tr('Pemindahan saldo gagal.'));
+    }
+  };
+  const marqueeText = me ? `Saldo akun · tarif akrual admin ${rateOf(me, compound)}% per hari · ` : 'Masuk ke akun untuk melihat saldo dan transaksi · ';
+
   return <main className="home-page"><div className="home-shell">
     <header className="home-header"><Link to="/beranda" aria-label={`HSB ${tr('Beranda')}`}><img src="/hsb-mark.svg" alt="HSB" width="23" height="23" /></Link><div><Button variant="ghost" size="icon" aria-label={tr('Notifikasi')} onClick={() => { void showNotifications(); }}><Bell /></Button><Button asChild variant="ghost" size="icon" aria-label={tr('Pusat Bantuan')}><Link to="/layanan-pelanggan"><Headphones /></Link></Button></div></header>
     {activeBanner && <section className={`home-hero home-carousel ${activeBanner.dark ? '' : 'home-hero-light'}`} aria-label={tr('Promo HSB')} aria-roledescription="carousel" data-slide={banner} onKeyDown={(e) => { if (e.key === 'ArrowRight') setBanner((v) => (v + 1) % banners.length); if (e.key === 'ArrowLeft') setBanner((v) => (v + banners.length - 1) % banners.length); }}>
@@ -70,12 +89,47 @@ export function HomeScreen() {
       <nav className="home-carousel-controls" aria-label={tr('Pilih banner')}>{banners.map((item, index) => <Button key={item.id} variant="ghost" className="home-carousel-dot" aria-label={`Banner ${index + 1}: ${item.title}`} aria-current={activeBanner === item ? 'true' : undefined} onClick={() => setBanner(index)}><span /></Button>)}<Button variant="ghost" size="icon" className="home-carousel-pause" aria-label={tr(paused ? 'Putar banner otomatis' : 'Jeda banner otomatis')} onClick={() => setPaused(!paused)}>{paused ? <Play /> : <Pause />}</Button></nav>
     </section>}
     <div className="home-ticker">{live.map((market) => <Button variant="ghost" key={market.id} onClick={() => open(market.symbol, `${tr('Harga simulasi ')}${fmt(market)}. ${tr('Data ini bukan harga pasar langsung.')}`)}><span>{market.symbol}<small>{fmt(market)} <i className={market.pct >= 0 ? 'home-positive' : 'home-negative'}>{market.pct >= 0 ? '+' : ''}{market.pct.toFixed(2)}%</i></small></span></Button>)}</div>
-    <nav className="home-shortcuts" aria-label={tr('Menu cepat')}>{content.shortcuts.map(({ id, label, link }) => { const Icon = shortcutIcons[label] ?? Sparkles; return <Button asChild variant="ghost" key={id}><Link to={link as AppPath}><Icon /><span>{tr(label)}</span></Link></Button>; })}</nav>
 
       <section className="home-section"><div className="home-section-heading"><Sparkles /><div><h2>{tr('Sinyal Trading')}</h2><p>{tr('Trading menjadi lebih mudah dengan analisa profesional')}</p></div><Button asChild variant="link"><Link to="/sinyal-trading">{tr('Lihat Semua')}</Link></Button></div><div className="home-signal-track">{signals.map((signal, si) => <article className={`home-signal ${signal.sell ? 'home-signal-sell' : 'home-signal-buy'}`} key={signal.id}><div className="home-signal-heading"><b><span className="home-coin">{signal.symbol === 'XAUUSD' ? '✦' : '$'}</span>{signal.symbol}</b><span className={signal.sell ? 'home-negative' : 'home-positive'}>{tr(signal.sell ? 'Jual Signal' : 'Beli Signal')} <ArrowDown /></span></div><div className="home-signal-data"><dl><div><dt>Open</dt><dd>{signal.open}</dd></div><div><dt>TP</dt><dd>{signal.tp}</dd></div><div><dt>SL</dt><dd>{signal.sl}</dd></div></dl><div className="home-minichart" aria-label={tr('Ilustrasi pergerakan harga')}>{(bars[si] ?? []).map((bar, i) => <i key={i} className={`chart-bar ${bar.up ? 'chart-up' : ''}`} style={{ height: bar.h }} />)}</div></div><div className="home-profit"><Sparkles /><div><b>{tr('Estimasi Keuntungan')}</b><p>{tr('Jika membuka 0.01 lot | Profit')} <span className="home-positive">{signal.profit}</span> | SL <span className="home-negative">{signal.loss}</span></p></div></div><div className="home-signal-actions"><Button onClick={() => copySignal(signal)}>{copied === signal.id ? <><Check /> {tr('Tersalin')}</> : tr('Copy Signal')}</Button><Button variant="secondary" onClick={() => open(signal.symbol, `Sinyal contoh: Open ${signal.open}, TP ${signal.tp}, SL ${signal.sl}. ${tr('Bukan rekomendasi investasi.')}`)}>{tr('Selengkapnya')}</Button></div></article>)}</div><p className="home-data-note">{tr('Data contoh · Bukan rekomendasi investasi')}</p></section>
      <div className="home-agenda">{content.agenda.map((a, i) => { const route = a.id === 'a1' ? '/pasar' : a.id === 'a2' ? '/kalender-ekonomi' : null; const content = <>{i === 0 && <Sparkles />}<span>{a.text}<br /><b>{a.bold}</b></span></>; return route ? <Button asChild key={a.id} variant="ghost"><Link to={route}>{content}</Link></Button> : <Button key={a.id} variant="ghost" onClick={() => open(a.text, a.detail)}>{content}</Button>; })}</div>
+
+     {/* Account Balances, Marquee, & Action Links matching Position Page */}
+     <section className="acct-card my-2">
+       <div className="acct-equity">
+         <div><small>{tr('Saldo Utama')} <CircleHelp /></small><b>{f(me ? mainOf(me) : 0)}</b></div>
+         <div><small>{tr('Saldo Profit Harian')} <CircleHelp /></small><b>{f(me ? dailyProfitOf(me) : 0)}</b></div>
+       </div>
+       <div className="acct-margins">
+         {[
+           ['Saldo Deposit', f(me ? depOf(me) : 0)],
+           ['Saldo Total Profit', f(me ? profitOf(me) : 0)],
+           ['Compounding', `${me ? rateOf(me, compound) : 0} % / hari`],
+         ].map(([k, v]) => (
+           <div key={k}><small>{tr(String(k))} <CircleHelp /></small><b>{v}</b></div>
+         ))}
+       </div>
+     </section>
+
+     <section className="acct-real">
+       <div className="acct-marquee">
+         <span>{marqueeText.repeat(6)}</span>
+       </div>
+       <Button
+         variant="outline"
+         disabled={!me || depOf(me) <= 0 || !compound.enabled || me.status !== 'Aktif'}
+         onClick={compoundNow}
+       >
+         <ArrowLeftRight /> {tr('Compounding')}
+       </Button>
+     </section>
+
+     <nav className="acct-actions mb-3">
+       <Link to="/withdraw"><span className="acct-icon"><ArrowUpFromLine /></span>{tr('Withdraw')}</Link>
+       <Link to="/deposit"><span className="acct-icon"><Wallet /></span>{tr('Deposit')}</Link>
+       <Link to="/riwayat-pembayaran"><span className="acct-icon"><ReceiptText /></span>{tr('Riwayat Pembayaran')}</Link>
+     </nav>
      <div className="home-info-marquee" role="region" aria-label={tr('Info Pasar Simulasi')}><span className="home-info-label">{tr('INFO PASAR')}</span><div className="home-info-window"><div className="home-info-track">{[0, 1].map((copy) => <div className="home-info-group" key={copy} aria-hidden={copy === 1}>{live.map((market) => <span key={market.id}><b>{market.symbol}</b><span>{fmt(market)}</span><i className={market.pct >= 0 ? 'home-positive' : 'home-negative'}>{market.pct >= 0 ? '+' : ''}{market.pct.toFixed(2)}%</i></span>)}<span><small>{tr('Data simulasi · Bukan harga pasar langsung')}</small></span></div>)}</div></div></div>
-      <section className="home-section home-news-section"><div className="home-section-heading"><Newspaper /><div><h2>{tr('Berita Ekonomi')}</h2><p>{tr('Tetap up-to-date dengan berita terbaru')}</p></div><Button asChild variant="link"><Link to="/berita">{tr('Lihat Semua')}</Link></Button></div>{content.news.length > 0 && <div className="home-news-grid">{(() => { const [main, ...rest] = content.news; if (!main) return null; return <><Button asChild className="home-news-main" variant="ghost"><Link to="/berita/$id" params={{ id: main.id }}><img src={resolveImage(main.image)} alt={main.title} loading="lazy" width="1024" height="768" /><span>{main.title}</span></Link></Button>{rest.length > 0 && <div className="home-news-side">{rest.map((n) => <Button asChild key={n.id} variant="ghost"><Link to="/berita/$id" params={{ id: n.id }}><img src={resolveImage(n.image)} alt={n.title} width="1024" height="768" loading="lazy" /><span><small>{tr(n.category)}</small>{n.title}</span></Link></Button>)}</div>}</>; })()}</div>}</section>
+     <MarketCatalogSection />
     <nav className="home-bottom-nav" aria-label={tr('Navigasi utama')}>{[{ label: 'Beranda', icon: House }, { label: 'Pasar', icon: ChartNoAxesColumn }, { label: 'Posisi', icon: BriefcaseBusiness }, { label: 'Mitra', icon: Users }, { label: 'Profil', icon: UserRound }].map(({ label, icon: Icon }) => label === 'Profil' || label === 'Pasar' || label === 'Posisi' || label === 'Mitra' ? <Button asChild key={label} variant="ghost"><Link to={label === 'Pasar' ? '/pasar' : label === 'Posisi' ? '/posisi' : label === 'Mitra' ? '/mitra' : '/profil'}><Icon /><span>{tr(label)}</span></Link></Button> : <Button variant="ghost" key={label} aria-current={label === 'Beranda' ? 'page' : undefined} onClick={() => label === 'Beranda' ? window.scrollTo({ top: 0, behavior: 'smooth' }) : open(label)}><Icon /><span>{tr(label)}</span></Button>)}</nav>
      {dialog && <div className="account-dialog-backdrop" onClick={() => setDialog(null)}><section className="account-dialog" role="dialog" aria-modal="true" aria-labelledby="home-dialog-title" onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="account-dialog-close" aria-label={tr('Tutup')} onClick={() => setDialog(null)}><X /></Button><h2 id="home-dialog-title">{tr(dialog.title)}</h2><p className="whitespace-pre-line">{tr(dialog.text)}</p><Button onClick={() => setDialog(null)}>{tr('Kembali')}</Button></section></div>}
   </div></main>;
