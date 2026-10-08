@@ -70,7 +70,105 @@ export function MarketCatalogSection() {
   );
 }
 
-export function TradingTerminalSection() {
+function WalletBalancesComponent({ balance }: { balance: number }) {
+  const { language } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
+
+  const initialAssets = [
+    { key: 'IDR', name: 'Rupiah', subtitle: 'Rupiah', balance: 0, isFiat: true, iconText: 'IDR', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+    { key: 'AAPLX', name: 'AAPLX', subtitle: 'Apple tokenized stock (xStock)', balance: 1.25, isFiat: false, iconText: '', color: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
+    { key: 'AB', name: 'AB', subtitle: 'AB', balance: 350.0, isFiat: false, iconText: 'Æ', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
+    { key: 'ACE', name: 'ACE', subtitle: 'Fusionist', balance: 18.5, isFiat: false, iconText: '▲', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+    { key: 'ACH', name: 'ACH', subtitle: 'Alchemy Pay', balance: 2450.0, isFiat: false, iconText: '₳', color: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+    { key: 'ACN', name: 'ACN', subtitle: 'AITECH Cloud Network', balance: 950.0, isFiat: false, iconText: '⏣', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+    { key: 'ACS', name: 'ACS', subtitle: 'Access Protocol', balance: 12500.0, isFiat: false, iconText: 'α', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+  ];
+
+  const [prices, setPrices] = useState<Record<string, number>>({
+    IDR: 1,
+    AAPLX: 2814500,
+    AB: 15420,
+    ACE: 82150,
+    ACH: 362,
+    ACN: 1245,
+    ACS: 42.5
+  });
+
+  const idrBalance = balance * 16250;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPrices((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((key) => {
+          if (key === 'IDR') return;
+          const fluctuation = 1 + (Math.random() * 0.004 - 0.0018);
+          next[key] = Math.round(next[key] * fluctuation * 100) / 100;
+        });
+        return next;
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section className="p-4 bg-card border border-border rounded-xl space-y-4 shadow-sm">
+      <div className="flex items-center justify-between border-b border-border pb-2.5">
+        <div>
+          <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest">{tr('DOMPET ASET')}</span>
+          <h3 className="text-sm font-bold text-foreground">{tr('Saldo Akun')}</h3>
+        </div>
+        <span className="text-[10px] text-amber-400 font-bold bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+          IDR {Math.round(idrBalance).toLocaleString('id-ID')}
+        </span>
+      </div>
+
+      <div className="divide-y divide-border/60">
+        {initialAssets.map((asset) => {
+          let tokenBal = asset.balance;
+          let idrVal = 0;
+
+          if (asset.isFiat) {
+            tokenBal = idrBalance;
+            idrVal = idrBalance;
+          } else {
+            idrVal = tokenBal * prices[asset.key];
+          }
+
+          const formattedTokenBal = asset.isFiat
+            ? `${Math.round(tokenBal).toLocaleString('id-ID')} IDR`
+            : `${tokenBal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${asset.key}`;
+
+          return (
+            <div key={asset.key} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <div className="flex items-center gap-3">
+                <span className={`w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-sm border shadow-sm ${asset.color} shrink-0`}>
+                  {asset.iconText}
+                </span>
+                <div>
+                  <span className="block text-sm font-bold text-foreground tracking-tight">{asset.name}</span>
+                  <span className="block text-[10px] text-muted-foreground line-clamp-1">{asset.subtitle}</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="block text-xs font-extrabold text-foreground font-mono">{formattedTokenBal}</span>
+                {!asset.isFiat && (
+                  <span className="block text-[10px] text-muted-foreground font-mono font-medium">
+                    {Math.round(idrVal).toLocaleString('id-ID')} IDR
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+export function TradingTerminalSection({ hidePositionCard = false }: { hidePositionCard?: boolean }) {
   const { products } = useMarket();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
@@ -339,76 +437,80 @@ export function TradingTerminalSection() {
         />
       </section>
 
-      {/* Active Position / ORDER TICKET Card */}
-      <section className="p-3.5 bg-card border border-border rounded-xl space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              {isSimulating ? <TrendingUp className="h-4 w-4 animate-bounce text-amber-400" /> : <Lock className="h-4 w-4" />}
+      {hidePositionCard ? (
+        <WalletBalancesComponent balance={balance} />
+      ) : (
+        /* Active Position / ORDER TICKET Card */
+        <section className="p-3.5 bg-card border border-border rounded-xl space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                {isSimulating ? <TrendingUp className="h-4 w-4 animate-bounce text-amber-400" /> : <Lock className="h-4 w-4" />}
+              </div>
+              <div>
+                <span className="block text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest">{tr('KARTU PESANAN')}</span>
+                <h3 className="text-sm font-bold text-foreground">{tr('Posisi aktif')}</h3>
+              </div>
             </div>
-            <div>
-              <span className="block text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest">{tr('KARTU PESANAN')}</span>
-              <h3 className="text-sm font-bold text-foreground">{tr('Posisi aktif')}</h3>
+            {isSimulating ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold animate-pulse">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+                <span>{tr('PERDAGANGAN AKTIF')}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{tr('POSISI TERKUNCI')}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-background border border-border space-y-2.5">
+            <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+              <span className="text-muted-foreground font-semibold">{tr('INSTRUMEN')}</span>
+              <span className="font-bold text-foreground font-mono">{activeProduct.symbol}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+              <span className="text-muted-foreground font-semibold">{tr('P&L BERJALAN')}</span>
+              <span className={`font-bold font-mono transition-all duration-300 ${pnl >= 0 ? 'text-emerald-400 scale-105' : 'text-rose-400 scale-100'}`}>
+                {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+              <span className="text-muted-foreground font-semibold">{tr('MODAL')}</span>
+              <span className="font-bold text-foreground font-mono">${equityFormatted}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-semibold">{tr('SIKLUS')}</span>
+              <div className="text-right">
+                <span className="font-bold text-foreground font-mono block">{tr('Hari 1 dari 30')}</span>
+                <span className="text-[10px] text-muted-foreground">{tr('Sisa 29 hari')}</span>
+              </div>
             </div>
           </div>
+
           {isSimulating ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold animate-pulse">
-              <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
-              <span>{tr('PERDAGANGAN AKTIF')}</span>
-            </div>
+            <Button 
+              onClick={stopTrading}
+              className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 animate-pulse transition-all shadow-lg shadow-emerald-500/20"
+            >
+              <TrendingUp className="h-4 w-4" />
+              <span>{tr('Tutup Posisi & Ambil Profit')}</span>
+            </Button>
           ) : (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{tr('POSISI TERKUNCI')}</span>
-            </div>
+            <Button 
+              onClick={() => setShowOrderSheet(true)}
+              className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-400/20"
+            >
+              <Play className="h-4 w-4 fill-black" />
+              <span>{tr('Perdagangkan')}</span>
+            </Button>
           )}
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-background border border-border space-y-2.5">
-          <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
-            <span className="text-muted-foreground font-semibold">{tr('INSTRUMEN')}</span>
-            <span className="font-bold text-foreground font-mono">{activeProduct.symbol}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
-            <span className="text-muted-foreground font-semibold">{tr('P&L BERJALAN')}</span>
-            <span className={`font-bold font-mono transition-all duration-300 ${pnl >= 0 ? 'text-emerald-400 scale-105' : 'text-rose-400 scale-100'}`}>
-              {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
-            <span className="text-muted-foreground font-semibold">{tr('MODAL')}</span>
-            <span className="font-bold text-foreground font-mono">${equityFormatted}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground font-semibold">{tr('SIKLUS')}</span>
-            <div className="text-right">
-              <span className="font-bold text-foreground font-mono block">{tr('Hari 1 dari 30')}</span>
-              <span className="text-[10px] text-muted-foreground">{tr('Sisa 29 hari')}</span>
-            </div>
-          </div>
-        </div>
-
-        {isSimulating ? (
-          <Button 
-            onClick={stopTrading}
-            className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 animate-pulse transition-all shadow-lg shadow-emerald-500/20"
-          >
-            <TrendingUp className="h-4 w-4" />
-            <span>{tr('Tutup Posisi & Ambil Profit')}</span>
-          </Button>
-        ) : (
-          <Button 
-            onClick={() => setShowOrderSheet(true)}
-            className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-400/20"
-          >
-            <Play className="h-4 w-4 fill-black" />
-            <span>{tr('Perdagangkan')}</span>
-          </Button>
-        )}
-        <p className="text-[10px] text-center text-muted-foreground leading-snug">
-          {tr('Akun ini tidak dapat membuka posisi lain sampai siklus 30 hari selesai.')}
-        </p>
-      </section>
+          <p className="text-[10px] text-center text-muted-foreground leading-snug">
+            {tr('Akun ini tidak dapat membuka posisi lain sampai siklus 30 hari selesai.')}
+          </p>
+        </section>
+      )}
 
       {/* Futures Order Ticket Slide-up Panel / Sheet */}
       {showOrderSheet && (
