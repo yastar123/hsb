@@ -8,6 +8,7 @@ import { useBankAccounts } from '@/lib/bank-accounts';
 import { useAppPreferences, translate } from '@/components/app-preferences';
 import { ArrowUpFromLine } from 'lucide-react';
 import { ImageUp } from 'lucide-react';
+import { TradingTerminalSection } from '@/components/market-screens';
 
 export function Notice({ text, onClose }: { text: string; onClose: () => void }) {
   return <div className="account-dialog-backdrop" onClick={onClose}><section className="account-dialog" role="dialog" aria-modal="true" aria-label="Informasi" onClick={(e) => e.stopPropagation()}><p>{text}</p><Button onClick={onClose}>Tutup</Button></section></div>;
@@ -32,37 +33,11 @@ function PageHeader({ title }: { title: string }) {
 }
 
 export function PositionScreen() {
-  const [tab, setTab] = useState<'Posisi' | 'Riwayat'>('Posisi');
-  const [notice, setNotice] = useState('');
-  const { users, compound, currentEmail, transferDepositToMain } = useLedger();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
-  const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase());
-  const f = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const compoundNow = async () => {
-    if (!me) return;
-    try {
-      const moved = await transferDepositToMain(me.id);
-      if (moved > 0) setNotice(`${tr('Saldo deposit')} $${f(moved)} ${tr('dipindahkan ke saldo utama. Akrual harian mengikuti tarif admin.')}`);
-      else if (!compound.enabled) setNotice(tr('Compounding sedang dinonaktifkan admin.'));
-      else if (me.status !== 'Aktif') setNotice(tr('Akun belum aktif untuk compounding.'));
-      else setNotice(tr('Tidak ada saldo deposit yang dapat dipindahkan.'));
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : tr('Pemindahan saldo gagal.'));
-    }
-  };
-  const marquee = me ? `Saldo akun · tarif akrual admin ${rateOf(me, compound)}% per hari · ` : 'Masuk ke akun untuk melihat saldo dan transaksi · ';
   return <main className="home-page"><div className="home-shell acct-shell">
-    <section className="acct-card">
-      <div className="acct-equity"><div><small>{tr('Saldo Utama')} <CircleHelp /></small><b>{f(me ? mainOf(me) : 0)}</b></div><div><small>{tr('Saldo Profit Harian')} <CircleHelp /></small><b>{f(me ? dailyProfitOf(me) : 0)}</b></div></div>
-      <div className="acct-margins">{[['Saldo Deposit', f(me ? depOf(me) : 0)], ['Saldo Total Profit', f(me ? profitOf(me) : 0)], ['Compounding', `${me ? rateOf(me, compound) : 0} % / hari`]].map(([k, v]) => <div key={k}><small>{tr(String(k))} <CircleHelp /></small><b>{v}</b></div>)}</div>
-    </section>
-    <section className="acct-real"><div className="acct-marquee"><span>{marquee.repeat(6)}</span></div><Button variant="outline" disabled={!me || depOf(me) <= 0 || !compound.enabled || me.status !== 'Aktif'} onClick={compoundNow}><ArrowLeftRight /> {tr('Compounding')}</Button></section>
-    <nav className="acct-actions"><Link to="/withdraw"><span className="acct-icon"><ArrowUpFromLine /></span>{tr('Withdraw')}</Link><Link to="/deposit"><span className="acct-icon"><Wallet /></span>{tr('Deposit')}</Link><Link to="/riwayat-pembayaran"><span className="acct-icon"><ReceiptText /></span>{tr('Riwayat Pembayaran')}</Link></nav>
-    <div className="acct-tabs" role="tablist">{(['Posisi', 'Riwayat'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>{tr(t)}{t === 'Posisi' && <em>0</em>}</button>)}</div>
-    <section className="acct-empty"><PackageOpen /><p>{tr(tab === 'Posisi' ? 'Belum ada posisi terbuka.' : 'Belum ada riwayat transaksi.')}<br />{tr('Pilih pasar dan lakukan trading pertama Anda.')}</p><Button asChild className="acct-pill"><Link to="/pasar">{tr('Trade Sekarang')}</Link></Button></section>
+    <TradingTerminalSection />
     <BottomNav active="Posisi" />
-    {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;
 }
 

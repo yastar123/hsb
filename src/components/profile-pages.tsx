@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowDownToLine, ArrowLeft, CalendarDays, Check, ChevronRight, Copy, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Sun, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, CalendarDays, Check, ChevronRight, Copy, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Sun, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2, CandlestickChart, Compass, ArrowUpRight, ArrowDownLeft, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav, Notice } from '@/components/account-pages';
 import { isValidPassword, passwordRules } from '@/lib/account-validation';
@@ -22,14 +22,14 @@ export function ProfileScreen() {
   const { language, theme, toggleTheme } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
   const shortcuts = [
-    { label: 'Trade', icon: TrendingUp, to: '/pasar' as const },
-    { label: 'Copy Signals', icon: Signal, to: '/sinyal-trading' as const },
-    { label: 'Deposit', icon: Wallet, to: '/deposit' as const },
+    { label: 'Trade', icon: CandlestickChart, to: '/pasar' as const },
+    { label: 'Copy Signals', icon: Compass, to: '/sinyal-trading' as const },
+    { label: 'Deposit', icon: ArrowUpRight, to: '/deposit' as const },
     { label: 'Kalender Ekonomi', icon: CalendarDays, to: '/kalender-ekonomi' as const },
     { label: 'Daily Report', icon: FileBarChart, to: '/daily-report' as const },
-    { label: 'Withdraw', icon: ArrowDownToLine, to: '/withdraw' as const },
+    { label: 'Withdraw', icon: ArrowDownLeft, to: '/withdraw' as const },
     { label: 'Promo', icon: Percent, to: '/promo' as const },
-    { label: 'Smart Trader', icon: Sparkles, to: '/smart-trader' as const },
+    { label: 'Smart Trader', icon: Cpu, to: '/smart-trader' as const },
   ];
   const copy = async () => { try { await navigator.clipboard.writeText(UID); setNotice('UID disalin.'); } catch { setNotice('UID belum dapat disalin.'); } };
   return <main className="home-page"><div className="home-shell prof-shell">
@@ -38,8 +38,23 @@ export function ProfileScreen() {
       <div><h1>{tr('Hello Demo')}</h1><p>UID: {UID} <button onClick={copy} aria-label={tr('Salin UID')}><Copy /></button></p></div>
       <Button variant="ghost" size="icon" className="prof-moon" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
     </section>
-    <nav className="prof-grid">{shortcuts.map(({ label, icon: Icon, to }) =>
-      <Link key={label} to={to}><span><Icon /></span>{tr(label)}</Link>)}</nav>
+    
+    <nav className="grid grid-cols-2 gap-3 p-4 border-b border-border/80">
+      {shortcuts.map(({ label, icon: Icon, to }) => (
+        <Link 
+          key={label} 
+          to={to}
+          className="flex items-center gap-3 p-3 bg-card border border-border/80 rounded-xl hover:border-primary/40 hover:bg-secondary/40 transition-all text-left group"
+        >
+          <span className="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 group-hover:scale-105 transition-transform duration-200">
+            <Icon className="h-5 w-5" />
+          </span>
+          <span className="text-xs font-bold text-foreground tracking-tight line-clamp-1">
+            {tr(label)}
+          </span>
+        </Link>
+      ))}
+    </nav>
     <section className="prof-list">
       <h2>{tr('Pusat Klien')}</h2>
        <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>

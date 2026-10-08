@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useHomeContent, resolveImage, type Signal } from '@/components/home-content';
 import { useAppPreferences, translate } from '@/components/app-preferences';
 import { useLedger, mainOf, depOf, profitOf, dailyProfitOf, rateOf } from '@/components/ledger-content';
-import { MarketCatalogSection } from '@/components/market-screens';
+import { TradingTerminalSection } from '@/components/market-screens';
 
 const shortcutIcons: Record<string, typeof Wallet> = { Withdraw: WalletCards, FAQ: BadgeHelp, Deposit: Wallet, Promo: BadgePercent, 'Proteksi Dana': ShieldCheck };
 const lines = (t: string) => t.split('\n').map((l, i, a) => <span key={i}>{l}{i < a.length - 1 && <br />}</span>);
@@ -128,8 +128,8 @@ export function HomeScreen() {
        <Link to="/deposit"><span className="acct-icon"><Wallet /></span>{tr('Deposit')}</Link>
        <Link to="/riwayat-pembayaran"><span className="acct-icon"><ReceiptText /></span>{tr('Riwayat Pembayaran')}</Link>
      </nav>
+     <TradingTerminalSection />
      <div className="home-info-marquee" role="region" aria-label={tr('Info Pasar Simulasi')}><span className="home-info-label">{tr('INFO PASAR')}</span><div className="home-info-window"><div className="home-info-track">{[0, 1].map((copy) => <div className="home-info-group" key={copy} aria-hidden={copy === 1}>{live.map((market) => <span key={market.id}><b>{market.symbol}</b><span>{fmt(market)}</span><i className={market.pct >= 0 ? 'home-positive' : 'home-negative'}>{market.pct >= 0 ? '+' : ''}{market.pct.toFixed(2)}%</i></span>)}<span><small>{tr('Data simulasi · Bukan harga pasar langsung')}</small></span></div>)}</div></div></div>
-     <MarketCatalogSection />
     <nav className="home-bottom-nav" aria-label={tr('Navigasi utama')}>{[{ label: 'Beranda', icon: House }, { label: 'Pasar', icon: ChartNoAxesColumn }, { label: 'Posisi', icon: BriefcaseBusiness }, { label: 'Mitra', icon: Users }, { label: 'Profil', icon: UserRound }].map(({ label, icon: Icon }) => label === 'Profil' || label === 'Pasar' || label === 'Posisi' || label === 'Mitra' ? <Button asChild key={label} variant="ghost"><Link to={label === 'Pasar' ? '/pasar' : label === 'Posisi' ? '/posisi' : label === 'Mitra' ? '/mitra' : '/profil'}><Icon /><span>{tr(label)}</span></Link></Button> : <Button variant="ghost" key={label} aria-current={label === 'Beranda' ? 'page' : undefined} onClick={() => label === 'Beranda' ? window.scrollTo({ top: 0, behavior: 'smooth' }) : open(label)}><Icon /><span>{tr(label)}</span></Button>)}</nav>
      {dialog && <div className="account-dialog-backdrop" onClick={() => setDialog(null)}><section className="account-dialog" role="dialog" aria-modal="true" aria-labelledby="home-dialog-title" onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="account-dialog-close" aria-label={tr('Tutup')} onClick={() => setDialog(null)}><X /></Button><h2 id="home-dialog-title">{tr(dialog.title)}</h2><p className="whitespace-pre-line">{tr(dialog.text)}</p><Button onClick={() => setDialog(null)}>{tr('Kembali')}</Button></section></div>}
   </div></main>;

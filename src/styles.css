@@ -451,7 +451,7 @@ html, body { overflow-x: clip; }
 @media(max-width:360px){.market-tabs button{padding:0 7px;font-size:11px}.market-detail-tabs button{padding:0 4px;font-size:10px}.market-table-head,.market-product-link{grid-template-columns:minmax(0,1fr) 67px 41px 50px}.market-product-link b{font-size:12px}.market-demo-strip{gap:5px}}
 
 .market-ticker-marquee { overflow: hidden; position: relative; background: var(--background); border-bottom: 1px solid var(--border); padding: 8px 0; }
-.market-ticker-track { display: flex; align-items: center; gap: 8px; width: max-content; animation: market-ticker-scroll 32s linear infinite; }
+.market-ticker-track { display: flex; align-items: center; gap: 0; width: max-content; animation: market-ticker-scroll 32s linear infinite; }
 .market-ticker-marquee:hover .market-ticker-track { animation-play-state: paused; }
 @keyframes market-ticker-scroll { 0% { transform: translateX(-50%); } 100% { transform: translateX(0%); } }
 

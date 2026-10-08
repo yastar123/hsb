@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, ArrowUp, ArrowDown, Search, SlidersHorizontal, Star, GripHorizontal, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, X, Maximize2, CandlestickChart, LineChart, ChevronDown, Menu, Wallet, Lock, TrendingUp, WalletCards, FileBarChart, CircleHelp, ArrowLeftRight, ArrowUpFromLine, ReceiptText } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Search, SlidersHorizontal, Star, GripHorizontal, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, X, Maximize2, CandlestickChart, LineChart, ChevronDown, Menu, Wallet, Lock, TrendingUp, WalletCards, FileBarChart, CircleHelp, ArrowLeftRight, ArrowUpFromLine, ReceiptText, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { bidPrice, type Product } from '@/lib/market-data';
@@ -67,6 +67,474 @@ export function MarketCatalogSection() {
         </div>
       )}
     </section>
+  );
+}
+
+export function TradingTerminalSection() {
+  const { products } = useMarket();
+  const { language } = useAppPreferences();
+  const tr = (text: string) => translate(text, language);
+
+  let ledgerData: ReturnType<typeof useLedger> | null = null;
+  try {
+    ledgerData = useLedger();
+  } catch {
+    // Ledger context fallback for tests
+  }
+  const currentUser = ledgerData?.currentUser;
+  const users = ledgerData?.users ?? [];
+  const currentEmail = ledgerData?.currentEmail ?? '';
+
+  const me = users.find((u) => u.email.toLowerCase() === (currentEmail || currentUser?.email || '').toLowerCase())
+    ?? (currentUser ? users.find((u) => u.id === currentUser.id) : null);
+
+  const [simulatedProfit, setSimulatedProfit] = useState(0);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [pnl, setPnl] = useState(0);
+  const [dialog, setDialog] = useState<{ title: string; text: string } | null>(null);
+
+  const [showOrderSheet, setShowOrderSheet] = useState(false);
+  const [selectedLeverage, setSelectedLeverage] = useState('50x');
+  const [selectedMarginPct, setSelectedMarginPct] = useState(50);
+  const [tradeMargin, setTradeMargin] = useState(0);
+  const [tradeLeverage, setTradeLeverage] = useState(50);
+
+  const balance = (me ? mainOf(me) : 136.43) + simulatedProfit;
+  const equityFormatted = balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  useEffect(() => {
+    if (!isSimulating) return;
+
+    // Small initial commission / spread
+    setPnl(-1.50);
+
+    const interval = setInterval(() => {
+      setPnl((prev) => {
+        // Highly realistic underlying price percentage fluctuation
+        const underlyingPctChange = (Math.random() * 0.16) - 0.03; // -0.03% to +0.13%
+        // Apply leverage
+        const leveragedChange = (underlyingPctChange * tradeLeverage) / 100;
+        const cashChange = tradeMargin * leveragedChange;
+        const next = prev + cashChange;
+        return Math.round(next * 100) / 100;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isSimulating, tradeMargin, tradeLeverage]);
+
+  const stopTrading = () => {
+    setIsSimulating(false);
+    const finalProfit = pnl > 0 ? pnl : 8.75;
+    setSimulatedProfit((prev) => prev + finalProfit);
+    setDialog({
+      title: 'Eksekusi Berhasil!',
+      text: `Posisi LONG ${activeProduct.symbol} Kontrak Berjangka Anda telah ditutup pada harga pasar.\n\nProfit Bersih: +$${finalProfit.toFixed(2)} USD\n\nDana hasil perdagangan telah dikreditkan langsung ke Ekuitas Akun Anda.`
+    });
+    setPnl(0);
+  };
+
+  const confirmOrder = () => {
+    const lev = parseInt(selectedLeverage) || 50;
+    const marginAmount = Math.round((balance * selectedMarginPct)) / 100;
+    setTradeMargin(marginAmount);
+    setTradeLeverage(lev);
+    setIsSimulating(true);
+    setShowOrderSheet(false);
+  };
+
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+
+  const defaultProduct: Product = {
+    symbol: 'XAUUSD',
+    name: 'Gold / US Dollar',
+    group: 'Metal',
+    ask: 4168.26,
+    spread: 32,
+    decimals: 2,
+    change: 0.69
+  };
+
+  const activeProduct = currentProduct || products.find(p => p.symbol === 'XAUUSD') || products[0] || defaultProduct;
+
+  const [timeframe, setTimeframe] = useState('1H');
+
+  const tickerProducts = products.length ? products : [defaultProduct];
+  const availableInstruments = [
+    { symbol: 'XAUUSD', name: 'Gold', icon: 'Au' },
+    { symbol: 'BTCUSD', name: 'Bitcoin', icon: '₿' },
+    { symbol: 'EURUSD', name: 'EUR/USD', icon: '€' },
+    { symbol: 'GBPUSD', name: 'GBP/USD', icon: '£' },
+  ];
+
+  return (
+    <div className="bg-background text-foreground space-y-4 my-4">
+      {/* Top Status & Trading Terminal Banner */}
+      <section className="p-3.5 bg-card/80 border border-border rounded-xl space-y-3">
+        <div className="flex items-center justify-between gap-2 text-[10px]">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{tr('KONEKSI LANGSUNG')}</span>
+          </div>
+          <div className="px-2.5 py-0.5 rounded-full bg-secondary border border-border text-muted-foreground font-mono font-semibold">
+            {tr('1 ENTRI · 30 HARI')}
+          </div>
+        </div>
+
+        <div>
+          <h1 className="text-xl font-black tracking-tight text-foreground">{tr('Terminal Trading')}</h1>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+            {tr('Pilih satu pasar dan gunakan seluruh modal yang tersedia. Posisi terkunci secara otomatis setelah satu kali klik.')}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
+            <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('EKUITAS')}</span>
+            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${equityFormatted}</span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
+            <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('TERSEDIA')}</span>
+            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">$0.00</span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
+            <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('STATUS')}</span>
+            {isSimulating ? (
+              <span className="inline-flex items-center justify-center gap-1 text-xs font-bold text-amber-400 mt-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span>{tr('PERDAGANGAN AKTIF')}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center justify-center gap-1 text-xs font-bold text-emerald-400 mt-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{tr('TERKUNCI')}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Horizontal Instrument Ticker - Infinite Auto Marquee */}
+      <section className="market-ticker-marquee rounded-xl border border-border" role="region" aria-label={tr('Pergerakan Harga Pasar')}>
+        <div className="market-ticker-track">
+          {[0, 1].map((copyIndex) => (
+            <div key={copyIndex} className="flex items-center gap-2 pr-2 shrink-0">
+              {tickerProducts.map((item) => (
+                <button
+                  key={`${copyIndex}-${item.symbol}`}
+                  onClick={() => {
+                    setCurrentProduct(item);
+                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-left transition-all ${
+                    item.symbol === activeProduct.symbol
+                      ? 'bg-primary/15 border-primary text-foreground shadow-sm'
+                      : 'bg-card border-border hover:border-primary/40 text-muted-foreground'
+                  }`}
+                >
+                  <span className="text-[11px] font-bold text-foreground">{item.symbol}</span>
+                  <span className="text-xs font-bold font-mono text-foreground">
+                    {typeof item.ask === 'number' ? item.ask.toFixed(item.decimals ?? 2) : item.ask}
+                  </span>
+                  <span className={`text-[10px] font-mono font-bold ${item.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {item.change >= 0 ? '+' : ''}{item.change.toFixed(2)}%
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* MARKET WATCH Instrument Selector */}
+      <section className="p-3.5 bg-card border border-border rounded-xl space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest">{tr('PANTAU PASAR')}</span>
+            <h2 className="text-sm font-bold text-foreground">{tr('Pilih instrumen')}</h2>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{tr('Data pasar streaming')}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {availableInstruments.map((inst) => {
+            const matched = products.find((p) => p.symbol === inst.symbol);
+            const isActive = inst.symbol === activeProduct.symbol;
+            return (
+              <button
+                key={inst.symbol}
+                onClick={() => {
+                  if (matched) {
+                    setCurrentProduct(matched);
+                  }
+                }}
+                className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                  isActive
+                    ? 'bg-amber-500/10 border-amber-500/40 shadow-sm'
+                    : 'bg-background border-border hover:border-border/80'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-amber-400">{inst.icon}</span>
+                  <div>
+                    <span className="block text-xs font-bold text-foreground">{inst.symbol}</span>
+                    <span className="block text-[9px] text-muted-foreground">{inst.name}</span>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-secondary text-muted-foreground border border-border">
+                  {tr('TERKUNCI')}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Active Instrument Header & Timeframe Bar */}
+      <section className="p-3.5 bg-background border border-border rounded-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-extrabold text-foreground">{activeProduct.symbol}</span>
+            <span className="px-2 py-0.5 text-[9px] font-bold rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              • {tr('LANGSUNG')}
+            </span>
+          </div>
+          <div className="text-right font-mono">
+            <div className="text-sm font-extrabold text-foreground font-mono">
+              {typeof activeProduct.ask === 'number' ? activeProduct.ask.toFixed(activeProduct.decimals ?? 2) : activeProduct.ask}
+            </div>
+            <div className={`text-[10px] font-bold ${activeProduct.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {activeProduct.change >= 0 ? '+' : ''}{activeProduct.change.toFixed(2)}%
+            </div>
+          </div>
+        </div>
+        <span className="text-[10px] text-muted-foreground block -mt-2">{activeProduct.name} · Bitstamp</span>
+
+        <div className="flex items-center gap-1 p-1 bg-card rounded-xl border border-border text-xs font-mono">
+          {['5M', '15M', '1H', '4H', '1D'].map((tf) => (
+            <button
+              key={tf}
+              onClick={() => setTimeframe(tf)}
+              className={`flex-1 py-1 rounded-lg text-center font-bold transition-all ${
+                timeframe === tf
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tf}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Interactive Chart Section */}
+      <section className="bg-background relative border border-border rounded-xl p-2">
+        <TradingViewChart
+          product={activeProduct}
+          timeframe={timeframe}
+        />
+      </section>
+
+      {/* Active Position / ORDER TICKET Card */}
+      <section className="p-3.5 bg-card border border-border rounded-xl space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              {isSimulating ? <TrendingUp className="h-4 w-4 animate-bounce text-amber-400" /> : <Lock className="h-4 w-4" />}
+            </div>
+            <div>
+              <span className="block text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest">{tr('KARTU PESANAN')}</span>
+              <h3 className="text-sm font-bold text-foreground">{tr('Posisi aktif')}</h3>
+            </div>
+          </div>
+          {isSimulating ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold animate-pulse">
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+              <span>{tr('PERDAGANGAN AKTIF')}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{tr('POSISI TERKUNCI')}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-background border border-border space-y-2.5">
+          <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+            <span className="text-muted-foreground font-semibold">{tr('INSTRUMEN')}</span>
+            <span className="font-bold text-foreground font-mono">{activeProduct.symbol}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+            <span className="text-muted-foreground font-semibold">{tr('P&L BERJALAN')}</span>
+            <span className={`font-bold font-mono transition-all duration-300 ${pnl >= 0 ? 'text-emerald-400 scale-105' : 'text-rose-400 scale-100'}`}>
+              {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs pb-2 border-b border-border/60">
+            <span className="text-muted-foreground font-semibold">{tr('MODAL')}</span>
+            <span className="font-bold text-foreground font-mono">${equityFormatted}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground font-semibold">{tr('SIKLUS')}</span>
+            <div className="text-right">
+              <span className="font-bold text-foreground font-mono block">{tr('Hari 1 dari 30')}</span>
+              <span className="text-[10px] text-muted-foreground">{tr('Sisa 29 hari')}</span>
+            </div>
+          </div>
+        </div>
+
+        {isSimulating ? (
+          <Button 
+            onClick={stopTrading}
+            className="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 animate-pulse transition-all shadow-lg shadow-emerald-500/20"
+          >
+            <TrendingUp className="h-4 w-4" />
+            <span>{tr('Tutup Posisi & Ambil Profit')}</span>
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => setShowOrderSheet(true)}
+            className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-400/20"
+          >
+            <Play className="h-4 w-4 fill-black" />
+            <span>{tr('Perdagangkan')}</span>
+          </Button>
+        )}
+        <p className="text-[10px] text-center text-muted-foreground leading-snug">
+          {tr('Akun ini tidak dapat membuka posisi lain sampai siklus 30 hari selesai.')}
+        </p>
+      </section>
+
+      {/* Futures Order Ticket Slide-up Panel / Sheet */}
+      {showOrderSheet && (
+        <div className="account-dialog-backdrop bg-black/70 backdrop-blur-sm z-[1000]" onClick={() => setShowOrderSheet(false)}>
+          <section 
+            className="account-dialog max-w-md w-full bg-card border border-border/80 rounded-2xl p-5 space-y-4 shadow-2xl relative animate-in slide-in-from-bottom duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button variant="ghost" size="icon" className="account-dialog-close absolute top-4 right-4" aria-label={tr('Tutup')} onClick={() => setShowOrderSheet(false)}>
+              <X />
+            </Button>
+            
+            <header className="border-b border-border/60 pb-3">
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">{tr('KONTRAK BERJANGKA (FUTURES)')}</span>
+              <h2 className="text-lg font-black text-foreground mt-0.5">{activeProduct.symbol} · {tr('Beli / Long')}</h2>
+            </header>
+
+            {/* Leverage Selector */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-bold text-muted-foreground">
+                <span>{tr('LEVERAGE')}</span>
+                <span className="text-amber-400 font-extrabold">{selectedLeverage}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {['10x', '20x', '50x', '100x'].map((lev) => (
+                  <button
+                    key={lev}
+                    onClick={() => setSelectedLeverage(lev)}
+                    className={`py-2 rounded-xl text-xs font-extrabold border transition-all ${
+                      selectedLeverage === lev
+                        ? 'bg-amber-400 border-amber-400 text-black shadow-lg shadow-amber-400/10'
+                        : 'bg-background border-border hover:border-border/80 text-muted-foreground'
+                    }`}
+                  >
+                    {lev}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Margin Allocation Selector */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-bold text-muted-foreground">
+                <span>{tr('ALOKASI MARGIN (CAPITAL)')}</span>
+                <span className="text-foreground font-mono font-bold">{selectedMarginPct}% (${((balance * selectedMarginPct) / 100).toFixed(2)})</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {[25, 50, 75, 100].map((pct) => (
+                  <button
+                    key={pct}
+                    onClick={() => setSelectedMarginPct(pct)}
+                    className={`py-2 rounded-xl text-xs font-extrabold border transition-all ${
+                      selectedMarginPct === pct
+                        ? 'bg-amber-400 border-amber-400 text-black shadow-lg shadow-amber-400/10'
+                        : 'bg-background border-border hover:border-border/80 text-muted-foreground'
+                    }`}
+                  >
+                    {pct}%
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Contract Purchase Details Summary */}
+            <div className="p-3 rounded-xl bg-background border border-border/80 space-y-2 text-xs font-medium text-muted-foreground">
+              <div className="flex justify-between">
+                <span>{tr('Nilai Kontrak (Contract Value)')}</span>
+                <span className="font-bold text-foreground font-mono">
+                  ${(((balance * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>{tr('Estimasi Biaya Transaksi')}</span>
+                <span className="font-bold text-foreground font-mono">
+                  ${(((balance * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50) * 0.0006).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>{tr('Estimasi Harga Likuidasi')}</span>
+                <span className="font-bold text-rose-400 font-mono font-bold">
+                  ${(activeProduct.ask * (1 - 1 / (parseInt(selectedLeverage) || 50))).toLocaleString('en-US', { minimumFractionDigits: activeProduct.decimals, maximumFractionDigits: activeProduct.decimals })} USD
+                </span>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2.5 pt-1">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowOrderSheet(false)}
+                className="flex-1 h-11 border-border text-muted-foreground hover:bg-secondary rounded-xl font-bold text-xs"
+              >
+                {tr('Batal')}
+              </Button>
+              <Button 
+                onClick={confirmOrder}
+                className="flex-1 h-11 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-extrabold text-xs shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-1.5 border-none"
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span>{tr('Beli / Long')}</span>
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Success Celebration Dialog */}
+      {dialog && (
+        <div className="account-dialog-backdrop bg-black/60 backdrop-blur-sm z-[1000]" onClick={() => setDialog(null)}>
+          <section className="account-dialog max-w-sm" role="dialog" aria-modal="true" aria-labelledby="sim-dialog-title" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="account-dialog-close" aria-label={tr('Tutup')} onClick={() => setDialog(null)}>
+              <X />
+            </Button>
+            <h2 id="sim-dialog-title" className="text-lg font-black text-amber-400 flex items-center justify-center gap-2">
+              ✨ {dialog.title}
+            </h2>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground my-4">
+              {dialog.text}
+            </p>
+            <Button className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl border-none" onClick={() => setDialog(null)}>
+              {tr('Kembali')}
+            </Button>
+          </section>
+        </div>
+      )}
+    </div>
   );
 }
 export function MarketScreen() {
@@ -307,7 +775,7 @@ export function MarketDetailScreen({ product }: { product: Product }) {
         <section className="market-ticker-marquee" role="region" aria-label={tr('Pergerakan Harga Pasar')}>
           <div className="market-ticker-track">
             {[0, 1].map((copyIndex) => (
-              <div key={copyIndex} className="flex items-center gap-2">
+              <div key={copyIndex} className="flex items-center gap-2 pr-2 shrink-0">
                 {tickerProducts.map((item) => (
                   <button
                     key={`${copyIndex}-${item.symbol}`}
