@@ -1220,7 +1220,14 @@ export function createApiRouter(pool) {
     asyncRoute(async (request, response) => {
       const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
       const email = normalizeEmail(request.body?.email);
-      const phone = normalizeIndonesianPhone(request.body?.phone);
+      let phone = request.body?.phone ? normalizeIndonesianPhone(request.body.phone) : "";
+      if (!request.body?.phone) {
+        // Generate a random unique phone number to satisfy the DB's NOT NULL UNIQUE constraint
+        const randDigits = Math.floor(100000000 + Math.random() * 900000000);
+        phone = `+62812${randDigits}`;
+      } else if (!phone) {
+        return apiError(response, 400, "Nomor telepon Indonesia tidak valid.");
+      }
       const password = request.body?.password;
       const referralCode =
         typeof request.body?.referralCode === "string"
@@ -1229,15 +1236,14 @@ export function createApiRouter(pool) {
       if (name.length < 2 || name.length > 120)
         return apiError(response, 400, "Nama harus terdiri dari 2–120 karakter.");
       if (!validEmail(email)) return apiError(response, 400, "Alamat email tidak valid.");
-      if (!phone) return apiError(response, 400, "Nomor telepon Indonesia tidak valid.");
       if (!validPassword(password))
         return apiError(response, 400, "Password harus mengikuti semua aturan yang ditampilkan.");
       if (referralCode.length > 32) return apiError(response, 400, "Kode referral tidak valid.");
 
       const passwordHash = await hashPassword(password);
       if (!pool) {
-        const existing = inMemoryStore.users.get(email) || inMemoryStore.users.get(phone);
-        if (existing) return apiError(response, 409, "Email atau nomor telepon sudah terdaftar.");
+        const existing = inMemoryStore.users.get(email);
+        if (existing) return apiError(response, 409, "Email sudah terdaftar.");
         const id = randomUUID();
         const user = {
           id,
@@ -1302,7 +1308,7 @@ export function createApiRouter(pool) {
       } catch (error) {
         await client.query("ROLLBACK");
         if (error?.code === "23505")
-          return apiError(response, 409, "Email atau nomor telepon sudah terdaftar.");
+          return apiError(response, 409, "Email sudah terdaftar.");
         throw error;
       } finally {
         client.release();
@@ -1317,7 +1323,7 @@ export function createApiRouter(pool) {
       const identity = String(request.body?.identity ?? "").trim();
       const password = request.body?.password;
       if (!identity || typeof password !== "string" || password.length > 128) {
-        return apiError(response, 400, "Email/nomor telepon dan password wajib diisi.");
+        return apiError(response, 400, "Email dan password wajib diisi.");
       }
       if (verifyAdminCredentials(identity, password)) {
         const adminEmail = getPrimaryAdminEmail();

@@ -89,7 +89,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-    links: [{ rel: "icon", href: "/hsb-mark.svg", type: "image/svg+xml" }],
+    links: [
+      { rel: "icon", href: "/logo.jpg", type: "image/jpeg" },
+      { rel: "apple-touch-icon", href: "/logo.jpg" },
+    ],
   }),
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

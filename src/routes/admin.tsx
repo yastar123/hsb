@@ -32,7 +32,7 @@ function AdminSidebar() {
   const navigate = useNavigate();
   const { logout } = useLedger();
   return <Sidebar collapsible="icon">
-    <SidebarHeader><div className="flex items-center gap-2 px-1 py-1"><img src="/hsb-mark.svg" alt="" width="24" height="24" /><span className="font-bold group-data-[collapsible=icon]:hidden">HSB Admin</span></div></SidebarHeader>
+    <SidebarHeader><div className="flex items-center gap-2 px-1 py-1"><img src="/logo.jpg" alt="" width="24" height="24" className="rounded-full object-cover" /><span className="font-bold group-data-[collapsible=icon]:hidden">HSB Admin</span></div></SidebarHeader>
     <SidebarContent>
       <SidebarGroup>
         <SidebarGroupLabel>Menu</SidebarGroupLabel>

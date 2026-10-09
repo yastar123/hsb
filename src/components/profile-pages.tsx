@@ -45,7 +45,7 @@ export function ProfileScreen() {
 
   return <main className="home-page"><div className="home-shell prof-shell">
     <section className="prof-head">
-      <img src="/hsb-mark.svg" width="34" height="34" alt="" />
+      <img src="/logo.jpg" width="34" height="34" alt="" className="rounded-full object-cover" />
       <div><h1>{tr('Hello Demo')}</h1><p>UID: {UID} <button onClick={copy} aria-label={tr('Salin UID')}><Copy /></button></p></div>
       <Button variant="ghost" size="icon" className="prof-moon" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
     </section>
@@ -196,7 +196,11 @@ export function ChangePasswordScreen() {
   const ready = cur && isValidPassword(next) && conf === next;
   const submit = (e: FormEvent) => { e.preventDefault(); setNotice('Penggantian kata sandi belum terhubung ke layanan akun.'); };
   return <main className="account-page"><div className="account-shell">
-    <header className="account-banner"><Link to="/beranda" className="account-brand"><img src="/hsb-mark.svg" width="25" height="25" alt="" />HSB</Link></header>
+    <header className="account-banner">
+      <Link to="/beranda" className="account-brand" aria-label="Beranda">
+        <img src="/logo.jpg" alt="Logo" className="h-12 w-auto max-w-[170px] object-contain" />
+      </Link>
+    </header>
     <section className="account-content">
       <div className="account-heading"><Button asChild variant="ghost" size="icon"><Link to="/profil" aria-label="Kembali"><ArrowLeft /></Link></Button><h1>Ganti Kata Sandi</h1></div>
       <form className="account-form prof-pw-form" onSubmit={submit}>
@@ -230,7 +234,7 @@ export function CustomerServiceScreen() {
           ? <Button asChild size="sm"><a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{tr(i.buttonLabel)}</a></Button>
           : <Button size="sm" onClick={() => setNotice(`${i.title} belum tersedia pada pratinjau ini.`)}>{tr(i.buttonLabel)}</Button>}</div></div>;
       })}
-      <div className="prof-cs-card prof-cs-office"><h3><img src="/hsb-mark.svg" width="20" height="20" alt="" />{content.officeName}</h3><b>{content.officeBuilding}</b><p>{content.officeAddress}</p></div>
+      <div className="prof-cs-card prof-cs-office"><h3><img src="/logo.jpg" width="20" height="20" alt="" className="rounded-full object-cover" />{content.officeName}</h3><b>{content.officeBuilding}</b><p>{content.officeAddress}</p></div>
     </div>
     {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;

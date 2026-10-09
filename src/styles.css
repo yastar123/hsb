@@ -218,7 +218,7 @@ html, body { overflow-x: clip; }
     transform: translateX(-50%) !important;
   }
 }
-.account-banner { height: 82px; display: flex; align-items: flex-start; gap: 18px; padding: 7px 12px; background: var(--account-banner); color: var(--primary-foreground); }
+.account-banner { height: 82px; display: flex; align-items: center; gap: 18px; padding: 7px 14px; background: var(--account-banner); color: var(--primary-foreground); }
 .account-brand { display: flex; gap: 2px; align-items: center; font: 750 22px Arial, sans-serif; text-decoration: none; color: var(--primary); }
 .account-award { display: flex; gap: 3px; align-items: center; text-align: center; font-size: 5px; line-height: 1.1; color: var(--primary); opacity: 0.95; }
 .account-award > span { font-size: 29px; }
@@ -293,7 +293,7 @@ html, body { overflow-x: clip; }
 .account-browse a { height: 20px; font-size: 10px; }
 .home-page { background: var(--home-band); min-height: 100svh; }
 .home-shell { width: min(100%, 480px); min-width: 0; margin: auto; background: var(--background); padding-bottom: 64px; }
-.home-header { height: 32px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; }
+.home-header { height: 40px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; }
 .home-header > div { display: flex; }
 .home-header button { width: 28px; height: 28px; color: var(--primary); }
 .home-hero { position: relative; aspect-ratio: 2; overflow: hidden; background: var(--home-ink); }
