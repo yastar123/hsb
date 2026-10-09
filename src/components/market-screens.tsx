@@ -592,7 +592,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
               <div className="flex justify-between">
                 <span>{tr('Estimasi Biaya Transaksi')}</span>
                 <span className="font-bold text-foreground font-mono">
-                  ${(((depositBalance * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50) * 0.0006).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  ${depositBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                 </span>
               </div>
               <div className="flex justify-between">
