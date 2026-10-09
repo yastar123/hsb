@@ -1,8 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import safeImageAsset from "@/assets/images/welcome_safe_yellow_1791431063575.jpg";
-const safeImage = safeImageAsset;
 import demoImageAsset from "@/assets/images/welcome_demo_yellow_1791431074942.jpg";
 const demoImage = demoImageAsset;
 import bonusImageAsset from "@/assets/images/welcome_bonus_yellow_1791431085533.jpg";
@@ -23,7 +21,7 @@ export const Route = createFileRoute("/")({
 });
 
 const slides = [
-  { image: safeImage, label: "Trading aman dan legal", title: <>Trading <span className="text-primary">Aman dan Legal di<br />Broker Resmi Teregulasi</span></>, alt: "Perempuan dengan ponsel dan ilustrasi perlindungan trading" },
+  { image: "/logo.jpg", label: "Trading aman dan terpercaya", title: <>Trading <span className="text-primary">Aman dan Nyaman di<br />Platform Terpercaya</span></>, alt: "Logo Platform Trading" },
   { image: demoImage, label: "Belajar dengan akun demo", title: <><span className="text-primary">Belajar Trading</span> Sambil<br />Berlatih dengan <span className="text-primary">Akun Demo</span></>, alt: "Perempuan belajar trading dengan ponsel dan ilustrasi candlestick" },
   { image: bonusImage, label: "Welcome bonus", title: <><span className="text-primary">Mulai Trading</span> dan Langsung<br />Dapatkan <span className="text-primary">Welcome Bonus</span></>, alt: "Ilustrasi welcome bonus hingga 350 dolar" },
   { image: rewardsImage, label: "Promo Smart Reward", title: <>Nikmati <span className="text-primary">Promo Menarik</span><br />dengan <span className="text-primary">Smart Reward</span><br />untuk <span className="text-primary">Setiap Trader</span></>, alt: "Perempuan dengan ilustrasi hadiah dan fitur trading" },
@@ -43,10 +41,9 @@ function Index() {
         onTouchEnd={(event) => { const end = event.changedTouches[0]?.clientX; if (touchStart.current !== null && end !== undefined && Math.abs(end - touchStart.current) > 45) changeSlide(active + (end < touchStart.current ? 1 : -1)); touchStart.current = null; }}
         onKeyDown={(event) => { if (event.key === 'ArrowRight') changeSlide(active + 1); if (event.key === 'ArrowLeft') changeSlide(active - 1); }}>
         <div key={active} className="welcome-enter" aria-live="polite">
-          <img className="welcome-art" src={slide.image} alt={slide.alt} width={1024} height={1024} draggable={false} />
+          <img className={`welcome-art ${active === 0 ? 'object-contain p-8 bg-zinc-950/90 border border-border/30' : 'object-cover'}`} src={slide.image} alt={slide.alt} width={1024} height={1024} draggable={false} />
           <div className="welcome-message">
             <h1 className="welcome-title">{slide.title}</h1>
-            {active === 0 && <div className="welcome-regulators" aria-label="BAPPEBTI, OJK, Bank Indonesia"><span>BAPPEBTI</span><span>OJK</span><span>BANK INDONESIA</span></div>}
           </div>
         </div>
         <nav className="welcome-pagination" aria-label="Pilih slide welcome">
