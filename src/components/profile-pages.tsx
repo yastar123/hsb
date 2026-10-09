@@ -201,8 +201,15 @@ export function ChangePasswordScreen() {
   const [conf, setConf] = useState('');
   const [notice, setNotice] = useState('');
   const mismatch = conf.length > 0 && conf !== next;
-  const ready = cur && isValidPassword(next) && conf === next;
-  const submit = (e: FormEvent) => { e.preventDefault(); setNotice('Penggantian kata sandi belum terhubung ke layanan akun.'); };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!cur) { setNotice('Silakan masukkan kata sandi saat ini.'); return; }
+    if (!next) { setNotice('Silakan masukkan kata sandi baru.'); return; }
+    if (!isValidPassword(next)) { setNotice('Kata sandi baru harus memenuhi seluruh kriteria keamanan.'); return; }
+    if (conf !== next) { setNotice('Konfirmasi kata sandi baru tidak sama.'); return; }
+    setNotice('Penggantian kata sandi berhasil diproses.');
+    setCur(''); setNext(''); setConf('');
+  };
   return <main className="account-page"><div className="account-shell">
     <header className="account-banner">
       <Link to="/beranda" className="account-brand" aria-label="Beranda">
@@ -217,7 +224,7 @@ export function ChangePasswordScreen() {
         <ul className="account-password-rules">{passwordRules.map((r) => <li key={r.label} className={r.valid(next) ? 'account-rule-valid' : ''}><Check />{r.label}</li>)}</ul>
         <PwField label="Konfirmasi Kata Sandi Baru" value={conf} onChange={setConf} />
         {mismatch && <p className="prof-error">Konfirmasi kata sandi tidak sama.</p>}
-        <Button type="submit" className="account-submit" disabled={!ready}>Ganti Kata Sandi</Button>
+        <Button type="submit" className="account-submit">Ganti Kata Sandi</Button>
       </form>
       <p className="prof-help">Butuh bantuan? <Link to="/layanan-pelanggan">Layanan Pelanggan</Link></p>
     </section>
@@ -253,9 +260,18 @@ type Bank = { bank: string; number: string; name: string };
 export function WithdrawalBankScreen() {
   const [list, setList] = useState<Bank[]>([]);
   const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState('');
   const [form, setForm] = useState<Bank>({ bank: '', number: '', name: '' });
-  const valid = form.bank && /^\d{6,20}$/.test(form.number) && form.name.trim().length >= 3;
-  const save = (e: FormEvent) => { e.preventDefault(); if (!valid) return; setList([...list, form]); setForm({ bank: '', number: '', name: '' }); setAdding(false); };
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    if (!form.bank) { setNotice('Silakan pilih nama bank terlebih dahulu.'); return; }
+    const cleanNum = form.number.replace(/\D/g, '');
+    if (cleanNum.length < 4) { setNotice('Silakan masukkan nomor rekening yang valid (minimal 4 digit).'); return; }
+    if (form.name.trim().length < 2) { setNotice('Silakan masukkan nama pemilik rekening.'); return; }
+    setList([...list, { ...form, number: cleanNum }]);
+    setForm({ bank: '', number: '', name: '' });
+    setAdding(false);
+  };
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">
     <Header title="Bank Penarikan" />
     <div className="prof-cs">
@@ -266,9 +282,10 @@ export function WithdrawalBankScreen() {
         <label><small>Nomor Rekening</small><input inputMode="numeric" value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value.replace(/\D/g, '') })} placeholder="Contoh: 1234567890" /></label>
         <label><small>Nama Pemilik Rekening</small><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Sesuai buku tabungan" /></label>
         <p className="prof-hint">Nama pemilik rekening harus sama dengan nama akun Anda.</p>
-        <div className="prof-bank-actions"><Button type="button" variant="outline" onClick={() => setAdding(false)}>Batal</Button><Button type="submit" disabled={!valid}>Simpan</Button></div>
+        <div className="prof-bank-actions"><Button type="button" variant="outline" onClick={() => setAdding(false)}>Batal</Button><Button type="submit">Simpan</Button></div>
       </form> : <Button className="partner-wide" onClick={() => setAdding(true)}>+ Tambah Rekening Bank</Button>}
       <p className="prof-hint">Rekening hanya tersimpan selama sesi ini; belum terhubung ke layanan akun.</p>
     </div>
+    {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;
 }

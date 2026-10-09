@@ -32,8 +32,39 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    setBusy(true);
     setNotice('');
+    if (register) {
+      if (!name.trim()) {
+        setNotice(tr('Silakan masukkan nama lengkap Anda (minimal 2 karakter).'));
+        return;
+      }
+      if (!email.trim() || !email.includes('@')) {
+        setNotice(tr('Silakan masukkan alamat email yang valid.'));
+        return;
+      }
+      if (!password) {
+        setNotice(tr('Silakan masukkan kata sandi Anda.'));
+        return;
+      }
+      if (!isValidPassword(password)) {
+        setNotice(tr('Kata sandi harus terdiri dari minimal 12 karakter, mengandung huruf besar, huruf kecil, angka, dan karakter khusus.'));
+        return;
+      }
+      if (!agreed) {
+        setNotice(tr('Silakan centang persetujuan Kebijakan Privasi terlebih dahulu.'));
+        return;
+      }
+    } else {
+      if (!identity.trim()) {
+        setNotice(tr('Silakan masukkan email Anda.'));
+        return;
+      }
+      if (!password) {
+        setNotice(tr('Silakan masukkan kata sandi Anda.'));
+        return;
+      }
+    }
+    setBusy(true);
     try {
       if (register) {
         const code = referralCode.trim();
@@ -101,7 +132,7 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
             <ul className="account-password-rules">{passwordRules.map((rule) => <li key={rule.label} className={rule.valid(password) ? 'account-rule-valid' : ''}><Check />{tr(rule.label)}</li>)}</ul>
             <label className="account-consent"><input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} /><span>{tr('Saya telah membaca dan menyetujui')} <Button type="button" variant="link" onClick={() => setDialog('privacy')}>{tr('Kebijakan Privasi')}</Button> HSB.</span></label>
           </> : <div className="account-forgot"><Button type="button" variant="link" onClick={() => setDialog('forgot')}>{tr('Lupa Kata Sandi')}</Button></div>}
-          <Button type="submit" className="account-submit" disabled={busy || (register && (!name.trim() || !email.trim() || !isValidPassword(password) || !agreed))}>{busy ? tr('Memproses...') : tr(register ? 'Daftar' : 'Masuk')}</Button>
+          <Button type="submit" className="account-submit" disabled={busy}>{busy ? tr('Memproses...') : tr(register ? 'Daftar' : 'Masuk')}</Button>
           {notice && <p className="account-notice" role="status">{notice}</p>}
         </form>
          <div className="account-switch">{tr(register ? 'Sudah punya akun?' : 'Belum punya akun?')}<Button variant="link" asChild><Link to={register ? '/login' : '/register'}>{tr(register ? 'Masuk Sekarang' : 'Daftar di Sini')}</Link></Button></div>

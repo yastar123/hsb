@@ -72,7 +72,7 @@ export function HomeScreen() {
       const moved = await transferDepositToMain(me.id);
       if (moved > 0) open(tr('Compounding'), `${tr('Saldo deposit')} $${f(moved)} ${tr('dipindahkan ke saldo utama. Akrual harian mengikuti tarif admin.')}`);
       else if (!compound.enabled) open(tr('Compounding'), tr('Compounding sedang dinonaktifkan admin.'));
-      else if (me.status !== 'Aktif') open(tr('Compounding'), tr('Akun belum aktif untuk compounding.'));
+      else if (me.status === 'Diblokir') open(tr('Compounding'), tr('Akun sedang diblokir. Hubungi layanan pelanggan.'));
       else open(tr('Compounding'), tr('Tidak ada saldo deposit yang dapat dipindahkan.'));
     } catch (error) {
       open(tr('Compounding'), error instanceof Error ? error.message : tr('Pemindahan saldo gagal.'));

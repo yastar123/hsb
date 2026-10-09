@@ -251,8 +251,8 @@ html, body { overflow-x: clip; }
 .account-consent { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; font-size: 10px; line-height: 1.6; margin-bottom: 32px; }
 .account-consent input { width: 15px; height: 15px; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; }
 .account-consent button { height: auto; padding: 0; font-size: inherit; text-decoration: underline; }
-.account-submit { width: 100%; height: 47px; font-size: 15px; font-weight: 700; box-shadow: none; border-radius: 8px; }
-.account-submit:disabled { background: var(--account-field); color: var(--account-soft); opacity: 1; }
+.account-submit { width: 100%; height: 47px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 14px oklch(0 0 0 / 25%); border-radius: 8px; background-color: var(--primary) !important; color: var(--primary-foreground) !important; cursor: pointer; }
+.account-submit:disabled { background: var(--account-field) !important; color: var(--account-soft) !important; opacity: 0.8; cursor: not-allowed; }
 .account-forgot { display: flex; justify-content: flex-end; margin-top: 3px; }
 .account-forgot button { font-size: 10px; padding: 0; height: 27px; }
 .account-signin .account-submit { margin-top: 92px; }
@@ -548,7 +548,30 @@ html, body { overflow-x: clip; }
 .acct-amount p { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted-foreground); margin-top: 8px; }
 .acct-amount small { color: var(--home-down); font-size: 10px; }
 .acct-footer { padding: 16px 36px 14px; text-align: center; }
-.acct-submit { width: 100%; height: 34px; }
+.acct-submit {
+  width: 100%;
+  height: 48px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 8px;
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  box-shadow: 0 4px 14px oklch(0 0 0 / 25%);
+  transition: all 180ms ease;
+}
+.acct-submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.acct-submit:active:not(:disabled) {
+  transform: scale(0.99);
+}
 .acct-footer p { display: flex; justify-content: center; align-items: center; gap: 4px; font-size: 9px; color: var(--muted-foreground); margin-top: 12px; }
 .acct-footer svg { width: 12px; color: var(--home-up); }
 .acct-footer b { color: var(--home-up); }

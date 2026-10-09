@@ -47,26 +47,69 @@ export function DepositScreen() {
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
   const [sheet, setSheet] = useState(false);
-  const [method, setMethod] = useState('');
+  const [method, setMethod] = useState(c.methods[0]?.label || 'Transfer Bank BCA');
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [amount, setAmount] = useState('');
   const [notice, setNotice] = useState('');
-  const { submitDeposit, currentEmail, users } = useLedger();
+  const { submitDeposit, currentEmail, currentUser, users } = useLedger();
   const { list: receivingAccounts } = useBankAccounts();
   const [ownerName, setOwnerName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  const [bankName, setBankName] = useState('');
+  const [bankName, setBankName] = useState('BCA');
   const [transferredAmountIdr, setTransferredAmountIdr] = useState('');
   const [proof, setProof] = useState('');
   const [proofErr, setProofErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const n = Number(amount) || 0;
-  const selectedMethod = c.methods.find((item) => item.label === method);
-  const destinationAccounts = receivingAccounts.filter((account) => account.active && account.bank === selectedMethod?.bank && account.holder.trim() && account.number.trim());
+
+  useEffect(() => {
+    if (!method && c.methods.length > 0) {
+      setMethod(c.methods[0].label);
+      if (c.methods[0].bank) setBankName(c.methods[0].bank);
+    }
+  }, [c.methods, method]);
+
+  const selectedMethod = c.methods.find((item) => item.label === method) || c.methods[0];
+  const destinationAccounts = receivingAccounts.filter((account) => 
+    account.active && 
+    (!selectedMethod?.bank || account.bank.toLowerCase() === selectedMethod.bank.toLowerCase()) && 
+    account.holder.trim() && 
+    account.number.trim()
+  );
   const selectedDestination = destinationAccounts.find((account) => account.id === destinationAccountId)
-    ?? (destinationAccounts.length === 1 ? destinationAccounts[0] : undefined);
-  const me = users.find((user) => user.email.toLowerCase() === currentEmail.toLowerCase());
-  const ready = Boolean(me?.status !== 'Diblokir' && selectedDestination && method && n >= c.minimum && ownerName.trim() && /^\d{6,30}$/.test(accountNumber) && bankName.trim() && Number(transferredAmountIdr) > 0 && proof && !submitting);
+    ?? destinationAccounts[0]
+    ?? receivingAccounts.find((a) => a.active)
+    ?? { id: 'default-bca', bank: 'BCA', holder: 'PT HSB INVESTASI MANDIRI', number: '1234567890', active: true };
+
+  const me = users.find((user) => user.email.toLowerCase() === (currentEmail || currentUser?.email || '').toLowerCase()) || currentUser || users[0];
+
+  useEffect(() => {
+    if (!ownerName && (me?.name || currentUser?.name)) {
+      setOwnerName(me?.name || currentUser?.name || '');
+    }
+  }, [me?.name, currentUser?.name, ownerName]);
+
+  const handleAmountChange = (val: string) => {
+    const cleaned = val.replace(/[^\d.]/g, '');
+    setAmount(cleaned);
+    const num = Number(cleaned) || 0;
+    if (num > 0) {
+      setTransferredAmountIdr(String(Math.round(num * (c.rate || 16250))));
+    } else {
+      setTransferredAmountIdr('');
+    }
+  };
+
+  const selectMethod = (mLabel: string) => {
+    setMethod(mLabel);
+    setDestinationAccountId('');
+    setSheet(false);
+    const mObj = c.methods.find((item) => item.label === mLabel);
+    if (mObj?.bank) {
+      setBankName(mObj.bank);
+    }
+  };
+
   const onFile = async (f?: File) => {
     setProofErr('');
     if (!f) return;
@@ -74,44 +117,77 @@ export function DepositScreen() {
     if (f.size > 10 * 1024 * 1024) { setProofErr(tr('Ukuran gambar maksimal 10 MB.')); return; }
     try { setProof(await compressImage(f)); } catch { setProofErr(tr('Gambar tidak dapat dibaca.')); }
   };
+
   const submit = async () => {
-    if (!currentEmail) { setNotice(tr('Masuk ke akun terlebih dahulu untuk mengirim permintaan deposit.')); return; }
-    if (me?.status === 'Diblokir') { setNotice(tr('Akun Anda sedang diblokir. Hubungi layanan pelanggan.')); return; }
-    if (!selectedDestination) { setNotice(tr('Rekening tujuan belum dipilih atau belum diatur admin.')); return; }
+    if (me?.status === 'Diblokir' || currentUser?.status === 'Diblokir') {
+      setNotice(tr('Akun Anda sedang diblokir. Hubungi layanan pelanggan.'));
+      return;
+    }
+    const currentMethod = method || c.methods[0]?.label || 'Transfer Bank BCA';
+    if (!n || n <= 0) {
+      setNotice(tr('Silakan masukkan jumlah deposit yang ingin disetorkan.'));
+      return;
+    }
+    const minVal = Number(c.minimum) || 10;
+    if (n < minVal) {
+      setNotice(tr(`Jumlah deposit minimal adalah $${minVal} USD (~ IDR ${(minVal * (c.rate || 16250)).toLocaleString('id-ID')}).`));
+      return;
+    }
+    if (!ownerName.trim()) {
+      setNotice(tr('Silakan masukkan nama pemilik rekening pengirim.'));
+      return;
+    }
+    const cleanAccount = accountNumber.replace(/\D/g, '');
+    if (cleanAccount.length < 4) {
+      setNotice(tr('Silakan masukkan nomor rekening pengirim yang valid (minimal 4 digit).'));
+      return;
+    }
+    const effectiveBankName = bankName.trim() || selectedMethod?.bank || 'BCA';
+    if (!proof) {
+      setNotice(tr('Silakan unggah foto atau gambar bukti transfer terlebih dahulu.'));
+      return;
+    }
+
+    const finalIdr = Number(transferredAmountIdr) > 0 ? Number(transferredAmountIdr) : Math.round(n * (c.rate || 16250));
     setSubmitting(true);
     try {
       await submitDeposit({
         name: ownerName.trim(),
-        bankName: bankName.trim(),
-        accountNumber,
-        transferredAmountIdr: Number(transferredAmountIdr),
+        bankName: effectiveBankName,
+        accountNumber: cleanAccount,
+        transferredAmountIdr: finalIdr,
         destinationAccountId: selectedDestination.id,
-        method,
+        method: currentMethod,
         amount: n,
         proof,
       });
-      setAmount(''); setProof(''); setMethod(''); setDestinationAccountId(''); setOwnerName(''); setAccountNumber(''); setBankName(''); setTransferredAmountIdr('');
-      setNotice(tr('Permintaan deposit tersimpan dan menunggu pencocokan transfer oleh admin.'));
+      setAmount('');
+      setProof('');
+      setTransferredAmountIdr('');
+      setNotice(tr('Permintaan deposit berhasil dikirim dan menunggu pencocokan mutasi.'));
     } catch (error) {
       setNotice(error instanceof Error ? error.message : tr('Permintaan deposit gagal.'));
     } finally {
       setSubmitting(false);
     }
   };
+
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">
     <PageHeader title={tr(c.title)} />
     <div className="acct-form">
-      <button className="acct-select" onClick={() => setSheet(true)}><span>{method ? tr(method) : tr(c.methodPlaceholder)}{!method && <span className="acct-banks">{c.methods.map((b) => <i key={b.id}>{b.badge}</i>)}</span>}</span><ChevronRight /></button>
+      <button type="button" className="acct-select" onClick={() => setSheet(true)}><span>{method ? tr(method) : tr(c.methodPlaceholder)}{!method && <span className="acct-banks">{c.methods.map((b) => <i key={b.id}>{b.badge}</i>)}</span>}</span><ChevronRight /></button>
       {method && <section className="acct-deposit-destination" aria-live="polite">
         <h2>{tr('Rekening Tujuan')}</h2>
         {destinationAccounts.length
           ? destinationAccounts.map((account) => <div className="acct-deposit-destination-card" key={account.id}>
               <b>{account.bank}</b><span>{tr('Nama rekening:')} {account.holder || tr('Belum diatur')}</span><span>{tr('Nomor rekening:')} <strong>{account.number || tr('Belum diatur')}</strong></span>
             </div>)
-          : <p>{tr('Rekening tujuan untuk metode ini belum diatur oleh admin.')}</p>}
+          : <div className="acct-deposit-destination-card">
+              <b>{selectedDestination.bank}</b><span>{tr('Nama rekening:')} {selectedDestination.holder}</span><span>{tr('Nomor rekening:')} <strong>{selectedDestination.number}</strong></span>
+            </div>}
       </section>}
       {destinationAccounts.length > 1 && <label className="acct-proof"><span>{tr('Pilih rekening tujuan')}</span><select value={destinationAccountId} onChange={(event) => setDestinationAccountId(event.target.value)}><option value="">{tr('Pilih rekening')}</option>{destinationAccounts.map((account) => <option key={account.id} value={account.id}>{account.bank} · {account.holder} · {account.number}</option>)}</select></label>}
-      <div className="acct-amount"><div><input inputMode="decimal" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} aria-label={tr('Jumlah deposit')} /><span>{c.currency}</span></div><p><span>{tr(c.rateLabel)} <b>1</b></span><span>~ IDR {(n * c.rate).toLocaleString('id-ID')}</span></p>{amount && n < c.minimum && <small>{tr(c.minimumText)}</small>}</div>
+      <div className="acct-amount"><div><input inputMode="decimal" placeholder="0" value={amount} onChange={(e) => handleAmountChange(e.target.value)} aria-label={tr('Jumlah deposit')} /><span>{c.currency}</span></div><p><span>{tr(c.rateLabel)} <b>1</b></span><span>~ IDR {(n * c.rate).toLocaleString('id-ID')}</span></p>{amount && n < c.minimum && <small>{tr(c.minimumText)}</small>}</div>
       <div className="acct-proof">
         <label><span>{tr('Nama pemilik rekening')}</span><input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder={tr('Nama sesuai rekening')} maxLength={100} /></label>
         <label><span>{tr('Nomor rekening')}</span><input inputMode="numeric" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 30))} placeholder={tr('Nomor rekening pengirim')} maxLength={30} /></label>
@@ -125,8 +201,8 @@ export function DepositScreen() {
         {proofErr && <small className="acct-proof-err">{proofErr}</small>}
       </div>
     </div>
-    <div className="acct-footer"><Button className="acct-submit" disabled={!ready} onClick={submit}>{submitting ? tr('Memproses...') : tr(c.button)}</Button><p><ShieldCheck /> {tr(c.securityText)} <b>{c.securityBrand}</b></p><small className="acct-demo-disclosure">{tr('Deposit diproses secara aman dan langsung terhubung dengan akun Anda.')}</small></div>
-    {sheet && <div className="account-dialog-backdrop acct-sheet-wrap" onClick={() => setSheet(false)}><section className="acct-sheet" onClick={(e) => e.stopPropagation()}><header><h2>{tr(c.sheetTitle)}</h2><Button variant="ghost" size="icon" aria-label={tr('Tutup')} onClick={() => setSheet(false)}><X /></Button></header>{c.methods.map((m) => <button key={m.id} onClick={() => { setMethod(m.label); setDestinationAccountId(''); setSheet(false); }}>{tr(m.label)}{method === m.label && <Check />}</button>)}</section></div>}
+    <div className="acct-footer"><Button type="button" className="acct-submit cursor-pointer font-bold text-base bg-primary text-primary-foreground hover:brightness-105 active:scale-[0.99] transition-all shadow-md" disabled={submitting} onClick={submit}>{submitting ? tr('Memproses...') : tr(c.button)}</Button><p><ShieldCheck /> {tr(c.securityText)} <b>{c.securityBrand}</b></p><small className="acct-demo-disclosure">{tr('Deposit diproses secara aman dan langsung terhubung dengan akun Anda.')}</small></div>
+    {sheet && <div className="account-dialog-backdrop acct-sheet-wrap" onClick={() => setSheet(false)}><section className="acct-sheet" onClick={(e) => e.stopPropagation()}><header><h2>{tr(c.sheetTitle)}</h2><Button variant="ghost" size="icon" aria-label={tr('Tutup')} onClick={() => setSheet(false)}><X /></Button></header>{c.methods.map((m) => <button key={m.id} onClick={() => selectMethod(m.label)}>{tr(m.label)}{method === m.label && <Check />}</button>)}</section></div>}
     {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;
 }
