@@ -204,6 +204,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
   const balance = (me ? mainOf(me) : 136.43) + simulatedProfit;
   const depositBalance = me ? depOf(me) : 0;
   const equityFormatted = balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const depositEquityFormatted = depositBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   useEffect(() => {
     if (!isSimulating) return;
@@ -296,11 +297,11 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
         <div className="grid grid-cols-3 gap-2 pt-1">
           <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
             <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('EKUITAS')}</span>
-            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${equityFormatted}</span>
+            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${depositEquityFormatted}</span>
           </div>
           <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
             <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('TERSEDIA')}</span>
-            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${equityFormatted}</span>
+            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${depositEquityFormatted}</span>
           </div>
           <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
             <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('STATUS')}</span>
@@ -561,7 +562,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
             <div className="space-y-2">
               <div className="flex justify-between text-xs font-bold text-muted-foreground">
                 <span>{tr('ALOKASI MARGIN (CAPITAL)')}</span>
-                <span className="text-foreground font-mono font-bold">{selectedMarginPct}% (${((( (me ? mainOf(me) : 136.43) * selectedMarginPct) / 100).toFixed(2))})</span>
+                <span className="text-foreground font-mono font-bold">{selectedMarginPct}% (${((depositBalance * selectedMarginPct) / 100).toFixed(2)})</span>
               </div>
               <div className="grid grid-cols-4 gap-2">
                 {[25, 50, 75, 100].map((pct) => (
@@ -1063,8 +1064,8 @@ export function MarketDetailScreen({ product }: { product: Product }) {
           </div>
           <div className="acct-margins">
             {[
-              ['Saldo Deposit', f(me ? depOf(me) : 0)],
-              ['Saldo Total Profit', f(me ? profitOf(me) : 0)],
+              ['Saldo Deposit', '$' + f(me ? depOf(me) : 0)],
+              ['Saldo Total Profit', '$' + f(me ? profitOf(me) : 0)],
               ['Compounding', `${me ? rateOf(me, compound) : 0} % / hari`],
             ].map(([k, v]) => (
               <div key={k}>
