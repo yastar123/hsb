@@ -560,7 +560,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
             <div className="space-y-2">
               <div className="flex justify-between text-xs font-bold text-muted-foreground">
                 <span>{tr('ALOKASI MARGIN (CAPITAL)')}</span>
-                <span className="text-foreground font-mono font-bold">{selectedMarginPct}% (${((balance * selectedMarginPct) / 100).toFixed(2)})</span>
+                <span className="text-foreground font-mono font-bold">{selectedMarginPct}% (${((( (me ? mainOf(me) : 136.43) * selectedMarginPct) / 100).toFixed(2))})</span>
               </div>
               <div className="grid grid-cols-4 gap-2">
                 {[25, 50, 75, 100].map((pct) => (
@@ -584,13 +584,13 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
               <div className="flex justify-between">
                 <span>{tr('Nilai Kontrak (Contract Value)')}</span>
                 <span className="font-bold text-foreground font-mono">
-                  ${(((balance * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  ${((( (me ? mainOf(me) : 136.43) * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>{tr('Estimasi Biaya Transaksi')}</span>
                 <span className="font-bold text-foreground font-mono">
-                  ${(((balance * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50) * 0.0006).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  ${((( (me ? mainOf(me) : 136.43) * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50) * 0.0006).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                 </span>
               </div>
               <div className="flex justify-between">
