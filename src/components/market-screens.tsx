@@ -192,6 +192,9 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
   const [pnl, setPnl] = useState(0);
   const [dialog, setDialog] = useState<{ title: string; text: string } | null>(null);
 
+  const deposits = ledgerData?.deposits ?? [];
+  const depositCount = deposits.filter((d) => d.email.toLowerCase() === (me?.email || '').toLowerCase() && d.status === 'Disetujui').length;
+
   const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [selectedLeverage, setSelectedLeverage] = useState('50x');
   const [selectedMarginPct, setSelectedMarginPct] = useState(50);
@@ -296,7 +299,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
           </div>
           <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
             <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('TERSEDIA')}</span>
-            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">$0.00</span>
+            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${equityFormatted}</span>
           </div>
           <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
             <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('STATUS')}</span>
@@ -500,11 +503,12 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
             </Button>
           ) : (
             <Button 
+              disabled={depositCount === 0}
               onClick={() => setShowOrderSheet(true)}
               className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-400/20"
             >
               <Play className="h-4 w-4 fill-black" />
-              <span>{tr('Perdagangkan')}</span>
+              <span>{depositCount === 0 ? tr('Deposit Diperlukan') : tr('Perdagangkan')}</span>
             </Button>
           )}
           <p className="text-[10px] text-center text-muted-foreground leading-snug">
