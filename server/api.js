@@ -806,7 +806,7 @@ async function makeState(pool, userId, admin = false) {
         : [];
   }
   const [deposits, withdrawals] = await Promise.all([
-    loadDeposits(pool, admin ? null : userId, false),
+    loadDeposits(pool, admin ? null : userId, admin),
     loadWithdrawals(pool, admin ? null : userId),
   ]);
   return {
