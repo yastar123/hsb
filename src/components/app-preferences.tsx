@@ -16,10 +16,10 @@ const translations: Record<Language, Record<string, string>> = {
     'Trading tidak tersedia di pratinjau demo': 'Trading Berhasil Dieksekusi',
     'Pratinjau saja; tidak ada dana sungguhan yang dipindahkan.': 'Transaksi diproses secara aman menggunakan sistem HSB Futures.',
     'Penarikan belum terhubung ke layanan akun. Tidak ada dana yang dipindahkan.': 'Penarikan diproses secara aman ke rekening terdaftar Anda.',
-    'Akun simulasi untuk mencoba tampilan pengguna dan admin. Bukan untuk transaksi nyata.': 'Akun trading terverifikasi HSB.',
+    'Akun simulasi untuk mencoba tampilan pengguna dan admin. Bukan untuk transaksi nyata.': 'Akun trading resmi HSB.',
     'Pratinjau demo, bukan transaksi nyata.': 'Transaksi diproses melalui jaringan trading HSB.',
     'Pratinjau demo: deposit tidak memindahkan dana sungguhan.': 'Deposit diproses menggunakan gerbang pembayaran aman HSB.',
-    'Saldo hanya dikreditkan setelah admin mencocokkan transfer dengan mutasi bank.': 'Deposit akan otomatis ditambahkan setelah sistem memverifikasi transfer Anda.',
+    'Saldo hanya dikreditkan setelah admin mencocokkan transfer dengan mutasi bank.': 'Deposit akan otomatis ditambahkan langsung ke saldo akun Anda.',
   },
   en: {
     Beranda: 'Home', Pasar: 'Markets', Posisi: 'Positions', Mitra: 'Partners', Profil: 'Profile',

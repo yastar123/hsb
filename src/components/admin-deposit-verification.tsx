@@ -15,7 +15,7 @@ export function AdminDepositVerification() {
     .sort((a, b) => b.date.localeCompare(a.date));
   return <main className="min-w-0 bg-muted p-3 text-foreground sm:p-6">
     <header className="mb-4 flex flex-wrap items-center gap-3">
-      <ClipboardCheck className="size-5" /><h1 className="text-xl font-bold">Verifikasi Deposit</h1>
+      <ClipboardCheck className="size-5" /><h1 className="text-xl font-bold">Persetujuan Deposit</h1>
       <Button asChild variant="outline" size="sm" className="ml-auto"><Link to="/admin/deposit"><ChevronLeft /> Pengaturan Deposit</Link></Button>
     </header>
     <p className="mb-4 rounded-lg bg-accent px-4 py-2 text-xs text-accent-foreground">Persetujuan hanya menambah saldo pada ledger demo lokal pengguna. Tidak ada uang sungguhan yang dipindahkan atau diverifikasi oleh bank.</p>

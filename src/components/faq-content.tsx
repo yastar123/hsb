@@ -9,7 +9,7 @@ export const defaultFaqData: FaqData = {
   intro: 'Pertanyaan yang sering diajukan seputar akun, deposit, dan trading di HSB.',
   footer: 'Tidak menemukan jawaban? Hubungi layanan pelanggan melalui menu Layanan Pelanggan.',
   items: [
-    { id: 'f1', question: 'Bagaimana cara membuka akun?', answer: 'Tekan menu Buka Akun, isi data diri, lalu ikuti langkah verifikasi identitas (KYC). Pada pratinjau ini pendaftaran belum terhubung ke layanan akun sungguhan.' },
+    { id: 'f1', question: 'Bagaimana cara membuka akun?', answer: 'Tekan menu Buka Akun, isi data diri, dan akun Anda langsung aktif dapat digunakan untuk deposit dan trading tanpa perlu verifikasi rumit.' },
     { id: 'f2', question: 'Apakah ada akun demo?', answer: 'Ya. Anda dapat mencoba akun demo dengan dana virtual untuk berlatih trading tanpa risiko sebelum membuka akun sungguhan.' },
     { id: 'f3', question: 'Bagaimana cara deposit dan penarikan?', answer: 'Deposit dan penarikan dilakukan melalui rekening bank atas nama yang terdaftar di akun Anda. Setiap penarikan diperiksa sebelum diproses.' },
     { id: 'f4', question: 'Apakah dana saya aman?', answer: 'Dana klien disimpan di akun bank terpisah dari dana operasional perusahaan. Lihat halaman Proteksi Dana untuk detail lapisan perlindungan.' },

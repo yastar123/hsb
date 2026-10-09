@@ -17,7 +17,7 @@ export function WithdrawScreen() {
   const [bank, setBank] = useState('');
   const [number, setNumber] = useState('');
   const [notice, setNotice] = useState('');
-  const ready = !!me && me.status === 'Aktif' && Number(amount) > 0 && Number(amount) <= available && bank.trim() !== '' && /^\d{6,20}$/.test(number);
+  const ready = !!me && me.status !== 'Diblokir' && Number(amount) > 0 && Number(amount) <= available && bank.trim() !== '' && /^\d{6,20}$/.test(number);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!ready || !me) return;
@@ -27,7 +27,7 @@ export function WithdrawScreen() {
       setNotice(tr('Permintaan withdraw berhasil dikirim.'));
       setAmount('');
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : tr('Permintaan tidak dapat dibuat. Periksa status akun dan saldo utama.'));
+      setNotice(cause instanceof Error ? cause.message : tr('Permintaan tidak dapat dibuat. Periksa saldo utama.'));
     }
   };
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">

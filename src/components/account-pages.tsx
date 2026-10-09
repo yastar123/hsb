@@ -66,7 +66,7 @@ export function DepositScreen() {
   const selectedDestination = destinationAccounts.find((account) => account.id === destinationAccountId)
     ?? (destinationAccounts.length === 1 ? destinationAccounts[0] : undefined);
   const me = users.find((user) => user.email.toLowerCase() === currentEmail.toLowerCase());
-  const ready = Boolean(me?.status === 'Aktif' && selectedDestination && method && n >= c.minimum && ownerName.trim() && /^\d{6,30}$/.test(accountNumber) && bankName.trim() && Number(transferredAmountIdr) > 0 && proof && !submitting);
+  const ready = Boolean(me?.status !== 'Diblokir' && selectedDestination && method && n >= c.minimum && ownerName.trim() && /^\d{6,30}$/.test(accountNumber) && bankName.trim() && Number(transferredAmountIdr) > 0 && proof && !submitting);
   const onFile = async (f?: File) => {
     setProofErr('');
     if (!f) return;
@@ -76,7 +76,7 @@ export function DepositScreen() {
   };
   const submit = async () => {
     if (!currentEmail) { setNotice(tr('Masuk ke akun terlebih dahulu untuk mengirim permintaan deposit.')); return; }
-    if (me?.status !== 'Aktif') { setNotice(tr('Akun harus diverifikasi admin sebelum mengirim deposit.')); return; }
+    if (me?.status === 'Diblokir') { setNotice(tr('Akun Anda sedang diblokir. Hubungi layanan pelanggan.')); return; }
     if (!selectedDestination) { setNotice(tr('Rekening tujuan belum dipilih atau belum diatur admin.')); return; }
     setSubmitting(true);
     try {
@@ -125,7 +125,7 @@ export function DepositScreen() {
         {proofErr && <small className="acct-proof-err">{proofErr}</small>}
       </div>
     </div>
-    <div className="acct-footer"><Button className="acct-submit" disabled={!ready} onClick={submit}>{submitting ? tr('Memproses...') : tr(c.button)}</Button><p><ShieldCheck /> {tr(c.securityText)} <b>{c.securityBrand}</b></p><small className="acct-demo-disclosure">{tr(me?.status === 'Aktif' ? 'Saldo hanya dikreditkan setelah admin mencocokkan transfer dengan mutasi bank.' : 'Akun perlu diverifikasi admin sebelum dapat melakukan transaksi keuangan.')}</small></div>
+    <div className="acct-footer"><Button className="acct-submit" disabled={!ready} onClick={submit}>{submitting ? tr('Memproses...') : tr(c.button)}</Button><p><ShieldCheck /> {tr(c.securityText)} <b>{c.securityBrand}</b></p><small className="acct-demo-disclosure">{tr('Deposit diproses secara aman dan langsung terhubung dengan akun Anda.')}</small></div>
     {sheet && <div className="account-dialog-backdrop acct-sheet-wrap" onClick={() => setSheet(false)}><section className="acct-sheet" onClick={(e) => e.stopPropagation()}><header><h2>{tr(c.sheetTitle)}</h2><Button variant="ghost" size="icon" aria-label={tr('Tutup')} onClick={() => setSheet(false)}><X /></Button></header>{c.methods.map((m) => <button key={m.id} onClick={() => { setMethod(m.label); setDestinationAccountId(''); setSheet(false); }}>{tr(m.label)}{method === m.label && <Check />}</button>)}</section></div>}
     {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;

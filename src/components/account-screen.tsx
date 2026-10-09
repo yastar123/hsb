@@ -38,7 +38,7 @@ export function AccountScreen({ mode }: { mode: 'login' | 'register' }) {
       if (register) {
         const code = referralCode.trim();
         await createAccount({ name, email, phone: '', password, ...(code ? { referralCode: code } : {}) });
-        setNotice(tr('Akun berhasil dibuat dan menunggu verifikasi admin sebelum transaksi keuangan.'));
+        setNotice(tr('Akun berhasil dibuat! Silakan menikmati seluruh fitur transaksi.'));
         await navigate({ to: '/beranda' });
       } else {
         const result = await login(identity.trim(), password);

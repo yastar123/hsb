@@ -17,7 +17,7 @@ const items = [
   { title: 'Kelola Pasar', url: '/admin/pasar', icon: ChartNoAxesColumn },
   { title: 'Kelola Mitra', url: '/admin/mitra', icon: Handshake },
   { title: 'Kelola Deposit', url: '/admin/deposit', icon: Wallet },
-  { title: 'Verifikasi Deposit', url: '/admin/deposit-verifikasi', icon: ClipboardCheck },
+  { title: 'Persetujuan Deposit', url: '/admin/deposit-verifikasi', icon: ClipboardCheck },
   { title: 'Kelola User', url: '/admin/user', icon: Users },
   { title: 'Compounding', url: '/admin/compounding', icon: TrendingUp },
   { title: 'Kelola Withdraw', url: '/admin/withdraw', icon: ArrowUpFromLine },

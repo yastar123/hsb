@@ -116,7 +116,7 @@ export function HomeScreen() {
        </div>
        <Button
          variant="outline"
-         disabled={!me || depOf(me) <= 0 || !compound.enabled || me.status !== 'Aktif'}
+         disabled={!me || depOf(me) <= 0 || !compound.enabled || me.status === 'Diblokir'}
          onClick={compoundNow}
        >
          <ArrowLeftRight /> {tr('Compounding')}

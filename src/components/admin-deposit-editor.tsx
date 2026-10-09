@@ -30,12 +30,12 @@ export function AdminDepositEditor() {
       <Button asChild variant="ghost" size="sm"><Link to="/admin"><ChevronLeft /> Admin</Link></Button>
       <h1 className="text-lg font-bold">Kelola Deposit</h1>
       <div className="ml-auto flex gap-2">
-        <Button asChild variant="outline" size="sm"><Link to="/admin/deposit-verifikasi"><ClipboardCheck /> Verifikasi deposit</Link></Button>
+        <Button asChild variant="outline" size="sm"><Link to="/admin/deposit-verifikasi"><ClipboardCheck /> Persetujuan deposit</Link></Button>
         <Button asChild size="sm"><Link to="/deposit"><Monitor /> Buka Deposit</Link></Button>
       </div>
     </header>
     <p className="bg-accent px-4 py-2 text-xs text-accent-foreground">
-      Pengaturan dan rekening tersimpan di PostgreSQL. Deposit dicatat sebagai permintaan dan harus diverifikasi admin; aplikasi tidak memproses transfer otomatis.
+      Pengaturan dan rekening tersimpan di PostgreSQL. Deposit dicatat sebagai permintaan dan disetujui admin; aplikasi tidak memproses transfer otomatis.
       {(contentError || accountsError) && <span role="alert" className="ml-2 text-destructive">{contentError || accountsError}</span>}
     </p>
     <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_420px]">

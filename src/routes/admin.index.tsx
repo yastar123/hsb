@@ -60,7 +60,7 @@ function AdminDashboard() {
   ].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)).slice(0, 8);
   const stats = [
     { label: 'User Terdaftar', value: users.length.toLocaleString('id-ID'), delta: 'Akun di PostgreSQL', icon: Users },
-    { label: 'Akun Aktif', value: users.filter((user) => user.status === 'Aktif').length.toLocaleString('id-ID'), delta: 'Status verifikasi aktif', icon: Activity },
+    { label: 'Akun Aktif', value: users.filter((user) => user.status === 'Aktif').length.toLocaleString('id-ID'), delta: 'Status aktif', icon: Activity },
     { label: 'Total Deposit Disetujui', value: currency(totalDeposits), delta: `${deposits.filter((item) => item.status === 'Disetujui').length} transaksi`, icon: Wallet },
     { label: 'Total Withdraw Berhasil', value: currency(totalWithdrawals), delta: `${withdrawals.filter((item) => item.status === 'Berhasil').length} transaksi`, icon: WalletCards },
     { label: 'Mitra dengan Referral', value: partners.length.toLocaleString('id-ID'), delta: 'Memiliki pendaftaran referral', icon: Handshake },

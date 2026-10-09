@@ -165,7 +165,15 @@ export function ProfileScreen() {
 }
 
 export function AccountInfoScreen() {
-  const rows = [['Nama', 'Demo'], ['Email', ''], ['Nomor Telepon', '85366195381'], ['Nomor ID', ''], ['Tipe ID', ''], ['Tanggal Lahir', ''], ['Waktu Pendaftaran', '2026-10-06 19:47:25']];
+  const { currentUser, currentEmail, users } = useLedger();
+  const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase()) || currentUser;
+  const rows = [
+    ['Nama', me?.name || 'Pengguna HSB'],
+    ['Email', me?.email || currentEmail || '—'],
+    ['Status Akun', 'Aktif'],
+    ['Tipe Akun', 'Standar Reguler'],
+    ['Waktu Pendaftaran', me?.joined || '2026-10-06'],
+  ];
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">
     <Header title="Informasi Anda" />
     <div className="prof-fields">{rows.map(([k, v]) => <div key={k} className="prof-field"><small>{k}</small><p>{v || '\u00a0'}</p></div>)}</div>

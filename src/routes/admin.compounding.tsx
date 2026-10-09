@@ -86,7 +86,7 @@ function AdminCompounding() {
           <td className="pr-1 font-semibold">{usd(mainOf(u))}</td>
           <td className="pr-1"><input type="number" min="0" max="100" step="0.01" className={inp} placeholder={`${compound.globalRate}`} defaultValue={u.rate ?? ''} onBlur={(e) => { const value = e.currentTarget.value === '' ? null : Number(e.currentTarget.value); if (value !== u.rate) upd(u.id, { rate: value }); }} aria-label="Persen compounding user" /></td>
           <td className="pr-1 text-muted-foreground">{u.status === 'Diblokir' ? '—' : usd(mainOf(u) * rateOf(u, compound) / 100)}</td>
-          <td className="pr-1"><select className={inp} value={u.status} onChange={(e) => upd(u.id, { status: e.target.value as UserStatus })} aria-label="Status"><option>Aktif</option><option>Belum Verifikasi</option><option>Diblokir</option></select></td>
+          <td className="pr-1"><select className={inp} value={u.status} onChange={(e) => upd(u.id, { status: e.target.value as UserStatus })} aria-label="Status"><option>Aktif</option><option>Diblokir</option></select></td>
         </tr>)}
         {!shown.length && <tr><td colSpan={10} className="py-6 text-center text-muted-foreground">Tidak ada user.</td></tr>}</tbody></table>
       <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} onPage={pg.setPage} />

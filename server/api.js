@@ -445,7 +445,7 @@ function serializeUser(row, globalRate = 0) {
       row.daily_rate_override === null || row.daily_rate_override === undefined
         ? null
         : Number(row.daily_rate_override),
-    status: row.status,
+    status: row.status === "Diblokir" ? "Diblokir" : "Aktif",
     effectiveRate:
       row.daily_rate_override === null || row.daily_rate_override === undefined
         ? globalRate
@@ -1121,6 +1121,11 @@ async function creditReferralCommission(client, referrerId, referredId, program)
 }
 
 export function createApiRouter(pool) {
+  if (pool) {
+    pool
+      .query("UPDATE public.customer_users SET status = 'Aktif' WHERE status = 'Belum Verifikasi'")
+      .catch(() => {});
+  }
   const router = express.Router();
   router.use((request, response, next) => {
     response.setHeader("Cache-Control", "no-store");
@@ -1295,8 +1300,8 @@ export function createApiRouter(pool) {
           referrerId = referrer.rows[0].id;
         }
         const userResult = await client.query(
-          `INSERT INTO public.customer_users (name, email, phone, password_hash, referred_by)
-         VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO public.customer_users (name, email, phone, password_hash, referred_by, status)
+         VALUES ($1, $2, $3, $4, $5, 'Aktif')
          RETURNING id, name, email, phone, status, created_at`,
           [name, email, phone, passwordHash, referrerId],
         );
@@ -1667,8 +1672,8 @@ export function createApiRouter(pool) {
     requireCustomer(pool),
     rateLimit("deposit", 8),
     asyncRoute(async (request, response) => {
-      if (request.customer.status !== "Aktif")
-        return apiError(response, 403, "Akun harus diverifikasi admin sebelum mengirim deposit.");
+      if (request.customer.status === "Diblokir")
+        return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
       const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
       const bankName =
         typeof request.body?.bankName === "string" ? request.body.bankName.trim() : "";
@@ -1764,8 +1769,8 @@ export function createApiRouter(pool) {
     requireCustomer(pool),
     rateLimit("withdrawal", 8),
     asyncRoute(async (request, response) => {
-      if (request.customer.status !== "Aktif")
-        return apiError(response, 403, "Akun harus aktif untuk mengajukan penarikan.");
+      if (request.customer.status === "Diblokir")
+        return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
       const amount = money(request.body?.amount);
       const bank = typeof request.body?.bank === "string" ? request.body.bank.trim() : "";
       const account = String(request.body?.account ?? "").replace(/\D/g, "");
@@ -1822,8 +1827,8 @@ export function createApiRouter(pool) {
     "/account/transfer-deposit",
     requireCustomer(pool),
     asyncRoute(async (request, response) => {
-      if (request.customer.status !== "Aktif")
-        return apiError(response, 403, "Akun harus aktif untuk memindahkan saldo.");
+      if (request.customer.status === "Diblokir")
+        return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
@@ -2240,12 +2245,12 @@ export function createApiRouter(pool) {
           await client.query("ROLLBACK");
           return apiError(response, 409, "Permintaan deposit ini sudah ditinjau.");
         }
-        if (approved && deposit.user_status !== "Aktif") {
+        if (approved && deposit.user_status === "Diblokir") {
           await client.query("ROLLBACK");
           return apiError(
             response,
             409,
-            "Aktifkan dan verifikasi akun pengguna sebelum menyetujui deposit.",
+            "Akun pengguna sedang diblokir.",
           );
         }
         await client.query(

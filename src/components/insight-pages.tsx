@@ -93,7 +93,7 @@ export function CalendarScreen() {
 }
 
 const promos = [
-  ['Bonus Selamat Datang $350', 'Verifikasi akun dan lakukan deposit pertama untuk klaim bonus.', 'Berakhir 31 Okt 2026'],
+  ['Bonus Selamat Datang $350', 'Lakukan deposit pertama untuk klaim bonus langsung.', 'Berakhir 31 Okt 2026'],
   ['Cashback Trading 20%', 'Dapatkan cashback dari setiap lot yang ditransaksikan bulan ini.', 'Berakhir 15 Nov 2026'],
   ['Undang Teman', 'Ajak teman bergabung dan dapatkan hadiah hingga $50 per teman.', 'Tanpa batas waktu'],
 ];
