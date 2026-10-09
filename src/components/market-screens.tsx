@@ -202,6 +202,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
   const [tradeLeverage, setTradeLeverage] = useState(50);
 
   const balance = (me ? mainOf(me) : 136.43) + simulatedProfit;
+  const depositBalance = me ? depOf(me) : 0;
   const equityFormatted = balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   useEffect(() => {
@@ -240,7 +241,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
 
   const confirmOrder = () => {
     const lev = parseInt(selectedLeverage) || 50;
-    const marginAmount = Math.round((balance * selectedMarginPct)) / 100;
+    const marginAmount = Math.round((depositBalance * selectedMarginPct)) / 100;
     setTradeMargin(marginAmount);
     setTradeLeverage(lev);
     setIsSimulating(true);
@@ -584,13 +585,13 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
               <div className="flex justify-between">
                 <span>{tr('Nilai Kontrak (Contract Value)')}</span>
                 <span className="font-bold text-foreground font-mono">
-                  ${((( (me ? mainOf(me) : 136.43) * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  ${(((depositBalance * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>{tr('Estimasi Biaya Transaksi')}</span>
                 <span className="font-bold text-foreground font-mono">
-                  ${((( (me ? mainOf(me) : 136.43) * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50) * 0.0006).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  ${(((depositBalance * selectedMarginPct) / 100) * (parseInt(selectedLeverage) || 50) * 0.0006).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                 </span>
               </div>
               <div className="flex justify-between">
