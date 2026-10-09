@@ -94,7 +94,7 @@ function WalletBalancesComponent({ balance }: { balance: number }) {
     ACS: 42.5
   });
 
-  const idrBalance = balance * 16250;
+  const idrBalance = balance * 18000;
 
   useEffect(() => {
     const interval = setInterval(() => {

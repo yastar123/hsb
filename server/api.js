@@ -261,9 +261,9 @@ const DEFAULT_DEPOSIT_CONTENT = {
   methodPlaceholder: "Pilih Metode Pembayaran",
   currency: "USD",
   rateLabel: "USD / IDR",
-  rate: 16250,
-  minimum: 10,
-  minimumText: "Minimal deposit $10",
+  rate: 18000,
+  minimum: 1000,
+  minimumText: "Minimal deposit $1.000 (~ Rp 18.000.000)",
   button: "Deposit Sekarang",
   securityText: "Transaksi Aman oleh",
   securityBrand: "HSB Security",
@@ -1157,8 +1157,14 @@ export function createApiRouter(pool) {
     pool
       .query(
         `UPDATE public.customer_site_settings
-         SET setting_value = jsonb_set(jsonb_set(setting_value, '{minimum}', '10'), '{minimumText}', '"Minimal deposit $10"')
-         WHERE setting_key = 'depositContent' AND (setting_value->>'minimum')::numeric > 10`,
+         SET setting_value = jsonb_set(
+               jsonb_set(
+                 jsonb_set(setting_value, '{minimum}', '1000'),
+                 '{rate}', '18000'
+               ),
+               '{minimumText}', '"Minimal deposit $1.000 (~ Rp 18.000.000)"'
+             )
+         WHERE setting_key = 'depositContent'`,
       )
       .catch(() => {});
   }
@@ -1765,8 +1771,15 @@ export function createApiRouter(pool) {
           "Bukti transfer harus berupa gambar JPEG, PNG, atau WebP di bawah 1,5 MB.",
         );
       }
-      const minimum = Number(settings.depositContent?.minimum ?? 10);
-      if (amount < minimum) return apiError(response, 400, `Minimal deposit adalah ${minimum}.`);
+      const minimum = Number(settings.depositContent?.minimum ?? 1000);
+      const rate = Number(settings.depositContent?.rate ?? 18000);
+      if (amount < minimum) {
+        return apiError(
+          response,
+          400,
+          `Minimal deposit adalah $${minimum.toLocaleString('id-ID')} USD (~ Rp ${(minimum * rate).toLocaleString('id-ID')}).`,
+        );
+      }
 
       if (!pool) {
         const depId = randomUUID();

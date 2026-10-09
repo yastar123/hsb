@@ -94,7 +94,7 @@ export function DepositScreen() {
     setAmount(cleaned);
     const num = Number(cleaned) || 0;
     if (num > 0) {
-      setTransferredAmountIdr(String(Math.round(num * (c.rate || 16250))));
+      setTransferredAmountIdr(String(Math.round(num * (c.rate || 18000))));
     } else {
       setTransferredAmountIdr('');
     }
@@ -128,9 +128,10 @@ export function DepositScreen() {
       setNotice(tr('Silakan masukkan jumlah deposit yang ingin disetorkan.'));
       return;
     }
-    const minVal = Number(c.minimum) || 10;
+    const minVal = Number(c.minimum) || 1000;
+    const currentRate = c.rate || 18000;
     if (n < minVal) {
-      setNotice(tr(`Jumlah deposit minimal adalah $${minVal} USD (~ IDR ${(minVal * (c.rate || 16250)).toLocaleString('id-ID')}).`));
+      setNotice(tr(`Jumlah deposit minimal adalah $${minVal.toLocaleString('id-ID')} USD (~ IDR ${(minVal * currentRate).toLocaleString('id-ID')}).`));
       return;
     }
     if (!ownerName.trim()) {
@@ -148,7 +149,7 @@ export function DepositScreen() {
       return;
     }
 
-    const finalIdr = Number(transferredAmountIdr) > 0 ? Number(transferredAmountIdr) : Math.round(n * (c.rate || 16250));
+    const finalIdr = Number(transferredAmountIdr) > 0 ? Number(transferredAmountIdr) : Math.round(n * currentRate);
     setSubmitting(true);
     try {
       await submitDeposit({
@@ -187,7 +188,29 @@ export function DepositScreen() {
             </div>}
       </section>}
       {destinationAccounts.length > 1 && <label className="acct-proof"><span>{tr('Pilih rekening tujuan')}</span><select value={destinationAccountId} onChange={(event) => setDestinationAccountId(event.target.value)}><option value="">{tr('Pilih rekening')}</option>{destinationAccounts.map((account) => <option key={account.id} value={account.id}>{account.bank} · {account.holder} · {account.number}</option>)}</select></label>}
-      <div className="acct-amount"><div><input inputMode="decimal" placeholder="0" value={amount} onChange={(e) => handleAmountChange(e.target.value)} aria-label={tr('Jumlah deposit')} /><span>{c.currency}</span></div><p><span>{tr(c.rateLabel)} <b>1</b></span><span>~ IDR {(n * c.rate).toLocaleString('id-ID')}</span></p>{amount && n < c.minimum && <small>{tr(c.minimumText)}</small>}</div>
+      <div className="acct-amount">
+        <div className="acct-amount-header">
+          <span className="font-semibold text-muted-foreground">{tr('Nominal Deposit (USD)')}</span>
+          <span className="acct-amount-min-badge">
+            {tr(`Min. $${(c.minimum || 1000).toLocaleString('id-ID')} (~ Rp ${((c.minimum || 1000) * (c.rate || 18000)).toLocaleString('id-ID')})`)}
+          </span>
+        </div>
+        <div className="acct-amount-box"><input inputMode="decimal" placeholder={String(c.minimum || 1000)} value={amount} onChange={(e) => handleAmountChange(e.target.value)} aria-label={tr('Jumlah deposit')} /><span>{c.currency}</span></div>
+        <div className="acct-presets">
+          {[1000, 2000, 5000, 10000].map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => handleAmountChange(String(preset))}
+              className={`acct-preset-chip ${Number(amount) === preset ? 'active' : ''}`}
+            >
+              ${preset.toLocaleString('id-ID')}
+            </button>
+          ))}
+        </div>
+        <p><span>{tr(c.rateLabel)} <b>1</b></span><span>~ IDR {(n * (c.rate || 18000)).toLocaleString('id-ID')}</span></p>
+        {amount && n < (c.minimum || 1000) && <small className="text-destructive font-semibold block mt-2">{tr(c.minimumText || `Minimal deposit $${(c.minimum || 1000).toLocaleString('id-ID')} (~ Rp ${((c.minimum || 1000) * (c.rate || 18000)).toLocaleString('id-ID')})`)}</small>}
+      </div>
       <div className="acct-proof">
         <label><span>{tr('Nama pemilik rekening')}</span><input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder={tr('Nama sesuai rekening')} maxLength={100} /></label>
         <label><span>{tr('Nomor rekening')}</span><input inputMode="numeric" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 30))} placeholder={tr('Nomor rekening pengirim')} maxLength={30} /></label>

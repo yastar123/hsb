@@ -34,7 +34,9 @@ const translations: Record<Language, Record<string, string>> = {
     'Nama pemilik rekening': 'Account holder name', 'Nomor rekening': 'Account number',
     'Bank rekening': 'Bank name', 'Rekening Tujuan': 'Receiving Account',
     'Nama rekening:': 'Account name:', 'Nomor rekening:': 'Account number:',
-    'Minimal deposit $200': 'Minimum deposit $200', 'Deposit Sekarang': 'Deposit now',
+    'Minimal deposit $200': 'Minimum deposit $200',
+    'Minimal deposit $1.000 (~ Rp 18.000.000)': 'Minimum deposit $1,000 (~ IDR 18,000,000)',
+    'Deposit Sekarang': 'Deposit now',
     'Pilih Metode Pembayaran': 'Select payment method', 'Pilih bank': 'Choose a bank',
     'Unggah foto / tangkapan layar bukti transfer': 'Upload a transfer receipt or screenshot',
     'Bukti transfer': 'Transfer receipt', 'Pratinjau demo: deposit tidak memindahkan dana sungguhan.': 'Demo preview: deposits do not move real money.',
@@ -95,7 +97,9 @@ const translations: Record<Language, Record<string, string>> = {
     'Nama pemilik rekening': '账户持有人姓名', 'Nomor rekening': '账号',
     'Bank rekening': '银行名称', 'Rekening Tujuan': '收款账户',
     'Nama rekening:': '账户名称：', 'Nomor rekening:': '账号：',
-    'Minimal deposit $200': '最低存款 $200', 'Deposit Sekarang': '立即存款',
+    'Minimal deposit $200': '最低存款 $200',
+    'Minimal deposit $1.000 (~ Rp 18.000.000)': '最低存款 $1,000（约 1,800 万印尼盾）',
+    'Deposit Sekarang': '立即存款',
     'Pilih Metode Pembayaran': '选择付款方式', 'Pilih bank': '选择银行',
     'Unggah foto / tangkapan layar bukti transfer': '上传转账凭证或截图',
     'Bukti transfer': '转账凭证', 'Pratinjau demo: deposit tidak memindahkan dana sungguhan.': '演示预览：存款不会转移真实资金。',
@@ -402,7 +406,7 @@ const PreferencesContext = createContext<Preferences | null>(null);
 
 export function AppPreferencesProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('id');
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>('light');
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     try {
