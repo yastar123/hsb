@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, ArrowLeftRight, CircleHelp, Wallet, ReceiptText, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, ChevronRight, ShieldCheck, CalendarDays, PackageOpen, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -64,8 +64,8 @@ export function DepositScreen() {
 
   useEffect(() => {
     if (!method && c.methods.length > 0) {
-      setMethod(c.methods[0].label);
-      if (c.methods[0].bank) setBankName(c.methods[0].bank);
+      setMethod(c.methods[0]?.label || '');
+      if (c.methods[0]?.bank) setBankName(c.methods[0].bank);
     }
   }, [c.methods, method]);
 

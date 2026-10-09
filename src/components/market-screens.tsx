@@ -103,7 +103,8 @@ function WalletBalancesComponent({ balance }: { balance: number }) {
         Object.keys(next).forEach((key) => {
           if (key === 'IDR') return;
           const fluctuation = 1 + (Math.random() * 0.004 - 0.0018);
-          next[key] = Math.round(next[key] * fluctuation * 100) / 100;
+          const currentVal = next[key] ?? 0;
+          next[key] = Math.round(currentVal * fluctuation * 100) / 100;
         });
         return next;
       });
@@ -133,7 +134,7 @@ function WalletBalancesComponent({ balance }: { balance: number }) {
             tokenBal = idrBalance;
             idrVal = idrBalance;
           } else {
-            idrVal = tokenBal * prices[asset.key];
+            idrVal = tokenBal * (prices[asset.key] ?? 0);
           }
 
           const formattedTokenBal = asset.isFiat

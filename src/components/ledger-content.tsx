@@ -68,8 +68,17 @@ export type DepositInput = {
 };
 export type SessionUser = Pick<AppUser, 'id' | 'name' | 'email' | 'phone' | 'status'> & {
   created_at?: string;
+  joined?: string;
   role?: string;
   isAdmin?: boolean;
+  balance?: number;
+  deposit?: number;
+  profit?: number;
+  dailyProfit?: number;
+  dailyProfitDate?: string;
+  rate?: number | null;
+  effectiveRate?: number;
+  lastCompound?: string;
 };
 export type LoginResult = {
   user: SessionUser;
@@ -87,11 +96,11 @@ const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' 
 const money = (value: number) => Math.round(value * 100) / 100;
 
 export const uid = () => crypto.randomUUID();
-export const depOf = (user: AppUser) => user.deposit ?? 0;
-export const profitOf = (user: AppUser) => user.profit ?? 0;
-export const dailyProfitOf = (user: AppUser) => user.dailyProfitDate === today() ? (user.dailyProfit ?? 0) : 0;
-export const mainOf = (user: AppUser) => user.balance;
-export const rateOf = (user: AppUser, compound: CompoundSettings) => user.rate ?? compound.globalRate;
+export const depOf = (user?: AppUser | SessionUser | null) => (user && 'deposit' in user ? (user.deposit ?? 0) : 0);
+export const profitOf = (user?: AppUser | SessionUser | null) => (user && 'profit' in user ? (user.profit ?? 0) : 0);
+export const dailyProfitOf = (user?: AppUser | SessionUser | null) => (user && 'dailyProfitDate' in user && user.dailyProfitDate === today() ? (user.dailyProfit ?? 0) : 0);
+export const mainOf = (user?: AppUser | SessionUser | null) => (user && 'balance' in user ? (user.balance ?? 0) : 0);
+export const rateOf = (user?: AppUser | SessionUser | null, compound?: CompoundSettings) => (user && 'rate' in user ? user.rate : null) ?? compound?.globalRate ?? 0;
 const dayDiff = (start: string, end: string) => Math.max(0, Math.floor((Date.parse(end) - Date.parse(start)) / 86400000));
 
 /** Kept for deterministic model tests; production accrual is written once by the server. */
