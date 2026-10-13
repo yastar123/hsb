@@ -86,8 +86,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "title", content: "WebullXAU Trading" },
+      {
+        name: "description",
+        content:
+          "WebullXAU Trading platform application with market data, accounts, and financial services.",
+      },
+      { property: "og:title", content: "WebullXAU Trading" },
+      {
+        property: "og:description",
+        content:
+          "WebullXAU Trading platform application with market data, accounts, and financial services.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "WebullXAU Trading" },
+      {
+        name: "twitter:description",
+        content:
+          "WebullXAU Trading platform application with market data, accounts, and financial services.",
+      },
     ],
     links: [
       { rel: "icon", href: "/logo.jpg", type: "image/jpeg" },

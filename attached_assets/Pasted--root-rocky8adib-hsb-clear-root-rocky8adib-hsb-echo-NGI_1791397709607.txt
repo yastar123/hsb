@@ -68,7 +68,7 @@ module.exports = {
   }],
 };
 [root@rocky8adib hsb]# cat .env
-DATABASE_URL=postgresql://postgres:EDUJUANDA12345@localhost:5432/HSB
+DATABASE_URL=postgresql://postgres:EDUJUANDA12345@localhost:5432/WebullXAU
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=GANTI_DENGAN_PASSWORD_KUAT

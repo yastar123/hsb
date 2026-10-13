@@ -1,5 +1,5 @@
 # Website import
-- [x] Restore original HSB pages, styles, and media.
+- [x] Restore original WebullXAU pages, styles, and media.
 - [x] Verify welcome navigation, account validation, login notices, and beranda interactions.
 - [x] Confirm preview runs without errors and record preserved prototype limitations.
 

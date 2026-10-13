@@ -1,5 +1,5 @@
 [Unit]
-Description=HSB Trading web application
+Description=WebullXAU Trading web application
 After=network-online.target
 Wants=network-online.target
 

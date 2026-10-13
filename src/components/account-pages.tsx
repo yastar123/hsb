@@ -79,7 +79,7 @@ export function DepositScreen() {
   const selectedDestination = destinationAccounts.find((account) => account.id === destinationAccountId)
     ?? destinationAccounts[0]
     ?? receivingAccounts.find((a) => a.active)
-    ?? { id: 'default-bca', bank: 'BCA', holder: 'PT HSB INVESTASI MANDIRI', number: '1234567890', active: true };
+    ?? { id: 'default-bca', bank: 'BCA', holder: 'PT WebullXAU INVESTASI MANDIRI', number: '1234567890', active: true };
 
   const me = users.find((user) => user.email.toLowerCase() === (currentEmail || currentUser?.email || '').toLowerCase()) || currentUser || users[0];
 

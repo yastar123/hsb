@@ -1,4 +1,4 @@
-# HSB Trading
+# WebullXAU Trading
 
 React, TypeScript, and TanStack Router frontend with an Express API and PostgreSQL connection.
 
@@ -44,9 +44,9 @@ This runs linting, TypeScript checks, unit tests, then a production-build browse
 The repository includes sample systemd and Caddy configuration in `deploy/vps/`. A typical setup is:
 
 1. Use a Linux VPS with Node.js 20.19 or newer, npm, and PostgreSQL. Point your domain's DNS records to the server and allow inbound ports 80 and 443.
-2. Install the project in `/opt/hsb-trading`, then run `npm ci` and `npm run build`.
-3. Create `/etc/hsb-trading/hsb-trading.env` with `DATABASE_URL`, `ADMIN_EMAIL` and/or `ADMIN_PHONE`, a unique `ADMIN_PASSWORD` of at least 16 characters, and a random `SESSION_SECRET` of at least 32 characters. Keep this file outside the repository and restrict it to the service account. If the admin credentials are absent or too short, admin routes stay disabled. `ADMIN_NUMBER` and `ADMIN_USERNAME` remain supported for older setups.
-4. Copy `deploy/vps/hsb-trading.service.example` to `/etc/systemd/system/hsb-trading.service`. Update the service user and paths to match the VPS, then enable and start it with systemd.
+2. Install the project in `/opt/webullxau-trading`, then run `npm ci` and `npm run build`.
+3. Create `/etc/webullxau-trading/webullxau-trading.env` with `DATABASE_URL`, `ADMIN_EMAIL` and/or `ADMIN_PHONE`, a unique `ADMIN_PASSWORD` of at least 16 characters, and a random `SESSION_SECRET` of at least 32 characters. Keep this file outside the repository and restrict it to the service account. If the admin credentials are absent or too short, admin routes stay disabled. `ADMIN_NUMBER` and `ADMIN_USERNAME` remain supported for older setups.
+4. Copy `deploy/vps/webullxau-trading.service.example` to `/etc/systemd/system/webullxau-trading.service`. Update the service user and paths to match the VPS, then enable and start it with systemd.
 5. Configure Caddy with `deploy/vps/Caddyfile.example`, replacing `your-domain.example` with the domain. Caddy terminates HTTPS and forwards traffic to Express on port 5000.
 6. Check `https://your-domain.example/api/health`; it should report `"database":"connected"`.
 
@@ -54,7 +54,7 @@ These are deployment instructions and sample configuration only; the app has not
 
 ## Deploy on Rocky Linux with PM2 and Nginx
 
-The sample files are `deploy/pm2/ecosystem.config.cjs` and `deploy/nginx/webullxau.com.conf.example`. They run the production Express server on `127.0.0.1:5000` behind Nginx. Use Node.js 20.19 or newer and make sure PostgreSQL is running and the `HSB` database exists.
+The sample files are `deploy/pm2/ecosystem.config.cjs` and `deploy/nginx/webullxau.com.conf.example`. They run the production Express server on `127.0.0.1:5000` behind Nginx. Use Node.js 20.19 or newer and make sure PostgreSQL is running and the `WebullXAU` database exists.
 
 1. On the server, clone the repository, enter its directory, then run `npm ci --registry=https://registry.npmjs.org/` and `npm run build`.
 2. Create a private `.env` file in the project root (it is ignored by Git), with `DATABASE_URL`, `ADMIN_EMAIL` and/or `ADMIN_PHONE`, `ADMIN_PASSWORD` (at least 16 characters), and a random `SESSION_SECRET` (at least 32 characters). Keep your current `SESSION_SECRET` unchanged if existing encrypted records must remain readable. Use your own values; do not commit them or put them in `.env.example`. Either email or phone can be used as the HTTP Basic Auth username for `/admin`. `ADMIN_NUMBER` and `ADMIN_USERNAME` remain supported for older setups.

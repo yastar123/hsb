@@ -65,9 +65,9 @@ const reports = [
 export function DailyReportScreen() {
   const [notice, setNotice] = useState('');
   return <Shell title="">
-    <p className="ins-crumb">HSB Blog <span>›</span> Daily Report HSB</p>
-    <h1 className="ins-title">Daily Report HSB</h1>
-    <p className="ins-meta">Updated 6 Oktober 2026 · <u>HSB Team</u></p>
+    <p className="ins-crumb">WebullXAU Blog <span>›</span> Daily Report WebullXAU</p>
+    <h1 className="ins-title">Daily Report WebullXAU</h1>
+    <p className="ins-meta">Updated 6 Oktober 2026 · <u>WebullXAU Team</u></p>
     <p className="ins-share">Share {['WhatsApp', 'Telegram', 'X', 'Facebook', 'LinkedIn', 'Instagram'].map((n) => <button key={n} onClick={() => setNotice(`Berbagi ke ${n} belum tersedia pada pratinjau ini.`)}>{n[0]}</button>)}</p>
     {reports.map(([icon, title, body]) => <article key={title} className="ins-report"><h2>{icon} {title}</h2><p>{body}</p></article>)}
     {notice && <Notice text={notice} onClose={() => setNotice('')} />}

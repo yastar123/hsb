@@ -139,7 +139,7 @@ app.use((error, _request, response, _next) => {
 });
 
 const server = httpServer.listen(port, "0.0.0.0", () => {
-  console.log(`HSB Trading is listening on port ${port}`);
+  console.log(`WebullXAU Trading is listening on port ${port}`);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

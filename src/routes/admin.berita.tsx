@@ -9,9 +9,9 @@ import { SaveStatusText } from '@/lib/site-content';
 
 export const Route = createFileRoute('/admin/berita')({
   head: () => ({ meta: [
-    { title: 'Kelola Berita — Admin HSB' },
+    { title: 'Kelola Berita — Admin WebullXAU' },
     { name: 'description', content: 'Tambah, ubah, hapus berita beserta gambar dan isi detailnya.' },
-    { property: 'og:title', content: 'Kelola Berita — Admin HSB' },
+    { property: 'og:title', content: 'Kelola Berita — Admin WebullXAU' },
     { property: 'og:description', content: 'Panel admin untuk mengelola berita.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },

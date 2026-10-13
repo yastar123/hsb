@@ -24,6 +24,7 @@ const items = [
   { title: 'Kelola Berita', url: '/admin/berita', icon: Newspaper },
   { title: 'Kalender Ekonomi', url: '/admin/kalender', icon: CalendarDays },
   { title: 'Layanan Pelanggan', url: '/admin/layanan', icon: Headset },
+  { title: 'Live Chat', url: '/admin/live-chat', icon: Headset },
   { title: 'Kelola Notifikasi', url: '/admin/notifikasi', icon: Bell },
 ] as const;
 
@@ -32,7 +33,7 @@ function AdminSidebar() {
   const navigate = useNavigate();
   const { logout } = useLedger();
   return <Sidebar collapsible="icon">
-    <SidebarHeader><div className="flex items-center gap-2 px-1 py-1"><img src="/logo.jpg" alt="" width="24" height="24" className="rounded-full object-cover" /><span className="font-bold group-data-[collapsible=icon]:hidden">HSB Admin</span></div></SidebarHeader>
+    <SidebarHeader><div className="flex items-center gap-2 px-1 py-1"><img src="/logo.jpg" alt="" width="24" height="24" className="rounded-full object-cover" /><span className="font-bold group-data-[collapsible=icon]:hidden">WebullXAU Admin</span></div></SidebarHeader>
     <SidebarContent>
       <SidebarGroup>
         <SidebarGroupLabel>Menu</SidebarGroupLabel>

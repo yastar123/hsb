@@ -115,6 +115,6 @@ export async function requireAdminAuthentication(request, response, next) {
   }
 
   recordAdminFailure(key, now);
-  response.setHeader("WWW-Authenticate", 'Basic realm="HSB Admin", charset="UTF-8"');
+  response.setHeader("WWW-Authenticate", 'Basic realm="WebullXAU Admin", charset="UTF-8"');
   return response.status(401).json({ error: "Autentikasi admin tidak valid." });
 }

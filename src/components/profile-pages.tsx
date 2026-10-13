@@ -154,6 +154,7 @@ export function ProfileScreen() {
       <h2>{tr('Pusat Klien')}</h2>
        <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>
       <Link to="/bank-penarikan">{tr('Bank Penarikan')}<ChevronRight /></Link>
+      <Link to="/live-chat">{tr('Live Chat')}<ChevronRight /></Link>
       <h2>{tr('Pengaturan')}</h2>
       <Link to="/ganti-kata-sandi">{tr('Ganti Password')}<ChevronRight /></Link>
       <Link to="/bahasa">{tr('Bahasa')}<ChevronRight /></Link>
@@ -168,7 +169,7 @@ export function AccountInfoScreen() {
   const { currentUser, currentEmail, users } = useLedger();
   const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase()) || currentUser;
   const rows = [
-    ['Nama', me?.name || 'Pengguna HSB'],
+    ['Nama', me?.name || 'Pengguna WebullXAU'],
     ['Email', me?.email || currentEmail || '—'],
     ['Status Akun', 'Aktif'],
     ['Tipe Akun', 'Standar Reguler'],

@@ -6,7 +6,7 @@ export type FaqData = { title: string; intro: string; footer: string; items: Faq
 
 export const defaultFaqData: FaqData = {
   title: 'FAQ',
-  intro: 'Pertanyaan yang sering diajukan seputar akun, deposit, dan trading di HSB.',
+  intro: 'Pertanyaan yang sering diajukan seputar akun, deposit, dan trading di WebullXAU.',
   footer: 'Tidak menemukan jawaban? Hubungi layanan pelanggan melalui menu Layanan Pelanggan.',
   items: [
     { id: 'f1', question: 'Bagaimana cara membuka akun?', answer: 'Tekan menu Buka Akun, isi data diri, dan akun Anda langsung aktif dapat digunakan untuk deposit dan trading tanpa perlu verifikasi rumit.' },

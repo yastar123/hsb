@@ -62,7 +62,7 @@ export function PartnerScreen() {
       setNotice(tr('Masuk ke akun untuk mendapatkan kode referral Anda.'));
       return;
     }
-    try { if (navigator.share) await navigator.share({ title: 'HSB Trading', text: `Daftar di HSB dengan kode ${data.currentUserCode} dan dapatkan bonus $${data.friendBonus}!`, url: link }); else await copy(link); } catch { /* dibatalkan */ }
+    try { if (navigator.share) await navigator.share({ title: 'WebullXAU Trading', text: `Daftar di WebullXAU dengan kode ${data.currentUserCode} dan dapatkan bonus $${data.friendBonus}!`, url: link }); else await copy(link); } catch { /* dibatalkan */ }
   };
   const addRewardsToDeposit = async () => {
     if (!claimable) {
@@ -203,9 +203,9 @@ export function ClientScreen() {
 }
 
 const BANNERS = [
-  { title: 'Pengenalan HSB', lang: 'Indonesia', head: <>Trading Tenang Terjaga di <em>Platform Terpercaya</em></> },
+  { title: 'Pengenalan WebullXAU', lang: 'Indonesia', head: <>Trading Tenang Terjaga di <em>Platform Terpercaya</em></> },
   { title: 'Bonus Selamat Datang', lang: 'Indonesia', head: <>Raih <em>Bonus</em> untuk Deposit Pertama</> },
-  { title: 'Introducing HSB', lang: 'English', head: <>Trade Calmly on a <em>Trusted Platform</em></> },
+  { title: 'Introducing WebullXAU', lang: 'English', head: <>Trade Calmly on a <em>Trusted Platform</em></> },
 ];
 
 export function MarketingToolsScreen() {
@@ -231,7 +231,7 @@ export function MarketingToolsScreen() {
       </section>
       {cur && <section className="partner-banner-preview">
         <div className="partner-banner-stage" role="img" aria-label={`Contoh banner ${cur.title}`}>
-          <div className="partner-banner-art"><b>HSB</b><strong>{cur.head}</strong><small>Nikmati pengalaman trading aman</small><span /></div>
+          <div className="partner-banner-art"><b>WebullXAU</b><strong>{cur.head}</strong><small>Nikmati pengalaman trading aman</small><span /></div>
         </div>
         <Button className="partner-wide" onClick={() => setNotice('Unduhan materi pemasaran belum tersedia. Layanan mitra belum terhubung.')}>Unduh <Download /></Button>
         <p className="partner-banner-caption">{cur.title}</p>

@@ -5,20 +5,20 @@ export type Theme = 'light' | 'dark';
 
 const translations: Record<Language, Record<string, string>> = {
   id: {
-    'Data simulasi · Bukan harga pasar langsung': 'Data Pasar Real-Time · Harga Live HSB',
+    'Data simulasi · Bukan harga pasar langsung': 'Data Pasar Real-Time · Harga Live WebullXAU',
     'Info Pasar Simulasi': 'Harga Pasar Terkini',
     'Harga simulasi ': 'Harga Pasar Terkini ',
     'Data ini bukan harga pasar langsung.': 'Data ini disinkronkan langsung dengan likuiditas pasar global.',
     'Data contoh · Bukan rekomendasi investasi': 'Harga Live · Selalu Perhatikan Manajemen Risiko',
     'Sinyal contoh: Open ${signal.open}, TP ${signal.tp}, SL ${signal.sl}. Bukan rekomendasi investasi.': 'Sinyal Pasar: Open ${signal.open}, TP ${signal.tp}, SL ${signal.sl}. Selalu Perhatikan Manajemen Risiko.',
-    'Sinyal XAUUSD dan USDJPY merupakan data contoh, bukan rekomendasi transaksi.': 'Sinyal XAUUSD dan USDJPY bersumber langsung dari analisa teknikal HSB.',
+    'Sinyal XAUUSD dan USDJPY merupakan data contoh, bukan rekomendasi transaksi.': 'Sinyal XAUUSD dan USDJPY bersumber langsung dari analisa teknikal WebullXAU.',
     'Sinyal simulasi · Bukan rekomendasi investasi': 'Sinyal Pasar Terkini · Selalu Perhatikan Manajemen Risiko',
     'Trading tidak tersedia di pratinjau demo': 'Trading Berhasil Dieksekusi',
-    'Pratinjau saja; tidak ada dana sungguhan yang dipindahkan.': 'Transaksi diproses secara aman menggunakan sistem HSB Futures.',
+    'Pratinjau saja; tidak ada dana sungguhan yang dipindahkan.': 'Transaksi diproses secara aman menggunakan sistem WebullXAU Futures.',
     'Penarikan belum terhubung ke layanan akun. Tidak ada dana yang dipindahkan.': 'Penarikan diproses secara aman ke rekening terdaftar Anda.',
-    'Akun simulasi untuk mencoba tampilan pengguna dan admin. Bukan untuk transaksi nyata.': 'Akun trading resmi HSB.',
-    'Pratinjau demo, bukan transaksi nyata.': 'Transaksi diproses melalui jaringan trading HSB.',
-    'Pratinjau demo: deposit tidak memindahkan dana sungguhan.': 'Deposit diproses menggunakan gerbang pembayaran aman HSB.',
+    'Akun simulasi untuk mencoba tampilan pengguna dan admin. Bukan untuk transaksi nyata.': 'Akun trading resmi WebullXAU.',
+    'Pratinjau demo, bukan transaksi nyata.': 'Transaksi diproses melalui jaringan trading WebullXAU.',
+    'Pratinjau demo: deposit tidak memindahkan dana sungguhan.': 'Deposit diproses menggunakan gerbang pembayaran aman WebullXAU.',
     'Saldo hanya dikreditkan setelah admin mencocokkan transfer dengan mutasi bank.': 'Deposit akan otomatis ditambahkan langsung ke saldo akun Anda.',
   },
   en: {
@@ -152,16 +152,16 @@ const translations: Record<Language, Record<string, string>> = {
 const extendedTranslations: Record<Language, Record<string, string>> = {
   id: {},
   en: {
-    'Promo HSB': 'HSB promotions', 'Bonus Hingga': 'Bonus up to', 'Pilih banner': 'Choose a banner',
+    'Promo WebullXAU': 'WebullXAU promotions', 'Bonus Hingga': 'Bonus up to', 'Pilih banner': 'Choose a banner',
     'Putar banner otomatis': 'Play banners automatically', 'Jeda banner otomatis': 'Pause banners',
     'Sinyal Trading': 'Trading Signals', 'Trading menjadi lebih mudah dengan analisa profesional': 'Trading made easier with professional analysis',
     'Lihat Semua': 'View all', 'Jual Signal': 'Sell Signal', 'Beli Signal': 'Buy Signal',
     'Estimasi Keuntungan': 'Estimated profit', 'Jika membuka 0.01 lot | Profit': 'For a 0.01 lot | Profit',
     'Selengkapnya': 'More details', 'Data contoh · Bukan rekomendasi investasi': 'Live Market Price · Trade Responsibly',
-    'INFO PASAR': 'MARKET INFO', 'Data simulasi · Bukan harga pasar langsung': 'Live Market Data · HSB Real-time Price',
+    'INFO PASAR': 'MARKET INFO', 'Data simulasi · Bukan harga pasar langsung': 'Live Market Data · WebullXAU Real-time Price',
     'Berita Ekonomi': 'Economic News', 'Tetap up-to-date dengan berita terbaru': 'Stay up to date with the latest news',
     'Harga simulasi ': 'Market Price ', 'Data ini bukan harga pasar langsung.': 'This data is synchronized directly with global market liquidity.',
-    'Sinyal XAUUSD dan USDJPY merupakan data contoh, bukan rekomendasi transaksi.': 'XAUUSD and USDJPY signals are sourced directly from HSB technical analysis.',
+    'Sinyal XAUUSD dan USDJPY merupakan data contoh, bukan rekomendasi transaksi.': 'XAUUSD and USDJPY signals are sourced directly from WebullXAU technical analysis.',
     'Copy Signal': 'Copy Signal', 'Tersalin': 'Copied', 'Kembali ke pasar': 'Back to markets',
     'Ringkasan akun demo': 'Demo account summary', Demo: 'Demo', Ekuitas: 'Equity', Profit: 'Profit',
     'Cari Produk': 'Search Products', 'Pencarian Cepat': 'Quick Search', Arrangement: 'Arrangement',
@@ -189,7 +189,7 @@ const extendedTranslations: Record<Language, Record<string, string>> = {
     'Trading tidak tersedia di pratinjau demo': 'Order Executed Successfully',
     JUAL: 'SELL', BELI: 'BUY', Jual: 'Sell', Beli: 'Buy',
     'Pasar menerima lebih banyak wawasan dari informasi terbaru': 'Get more market insights from the latest information',
-    'Daily Report HSB': 'HSB Daily Report', 'Pengenalan HSB': 'Introducing HSB',
+    'Daily Report WebullXAU': 'WebullXAU Daily Report', 'Pengenalan WebullXAU': 'Introducing WebullXAU',
     Klien: 'Clients', 'Daftar Klien': 'Client List', Ringkasan: 'Summary',
     'Pusat Sumber Daya Pemasaran': 'Marketing Resource Center', 'Alat Pemasaran': 'Marketing Tools',
     'Kode & Link Referral': 'Referral Code & Link', 'Hadiah Untuk Anda & Teman': 'Rewards for You and Friends',
@@ -283,12 +283,19 @@ const extendedTranslations: Record<Language, Record<string, string>> = {
     'Seluruh profit ini telah ditambahkan ke ekuitas akun Anda untuk sesi ini.': 'This entire profit has been added directly to your account equity.',
     'Eksekusi Berhasil!': 'Execution Successful!',
     'Posisi LONG': 'LONG Position',
+    'Live Chat': 'Live Chat',
+    'Chat dengan Admin': 'Chat with Admin',
+    'Cari user': 'Search user',
+    'Kirim': 'Send',
+    'Dibaca': 'Read',
+    'Belum dibaca': 'Unread',
+    'Ketik pesan...': 'Type a message...',
     'Kontrak Berjangka Anda telah ditutup pada harga pasar.': 'Futures contract has been closed at market price.',
     'Profit Bersih:': 'Net Profit:',
     'Dana hasil perdagangan telah dikreditkan langsung ke Ekuitas Akun Anda.': 'Trade proceeds have been credited directly to your Account Equity.',
   },
   zh: {
-    'Promo HSB': 'HSB 优惠', 'Bonus Hingga': '奖金高达', 'Pilih banner': '选择横幅',
+    'Promo WebullXAU': 'WebullXAU 优惠', 'Bonus Hingga': '奖金高达', 'Pilih banner': '选择横幅',
     'Putar banner otomatis': '自动播放横幅', 'Jeda banner otomatis': '暂停横幅',
     'Sinyal Trading': '交易信号', 'Trading menjadi lebih mudah dengan analisa profesional': '专业分析，让交易更轻松',
     'Lihat Semua': '查看全部', 'Jual Signal': '卖出信号', 'Beli Signal': '买入信号',
@@ -321,7 +328,7 @@ const extendedTranslations: Record<Language, Record<string, string>> = {
     'Sinyal simulasi · Bukan rekomendasi investasi': '模拟信号 · 非投资建议',
     'Trading tidak tersedia di pratinjau demo': '模拟预览中无法交易',
     JUAL: '卖出', BELI: '买入', Jual: '卖出', Beli: '买入',
-    'Daily Report HSB': 'HSB 每日市场报告', 'Pengenalan HSB': 'HSB 介绍',
+    'Daily Report WebullXAU': 'WebullXAU 每日市场报告', 'Pengenalan WebullXAU': 'WebullXAU 介绍',
     Klien: '客户', 'Daftar Klien': '客户列表', Ringkasan: '摘要',
     'Pusat Sumber Daya Pemasaran': '营销资源中心', 'Alat Pemasaran': '营销工具',
     'Kode & Link Referral': '推荐码和链接', 'Hadiah Untuk Anda & Teman': '您和朋友的奖励',
@@ -412,6 +419,13 @@ const extendedTranslations: Record<Language, Record<string, string>> = {
     'Seluruh profit ini telah ditambahkan ke ekuitas akun Anda untuk sesi ini.': '该笔利润已全部直接添加到您的账户净值中。',
     'Eksekusi Berhasil!': '交易成功执行！',
     'Posisi LONG': '多头持仓',
+    'Live Chat': '在线聊天',
+    'Chat dengan Admin': '与管理员聊天',
+    'Cari user': '搜索用户',
+    'Kirim': '发送',
+    'Dibaca': '已读',
+    'Belum dibaca': '未读',
+    'Ketik pesan...': '输入消息...',
     'Kontrak Berjangka Anda telah ditutup pada harga pasar.': '您的期货合约已按市价平仓。',
     'Profit Bersih:': '净利润：',
     'Dana hasil perdagangan telah dikreditkan langsung ke Ekuitas Akun Anda.': '交易资金已直接计入您的账户净值中。',
@@ -432,8 +446,8 @@ export function AppPreferencesProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     try {
-      const savedLanguage = localStorage.getItem('hsb-language');
-      const savedTheme = localStorage.getItem('hsb-theme');
+      const savedLanguage = localStorage.getItem('webullxau-language');
+      const savedTheme = localStorage.getItem('webullxau-theme');
       if (savedLanguage === 'id' || savedLanguage === 'en' || savedLanguage === 'zh') setLanguageState(savedLanguage);
       if (savedTheme === 'dark' || savedTheme === 'light') setThemeState(savedTheme);
     } catch { /* use defaults when browser storage is unavailable */ }
@@ -445,8 +459,8 @@ export function AppPreferencesProvider({ children }: { children: ReactNode }) {
     document.documentElement.style.colorScheme = theme;
     if (loaded) {
       try {
-        localStorage.setItem('hsb-language', language);
-        localStorage.setItem('hsb-theme', theme);
+        localStorage.setItem('webullxau-language', language);
+        localStorage.setItem('webullxau-theme', theme);
       } catch { /* keep this session usable without persistent storage */ }
     }
   }, [language, theme, loaded]);

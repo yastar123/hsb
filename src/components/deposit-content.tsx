@@ -9,7 +9,7 @@ export type DepositContent = {
 const banks = ['BCA', 'BNI', 'Mandiri', 'BRI', 'BSI', 'CIMB', 'Permata'];
 export const defaultDepositContent: DepositContent = {
   title: 'Deposit', methodPlaceholder: 'Pilih Metode Pembayaran', currency: 'USD', rateLabel: 'USD / IDR', rate: 18000, minimum: 100,
-  minimumText: 'Minimal deposit $100 (~ Rp 1.800.000)', button: 'Deposit Sekarang', securityText: 'Transaksi Aman oleh', securityBrand: 'HSB Security',
+  minimumText: 'Minimal deposit $100 (~ Rp 1.800.000)', button: 'Deposit Sekarang', securityText: 'Transaksi Aman oleh', securityBrand: 'WebullXAU Security',
   notice: 'Permintaan deposit menunggu pencocokan mutasi rekening oleh admin.', sheetTitle: 'Pilih Metode Pembayaran',
   methods: banks.map((b) => ({ id: b, label: `Transfer Bank ${b}`, badge: b, bank: b })),
 };

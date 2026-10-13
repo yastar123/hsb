@@ -30,7 +30,7 @@ export const uid = () => Math.random().toString(36).slice(2, 9);
 export const defaultHomeContent: HomeContent = {
   banners: [
     { id: 'b1', image: 'home-bonus', alt: 'Welcome bonus hingga 350 dolar', title: 'Welcome Bonus', heading: 'TRADING\nIS NOT SCARY', text: 'Add Welcome Bonus Buat\nTambahan Modal Awalmu', button: 'MULAI & DEPOSIT', link: '/deposit', dark: true, note: '*S&K Berlaku' },
-    { id: 'b2', image: 'welcome-demo', alt: 'Belajar trading dengan akun demo', title: 'Akun Demo', heading: 'BELAJAR\nTRADING', text: 'Berlatih dengan\nAkun Demo HSB', button: 'LIHAT PASAR', link: '/pasar', dark: true, note: '' },
+    { id: 'b2', image: 'welcome-demo', alt: 'Belajar trading dengan akun demo', title: 'Akun Demo', heading: 'BELAJAR\nTRADING', text: 'Berlatih dengan\nAkun Demo WebullXAU', button: 'LIHAT PASAR', link: '/pasar', dark: true, note: '' },
     { id: 'b3', image: 'welcome-rewards', alt: 'Hadiah dan poin Smart Reward', title: 'Smart Reward', heading: 'SMART\nREWARD', text: 'Nikmati promo menarik\nuntuk setiap trader', button: 'LIHAT PROMO', link: '/promo', dark: true, note: '' },
   ],
   markets: [

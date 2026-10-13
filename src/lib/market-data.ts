@@ -76,4 +76,4 @@ export function simulatePriceTick(product: Pick<Product, 'symbol' | 'decimals'>,
   return Number(Math.max(tickSize, price + simulatedTickMove(product.symbol, tick) * tickSize).toFixed(product.decimals));
 }
 
-export const marketMeta = (title: string, description: string) => ({ meta:[{title:`${title} — HSB Trading`},{name:'description',content:description},{property:'og:title',content:`${title} — HSB Trading`},{property:'og:description',content:description},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}] });
+export const marketMeta = (title: string, description: string) => ({ meta:[{title:`${title} — WebullXAU Trading`},{name:'description',content:description},{property:'og:title',content:`${title} — WebullXAU Trading`},{property:'og:description',content:description},{property:'og:type',content:'website'},{name:'twitter:card',content:'summary_large_image'}] });
