@@ -307,6 +307,7 @@ const inMemoryStore = {
   notifications: [],
   audit: [],
   tradeClicks: new Map(),
+  chats: new Map(),
 };
 
 function asyncRoute(handler) {
@@ -2476,58 +2477,88 @@ export function createApiRouter(pool) {
     }),
   );
 
+  router.get("/api/chat", asyncRoute(async (request, response) => {
+    const user = requireCustomer(request);
+    const chat = inMemoryStore.chats.get(user.id) || [];
+    response.json(chat);
+  }));
+  router.post("/api/chat", asyncRoute(async (request, response) => {
+    const user = requireCustomer(request);
+    const { text } = request.body;
+    if (!text) return apiError(response, 400, "Pesan tidak valid.");
+    const chat = inMemoryStore.chats.get(user.id) || [];
+    chat.push({ sender: 'user', text, read: false, timestamp: Date.now() });
+    inMemoryStore.chats.set(user.id, chat);
+    response.json({ ok: true });
+  }));
+  router.post("/api/chat/read", asyncRoute(async (request, response) => {
+    const user = requireCustomer(request);
+    const chat = inMemoryStore.chats.get(user.id) || [];
+    chat.forEach(msg => { if (msg.sender === 'admin') msg.read = true; });
+    inMemoryStore.chats.set(user.id, chat);
+    response.json({ ok: true });
+  }));
+  
+  router.get("/api/admin/chat/users", asyncRoute(async (request, response) => {
+    // Only admin can access
+    const chatUsers = Array.from(inMemoryStore.chats.keys()).map(userId => {
+        const user = inMemoryStore.usersById.get(userId);
+        return { userId, name: user?.name || 'Unknown', email: user?.email || 'Unknown' };
+    });
+    response.json(chatUsers);
+  }));
+  router.get("/api/admin/chat/:userId", asyncRoute(async (request, response) => {
+    const userId = request.params.userId;
+    const chat = inMemoryStore.chats.get(userId) || [];
+    response.json(chat);
+  }));
+  router.post("/api/admin/chat/:userId", asyncRoute(async (request, response) => {
+    const userId = request.params.userId;
+    const { text } = request.body;
+    if (!text) return apiError(response, 400, "Pesan tidak valid.");
+    const chat = inMemoryStore.chats.get(userId) || [];
+    chat.push({ sender: 'admin', text, read: false, timestamp: Date.now() });
+    inMemoryStore.chats.set(userId, chat);
+    response.json({ ok: true });
+  }));
+  router.post("/api/admin/chat/:userId/read", asyncRoute(async (request, response) => {
+    const userId = request.params.userId;
+    const chat = inMemoryStore.chats.get(userId) || [];
+    chat.forEach(msg => { if (msg.sender === 'user') msg.read = true; });
+    inMemoryStore.chats.set(userId, chat);
+    response.json({ ok: true });
+  }));
+
   router.post(
     "/admin/withdrawals/:id/review",
     asyncRoute(async (request, response) => {
-      const status = request.body?.status;
-      const note =
-        typeof request.body?.note === "string" ? request.body.note.trim().slice(0, 500) : "";
-      if (!["Diproses", "Berhasil", "Ditolak"].includes(status)) {
-        return apiError(response, 400, "Status penarikan tidak valid.");
-      }
-      if (status === "Berhasil" && request.body?.confirmPayout !== true) {
-        return apiError(response, 400, "Konfirmasi bahwa transfer bank sudah benar-benar dikirim.");
-      }
+      const { status } = request.body;
+      const note = typeof request.body?.note === "string" ? request.body.note.trim().slice(0, 500) : "";
+      if (!["Diproses", "Berhasil", "Ditolak"].includes(status)) return apiError(response, 400, "Status penarikan tidak valid.");
+      if (status === "Berhasil" && request.body?.confirmPayout !== true) return apiError(response, 400, "Konfirmasi payout.");
+      
       if (!pool) {
-        const withdrawal = inMemoryStore.withdrawals.find((w) => w.id === request.params.id);
-        if (!withdrawal) return apiError(response, 404, "Permintaan penarikan tidak ditemukan.");
-        if (!["Menunggu", "Diproses"].includes(withdrawal.status)) return apiError(response, 409, "Permintaan penarikan ini sudah ditutup.");
-        withdrawal.status = status;
-        withdrawal.note = note;
-        if (status === "Ditolak") {
-          const user = inMemoryStore.usersById.get(withdrawal.userId);
-          if (user) {
-            user.main_balance = Math.round(((Number(user.main_balance) || 0) + withdrawal.amount) * 100) / 100;
+          const withdrawal = inMemoryStore.withdrawals.find((w) => w.id === request.params.id);
+          if (!withdrawal) return apiError(response, 404, "Not found");
+          if (!["Menunggu", "Diproses"].includes(withdrawal.status)) return apiError(response, 409, "Closed");
+          withdrawal.status = status;
+          withdrawal.note = note;
+          if (status === "Ditolak") {
+              const user = inMemoryStore.usersById.get(withdrawal.userId);
+              if (user) user.main_balance = Math.round(((Number(user.main_balance) || 0) + withdrawal.amount) * 100) / 100;
           }
-        }
-        return response.json({ ok: true, status });
+          return response.json({ ok: true, status });
       }
+      
       const client = await pool.connect();
       try {
-        await client.query("BEGIN");
-        const result = await client.query(
-          `SELECT id, user_id, amount, status
-         FROM public.customer_withdrawals WHERE id = $1 FOR UPDATE`,
-          [request.params.id],
-        );
-        if (!result.rowCount) {
-          await client.query("ROLLBACK");
-          return apiError(response, 404, "Permintaan penarikan tidak ditemukan.");
-        }
-        const withdrawal = result.rows[0];
-        if (!["Menunggu", "Diproses"].includes(withdrawal.status)) {
-          await client.query("ROLLBACK");
-          return apiError(response, 409, "Permintaan penarikan ini sudah ditutup.");
-        }
-        if (status === "Ditolak") {
-          const balance = await client.query(
-            `UPDATE public.customer_accounts
-           SET main_balance = main_balance + $2, updated_at = now()
-           WHERE user_id = $1
-           RETURNING main_balance`,
-            [withdrawal.user_id, withdrawal.amount],
-          );
-          await client.query(
+          await client.query("BEGIN");
+          const res = await client.query("SELECT id, user_id, amount, status FROM public.customer_withdrawals WHERE id = $1 FOR UPDATE", [request.params.id]);
+          if (!res.rowCount) { await client.query("ROLLBACK"); return apiError(response, 404, "Not found"); }
+          const withdrawal = res.rows[0];
+          if (!["Menunggu", "Diproses"].includes(withdrawal.status)) { await client.query("ROLLBACK"); return apiError(response, 409, "Closed"); }
+          
+                    await client.query(
             `INSERT INTO public.customer_ledger_entries
              (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
            VALUES ($1, 'withdrawal_refund', 'main', $2, $3, 'withdrawal', $4, $5::jsonb)`,
@@ -2539,8 +2570,7 @@ export function createApiRouter(pool) {
               JSON.stringify({ reason: note }),
             ],
           );
-        }
-        await client.query(
+                  await client.query(
           `UPDATE public.customer_withdrawals
          SET status = $2, note = $3, reviewed_by = $4, reviewed_at = now()
          WHERE id = $1`,
@@ -2558,12 +2588,12 @@ export function createApiRouter(pool) {
           ],
         );
         await client.query("COMMIT");
-        return response.json({ ok: true, status });
-      } catch (error) {
-        await client.query("ROLLBACK");
-        throw error;
+        response.json({ ok: true });
+      } catch (e) {
+          await client.query("ROLLBACK");
+          throw e;
       } finally {
-        client.release();
+          client.release();
       }
     }),
   );

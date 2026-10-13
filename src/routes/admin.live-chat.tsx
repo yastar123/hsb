@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Headset, Send, Check } from 'lucide-react';
 import { useAppPreferences, translate } from '@/components/app-preferences';
@@ -13,16 +13,31 @@ function AdminLiveChatScreen() {
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
   const { users } = useLedger();
-  const [selectedUser, setSelectedUser] = useState(users[0]);
-  const [messages, setMessages] = useState<{ sender: 'user' | 'admin', text: string, read: boolean }[]>([
-    { sender: 'user', text: 'Halo admin, saya butuh bantuan.', read: false },
-  ]);
+  const [chatUsers, setChatUsers] = useState<{ userId: string, name: string, email: string }[]>([]);
+  const [selectedUser, setSelectedUser] = useState<{ userId: string, name: string, email: string } | null>(null);
+  const [messages, setMessages] = useState<{ sender: 'user' | 'admin', text: string, read: boolean }[]>([]);
   const [input, setInput] = useState('');
 
-  const send = () => {
-    if (!input.trim()) return;
-    setMessages([...messages, { sender: 'admin', text: input, read: true }]);
+  useEffect(() => {
+    fetch('/api/admin/chat/users').then(res => res.ok && res.json().then(setChatUsers));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    const fetchChat = async () => {
+      const res = await fetch(`/api/admin/chat/${selectedUser.userId}`);
+      if (res.ok) setMessages(await res.json());
+    };
+    fetchChat();
+    const interval = setInterval(fetchChat, 3000);
+    return () => clearInterval(interval);
+  }, [selectedUser]);
+
+  const send = async () => {
+    if (!input.trim() || !selectedUser) return;
+    const text = input;
     setInput('');
+    await fetch(`/api/admin/chat/${selectedUser.userId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
   };
 
   return <main className="min-w-0 bg-muted p-3 text-foreground sm:p-6">
@@ -33,7 +48,7 @@ function AdminLiveChatScreen() {
       <section className="md:col-span-1 bg-background rounded-xl p-4 border border-border">
         <h2 className="font-bold mb-3">{tr('Cari user')}</h2>
         {users.map(u => (
-          <button key={u.id} onClick={() => setSelectedUser(u)} className={`w-full text-left p-2 rounded-lg ${selectedUser?.id === u.id ? 'bg-primary/10' : ''}`}>
+          <button key={u.id} onClick={() => setSelectedUser({ userId: u.id, name: u.name, email: u.email })} className={`w-full text-left p-2 rounded-lg ${selectedUser?.userId === u.id ? 'bg-primary/10' : ''}`}>
             {u.name}
           </button>
         ))}

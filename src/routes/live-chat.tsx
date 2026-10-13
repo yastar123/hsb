@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Send } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
@@ -12,15 +12,24 @@ export const Route = createFileRoute('/live-chat')({
 function LiveChatScreen() {
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
-  const [messages, setMessages] = useState<{ sender: 'user' | 'admin', text: string, read: boolean }[]>([
-    { sender: 'admin', text: 'Halo! Ada yang bisa kami bantu?', read: true },
-  ]);
+  const [messages, setMessages] = useState<{ sender: 'user' | 'admin', text: string, read: boolean }[]>([]);
   const [input, setInput] = useState('');
 
-  const send = () => {
+  useEffect(() => {
+    const fetchChat = async () => {
+      const res = await fetch('/api/chat');
+      if (res.ok) setMessages(await res.json());
+    };
+    fetchChat();
+    const interval = setInterval(fetchChat, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const send = async () => {
     if (!input.trim()) return;
-    setMessages([...messages, { sender: 'user', text: input, read: false }]);
+    const text = input;
     setInput('');
+    await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
   };
 
   return <main className="home-page"><div className="home-shell acct-shell acct-plain">
