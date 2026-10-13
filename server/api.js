@@ -2477,55 +2477,128 @@ export function createApiRouter(pool) {
     }),
   );
 
-  router.get("/api/chat", asyncRoute(async (request, response) => {
-    const user = requireCustomer(request);
-    const chat = inMemoryStore.chats.get(user.id) || [];
+  async function getStoredChat(userId) {
+    if (inMemoryStore.chats.has(userId)) {
+      return inMemoryStore.chats.get(userId);
+    }
+    if (pool) {
+      try {
+        const res = await pool.query("SELECT value FROM public.app_settings WHERE setting_key = $1", [`chat:${userId}`]);
+        if (res.rowCount && Array.isArray(res.rows[0].value)) {
+          inMemoryStore.chats.set(userId, res.rows[0].value);
+          return res.rows[0].value;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return [];
+  }
+
+  async function saveStoredChat(userId, chat) {
+    inMemoryStore.chats.set(userId, chat);
+    if (pool) {
+      try {
+        await pool.query(
+          `INSERT INTO public.app_settings (setting_key, value)
+           VALUES ($1, $2::jsonb)
+           ON CONFLICT (setting_key)
+           DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+          [`chat:${userId}`, JSON.stringify(chat)]
+        );
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  router.get("/chat", requireCustomer(pool), asyncRoute(async (request, response) => {
+    const user = request.customer;
+    const chat = await getStoredChat(user.id);
     response.json(chat);
   }));
-  router.post("/api/chat", asyncRoute(async (request, response) => {
-    const user = requireCustomer(request);
+
+  router.post("/chat", requireCustomer(pool), asyncRoute(async (request, response) => {
+    const user = request.customer;
     const { text } = request.body;
-    if (!text) return apiError(response, 400, "Pesan tidak valid.");
-    const chat = inMemoryStore.chats.get(user.id) || [];
-    chat.push({ sender: 'user', text, read: false, timestamp: Date.now() });
-    inMemoryStore.chats.set(user.id, chat);
+    if (!text || typeof text !== 'string' || !text.trim()) return apiError(response, 400, "Pesan tidak valid.");
+    const chat = await getStoredChat(user.id);
+    chat.push({ sender: 'user', text: text.trim(), read: false, timestamp: Date.now() });
+    await saveStoredChat(user.id, chat);
     response.json({ ok: true });
   }));
-  router.post("/api/chat/read", asyncRoute(async (request, response) => {
-    const user = requireCustomer(request);
-    const chat = inMemoryStore.chats.get(user.id) || [];
-    chat.forEach(msg => { if (msg.sender === 'admin') msg.read = true; });
-    inMemoryStore.chats.set(user.id, chat);
+
+  router.post("/chat/read", requireCustomer(pool), asyncRoute(async (request, response) => {
+    const user = request.customer;
+    const chat = await getStoredChat(user.id);
+    let updated = false;
+    chat.forEach(msg => { if (msg.sender === 'admin' && !msg.read) { msg.read = true; updated = true; } });
+    if (updated) {
+      await saveStoredChat(user.id, chat);
+    }
     response.json({ ok: true });
   }));
   
-  router.get("/api/admin/chat/users", asyncRoute(async (request, response) => {
-    // Only admin can access
-    const chatUsers = Array.from(inMemoryStore.chats.keys()).map(userId => {
-        const user = inMemoryStore.usersById.get(userId);
-        return { userId, name: user?.name || 'Unknown', email: user?.email || 'Unknown' };
-    });
+  router.get("/admin/chat/users", asyncRoute(async (request, response) => {
+    const userIds = new Set(inMemoryStore.chats.keys());
+    if (pool) {
+      try {
+        const res = await pool.query("SELECT setting_key FROM public.app_settings WHERE setting_key LIKE 'chat:%'");
+        for (const row of res.rows) {
+          const uid = row.setting_key.replace("chat:", "");
+          userIds.add(uid);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const chatUsers = [];
+    for (const userId of userIds) {
+      let user = inMemoryStore.usersById.get(userId);
+      if (!user && pool) {
+        try {
+          const uRes = await pool.query("SELECT id, name, email FROM public.customer_users WHERE id = $1", [userId]);
+          if (uRes.rowCount) {
+            user = uRes.rows[0];
+            inMemoryStore.usersById.set(userId, user);
+          }
+        } catch {
+          // ignore
+        }
+      }
+      chatUsers.push({
+        userId,
+        name: user?.name || 'Trader WebullXAU',
+        email: user?.email || userId,
+      });
+    }
     response.json(chatUsers);
   }));
-  router.get("/api/admin/chat/:userId", asyncRoute(async (request, response) => {
+
+  router.get("/admin/chat/:userId", asyncRoute(async (request, response) => {
     const userId = request.params.userId;
-    const chat = inMemoryStore.chats.get(userId) || [];
+    const chat = await getStoredChat(userId);
     response.json(chat);
   }));
-  router.post("/api/admin/chat/:userId", asyncRoute(async (request, response) => {
+
+  router.post("/admin/chat/:userId", asyncRoute(async (request, response) => {
     const userId = request.params.userId;
     const { text } = request.body;
-    if (!text) return apiError(response, 400, "Pesan tidak valid.");
-    const chat = inMemoryStore.chats.get(userId) || [];
-    chat.push({ sender: 'admin', text, read: false, timestamp: Date.now() });
-    inMemoryStore.chats.set(userId, chat);
+    if (!text || typeof text !== 'string' || !text.trim()) return apiError(response, 400, "Pesan tidak valid.");
+    const chat = await getStoredChat(userId);
+    chat.push({ sender: 'admin', text: text.trim(), read: false, timestamp: Date.now() });
+    await saveStoredChat(userId, chat);
     response.json({ ok: true });
   }));
-  router.post("/api/admin/chat/:userId/read", asyncRoute(async (request, response) => {
+
+  router.post("/admin/chat/:userId/read", asyncRoute(async (request, response) => {
     const userId = request.params.userId;
-    const chat = inMemoryStore.chats.get(userId) || [];
-    chat.forEach(msg => { if (msg.sender === 'user') msg.read = true; });
-    inMemoryStore.chats.set(userId, chat);
+    const chat = await getStoredChat(userId);
+    let updated = false;
+    chat.forEach(msg => { if (msg.sender === 'user' && !msg.read) { msg.read = true; updated = true; } });
+    if (updated) {
+      await saveStoredChat(userId, chat);
+    }
     response.json({ ok: true });
   }));
 
