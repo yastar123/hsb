@@ -17,6 +17,7 @@ export type AppUser = {
   effectiveRate?: number;
   lastCompound: string;
   status: UserStatus;
+  tradeClicks?: number;
 };
 export type CompoundSettings = { globalRate: number; enabled: boolean };
 export type DepositStatus = 'Menunggu' | 'Disetujui' | 'Ditolak';
@@ -79,6 +80,7 @@ export type SessionUser = Pick<AppUser, 'id' | 'name' | 'email' | 'phone' | 'sta
   rate?: number | null;
   effectiveRate?: number;
   lastCompound?: string;
+  tradeClicks?: number;
 };
 export type LoginResult = {
   user: SessionUser;
@@ -175,6 +177,8 @@ type Ctx = LedgerData & {
   creditReferralDeposit: (userId: string, amount: number, referralId: string) => Promise<number>;
   requestWithdrawal: (userId: string, details: { bank: string; account: string; amount: number }) => Promise<string | null>;
   reviewWithdrawal: (id: string, status: WithdrawalStatus, confirmPayout?: boolean, note?: string) => Promise<void>;
+  recordTradeClick: () => Promise<number>;
+  refundTradeClick: () => Promise<number>;
 };
 
 const LedgerContext = createContext<Ctx | null>(null);
@@ -298,6 +302,26 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [post, refresh]);
 
+  const recordTradeClick = useCallback(async () => {
+    try {
+      const res = await post<{ ok: boolean; tradeClicks: number }>('/api/account/trade-click');
+      await refresh();
+      return res.tradeClicks;
+    } catch {
+      return 0;
+    }
+  }, [post, refresh]);
+
+  const refundTradeClick = useCallback(async () => {
+    try {
+      const res = await post<{ ok: boolean; tradeClicks: number }>('/api/account/trade-click/refund');
+      await refresh();
+      return res.tradeClicks;
+    } catch {
+      return 0;
+    }
+  }, [post, refresh]);
+
   const value = useMemo<Ctx>(() => ({
     ...data,
     currentEmail,
@@ -319,10 +343,13 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     creditReferralDeposit,
     requestWithdrawal,
     reviewWithdrawal,
+    recordTradeClick,
+    refundTradeClick,
   }), [
     data, currentEmail, currentUser, loading, error, refresh, register, login, logout,
     setCurrentEmail, submitDeposit, getDepositProof, review, updateUser, setCompound,
     runCompound, transferDepositToMain, creditReferralDeposit, requestWithdrawal, reviewWithdrawal,
+    recordTradeClick, refundTradeClick,
   ]);
 
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;

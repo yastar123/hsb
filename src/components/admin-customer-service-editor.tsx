@@ -20,7 +20,6 @@ export function AdminCustomerServiceEditor() {
   return <main className="min-w-0 bg-muted p-3 text-foreground sm:p-6">
     <header className="mb-4 flex flex-wrap items-center gap-3">
       <Headset className="size-5" /><h1 className="text-xl font-bold">Kelola Layanan Pelanggan</h1>
-      <Button asChild variant="outline" size="sm" className="ml-auto"><Link to="/layanan-pelanggan">Buka halaman</Link></Button>
     </header>
     <p className="mb-4 rounded-lg bg-accent px-4 py-2 text-xs text-accent-foreground"><SaveStatusText status={status} error={error} /> Pastikan detail yang dipublikasikan sudah benar dan aktif.</p>
     <section className="mb-4 grid gap-3 rounded-xl border border-border bg-background p-4 sm:grid-cols-2">

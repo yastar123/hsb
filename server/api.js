@@ -262,8 +262,8 @@ const DEFAULT_DEPOSIT_CONTENT = {
   currency: "USD",
   rateLabel: "USD / IDR",
   rate: 18000,
-  minimum: 1000,
-  minimumText: "Minimal deposit $1.000 (~ Rp 18.000.000)",
+  minimum: 100,
+  minimumText: "Minimal deposit $100 (~ Rp 1.800.000)",
   button: "Deposit Sekarang",
   securityText: "Transaksi Aman oleh",
   securityBrand: "HSB Security",
@@ -306,6 +306,7 @@ const inMemoryStore = {
   withdrawals: [],
   notifications: [],
   audit: [],
+  tradeClicks: new Map(),
 };
 
 function asyncRoute(handler) {
@@ -479,6 +480,10 @@ function serializeUser(row, globalRate = 0) {
       row.daily_rate_override === null || row.daily_rate_override === undefined
         ? globalRate
         : Number(row.daily_rate_override),
+    tradeClicks:
+      (row.id ? inMemoryStore.tradeClicks?.get(row.id) : 0) ||
+      (row.email ? inMemoryStore.tradeClicks?.get(row.email) : 0) ||
+      0,
   };
 }
 
@@ -1159,10 +1164,10 @@ export function createApiRouter(pool) {
         `UPDATE public.customer_site_settings
          SET setting_value = jsonb_set(
                jsonb_set(
-                 jsonb_set(setting_value, '{minimum}', '1000'),
+                 jsonb_set(setting_value, '{minimum}', '100'),
                  '{rate}', '18000'
                ),
-               '{minimumText}', '"Minimal deposit $1.000 (~ Rp 18.000.000)"'
+               '{minimumText}', '"Minimal deposit $100 (~ Rp 1.800.000)"'
              )
          WHERE setting_key = 'depositContent'`,
       )
@@ -1771,7 +1776,7 @@ export function createApiRouter(pool) {
           "Bukti transfer harus berupa gambar JPEG, PNG, atau WebP di bawah 1,5 MB.",
         );
       }
-      const minimum = Number(settings.depositContent?.minimum ?? 1000);
+      const minimum = Number(settings.depositContent?.minimum ?? 100);
       const rate = Number(settings.depositContent?.rate ?? 18000);
       if (amount < minimum) {
         return apiError(
@@ -1982,6 +1987,44 @@ export function createApiRouter(pool) {
       } finally {
         client.release();
       }
+    }),
+  );
+
+  router.post(
+    "/account/trade-click",
+    requireCustomer(pool),
+    asyncRoute(async (request, response) => {
+      const userId = request.customer.id;
+      const userEmail = request.customer.email;
+      const current =
+        inMemoryStore.tradeClicks.get(userId) ||
+        (userEmail ? inMemoryStore.tradeClicks.get(userEmail) : 0) ||
+        0;
+      const next = current + 1;
+      inMemoryStore.tradeClicks.set(userId, next);
+      if (userEmail) {
+        inMemoryStore.tradeClicks.set(userEmail, next);
+      }
+      return response.json({ ok: true, tradeClicks: next });
+    }),
+  );
+
+  router.post(
+    "/account/trade-click/refund",
+    requireCustomer(pool),
+    asyncRoute(async (request, response) => {
+      const userId = request.customer.id;
+      const userEmail = request.customer.email;
+      const current =
+        inMemoryStore.tradeClicks.get(userId) ||
+        (userEmail ? inMemoryStore.tradeClicks.get(userEmail) : 0) ||
+        0;
+      const next = Math.max(0, current - 1);
+      inMemoryStore.tradeClicks.set(userId, next);
+      if (userEmail) {
+        inMemoryStore.tradeClicks.set(userEmail, next);
+      }
+      return response.json({ ok: true, tradeClicks: next });
     }),
   );
 

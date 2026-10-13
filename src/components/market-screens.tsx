@@ -193,7 +193,44 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
   const [dialog, setDialog] = useState<{ title: string; text: string } | null>(null);
 
   const deposits = ledgerData?.deposits ?? [];
-  const depositCount = deposits.filter((d) => d.email.toLowerCase() === (me?.email || '').toLowerCase() && d.status === 'Disetujui').length;
+  const approvedDeposits = deposits.filter((d) =>
+    (d.userId === me?.id || (Boolean(d.email) && d.email.toLowerCase() === (me?.email || '').toLowerCase())) &&
+    d.status === 'Disetujui'
+  ).length;
+  const anyDeposits = deposits.filter((d) =>
+    d.userId === me?.id || (Boolean(d.email) && d.email.toLowerCase() === (me?.email || '').toLowerCase())
+  ).length;
+  const depositCount = Math.max(
+    approvedDeposits,
+    anyDeposits,
+    (me && depOf(me) > 0) ? 1 : 0
+  );
+
+  const userKey = me?.id || me?.email || 'guest';
+  const storageKey = `trading_clicks_${userKey}`;
+  const [localClicks, setLocalClicks] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) {
+        return Math.max(0, parseInt(saved, 10) || 0);
+      }
+    } catch {
+      // fallback
+    }
+    return me?.tradeClicks ?? 0;
+  });
+
+  useEffect(() => {
+    if (me?.tradeClicks !== undefined && me.tradeClicks > localClicks) {
+      setLocalClicks(me.tradeClicks);
+      try {
+        localStorage.setItem(storageKey, String(me.tradeClicks));
+      } catch {}
+    }
+  }, [me?.tradeClicks, storageKey, localClicks]);
+
+  const usedClicks = Math.max(localClicks, me?.tradeClicks ?? 0);
+  const remainingClicks = Math.max(0, depositCount - usedClicks);
 
   const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [selectedLeverage, setSelectedLeverage] = useState('50x');
@@ -238,6 +275,31 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
       text: `${tr('Posisi LONG')} ${activeProduct.symbol} ${tr('Kontrak Berjangka Anda telah ditutup pada harga pasar.')}\n\n${tr('Profit Bersih:')} +$${finalProfit.toFixed(2)} USD\n\n${tr('Dana hasil perdagangan telah dikreditkan langsung ke Ekuitas Akun Anda.')}`
     });
     setPnl(0);
+  };
+
+  const handleOpenTrade = () => {
+    if (depositCount === 0 || remainingClicks <= 0) {
+      return;
+    }
+    const next = usedClicks + 1;
+    setLocalClicks(next);
+    try {
+      localStorage.setItem(storageKey, String(next));
+    } catch {}
+    void ledgerData?.recordTradeClick?.();
+    setShowOrderSheet(true);
+  };
+
+  const handleCancelOrder = () => {
+    setShowOrderSheet(false);
+    setLocalClicks((prev) => {
+      const next = Math.max(0, prev - 1);
+      try {
+        localStorage.setItem(storageKey, String(next));
+      } catch {}
+      return next;
+    });
+    void ledgerData?.refundTradeClick?.();
   };
 
   const confirmOrder = () => {
@@ -504,29 +566,53 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
               <span>{tr('Tutup Posisi & Ambil Profit')}</span>
             </Button>
           ) : (
-            <Button 
-              disabled={depositCount === 0}
-              onClick={() => setShowOrderSheet(true)}
-              className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-400/20"
-            >
-              <Play className="h-4 w-4 fill-black" />
-              <span>{depositCount === 0 ? tr('Deposit Diperlukan') : tr('Perdagangkan')}</span>
-            </Button>
+            <div className="space-y-2">
+              <Button 
+                disabled={depositCount === 0 || remainingClicks <= 0}
+                onClick={handleOpenTrade}
+                className="w-full h-11 bg-amber-400 hover:bg-amber-500 text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+              >
+                {depositCount === 0 || remainingClicks <= 0 ? <Lock className="h-4 w-4" /> : <Play className="h-4 w-4 fill-black" />}
+                <span>
+                  {depositCount === 0 
+                    ? tr('Deposit Diperlukan') 
+                    : remainingClicks <= 0 
+                      ? tr('Kuota Perdagangan Habis') 
+                      : tr('Perdagangkan')}
+                </span>
+              </Button>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1 font-semibold">
+                <span>{tr('Sisa Kuota Perdagangan:')}</span>
+                <span className="font-mono font-bold text-amber-400">
+                  {remainingClicks} / {depositCount} {tr('kali deposit')}
+                </span>
+              </div>
+              {depositCount > 0 && remainingClicks <= 0 ? (
+                <p className="text-[10px] text-center text-amber-400/90 leading-snug">
+                  {tr('Tombol perdagangan hanya dapat diklik')} {depositCount} {tr('kali sesuai riwayat deposit Anda.')} {tr('Lakukan deposit lagi untuk mendapatkan kuota trading berikutnya.')}
+                </p>
+              ) : depositCount === 0 ? (
+                <p className="text-[10px] text-center text-muted-foreground leading-snug">
+                  {tr('Lakukan deposit terlebih dahulu untuk mulai berdagang.')}
+                </p>
+              ) : (
+                <p className="text-[10px] text-center text-muted-foreground leading-snug">
+                  {tr('Akun ini tidak dapat membuka posisi lain sampai siklus 30 hari selesai.')}
+                </p>
+              )}
+            </div>
           )}
-          <p className="text-[10px] text-center text-muted-foreground leading-snug">
-            {tr('Akun ini tidak dapat membuka posisi lain sampai siklus 30 hari selesai.')}
-          </p>
         </section>
       )}
 
       {/* Futures Order Ticket Slide-up Panel / Sheet */}
       {showOrderSheet && (
-        <div className="account-dialog-backdrop bg-black/70 backdrop-blur-sm z-[1000]" onClick={() => setShowOrderSheet(false)}>
+        <div className="account-dialog-backdrop bg-black/70 backdrop-blur-sm z-[1000]" onClick={handleCancelOrder}>
           <section 
             className="account-dialog max-w-md w-full bg-card border border-border/80 rounded-2xl p-5 space-y-4 shadow-2xl relative animate-in slide-in-from-bottom duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <Button variant="ghost" size="icon" className="account-dialog-close absolute top-4 right-4" aria-label={tr('Tutup')} onClick={() => setShowOrderSheet(false)}>
+            <Button variant="ghost" size="icon" className="account-dialog-close absolute top-4 right-4" aria-label={tr('Tutup')} onClick={handleCancelOrder}>
               <X />
             </Button>
             
@@ -607,7 +693,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
             <div className="flex gap-2.5 pt-1">
               <Button 
                 variant="outline" 
-                onClick={() => setShowOrderSheet(false)}
+                onClick={handleCancelOrder}
                 className="flex-1 h-11 border-border text-muted-foreground hover:bg-secondary rounded-xl font-bold text-xs"
               >
                 {tr('Batal')}

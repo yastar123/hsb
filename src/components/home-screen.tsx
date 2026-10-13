@@ -10,7 +10,7 @@ import { TradingTerminalSection } from '@/components/market-screens';
 
 const shortcutIcons: Record<string, typeof Wallet> = { Withdraw: WalletCards, FAQ: BadgeHelp, Deposit: Wallet, Promo: BadgePercent, 'Proteksi Dana': ShieldCheck };
 const lines = (t: string) => t.split('\n').map((l, i, a) => <span key={i}>{l}{i < a.length - 1 && <br />}</span>);
-type AppPath = '/withdraw' | '/faq' | '/deposit' | '/promo' | '/proteksi-dana' | '/pasar' | '/berita' | '/posisi' | '/mitra' | '/profil' | '/sinyal-trading' | '/kalender-ekonomi' | '/beranda' | '/layanan-pelanggan';
+type AppPath = '/withdraw' | '/faq' | '/deposit' | '/promo' | '/proteksi-dana' | '/pasar' | '/berita' | '/posisi' | '/mitra' | '/profil' | '/sinyal-trading' | '/kalender-ekonomi' | '/beranda';
 export function HomeScreen() {
   const { content } = useHomeContent();
   const { language } = useAppPreferences();
@@ -81,7 +81,7 @@ export function HomeScreen() {
   const marqueeText = me ? `Saldo akun · tarif akrual admin ${rateOf(me, compound)}% per hari · ` : 'Masuk ke akun untuk melihat saldo dan transaksi · ';
 
   return <main className="home-page"><div className="home-shell">
-    <header className="home-header"><Link to="/beranda" aria-label={tr('Beranda')}><img src="/logo.jpg" alt="Logo" className="h-8 w-auto max-w-[120px] object-contain" /></Link><div><Button variant="ghost" size="icon" aria-label={tr('Notifikasi')} onClick={() => { void showNotifications(); }}><Bell /></Button><Button asChild variant="ghost" size="icon" aria-label={tr('Pusat Bantuan')}><Link to="/layanan-pelanggan"><Headphones /></Link></Button></div></header>
+    <header className="home-header"><Link to="/beranda" aria-label={tr('Beranda')}><img src="/logo.jpg" alt="Logo" className="h-8 w-auto max-w-[120px] object-contain" /></Link><div><Button variant="ghost" size="icon" aria-label={tr('Notifikasi')} onClick={() => { void showNotifications(); }}><Bell /></Button><Button asChild variant="ghost" size="icon" aria-label={tr('Pusat Bantuan')}><Link to="/faq"><Headphones /></Link></Button></div></header>
     {activeBanner && <section className={`home-hero home-carousel ${activeBanner.dark ? '' : 'home-hero-light'}`} aria-label={tr('Promo HSB')} aria-roledescription="carousel" data-slide={banner} onKeyDown={(e) => { if (e.key === 'ArrowRight') setBanner((v) => (v + 1) % banners.length); if (e.key === 'ArrowLeft') setBanner((v) => (v + banners.length - 1) % banners.length); }}>
       {banners.map((item, index) => <div key={item.id} className={`home-banner-slide ${item === activeBanner ? 'is-active' : ''}`} aria-hidden={item !== activeBanner}><img src={resolveImage(item.image)} alt={item.alt} width="1536" height="768" /></div>)}
       <div className="home-hero-copy"><h1>{lines(activeBanner.heading)}</h1><p>{lines(activeBanner.text)}</p>{activeBanner.button && <Button variant={activeBanner.dark ? 'heroLime' : 'default'} asChild><Link to={activeBanner.link as AppPath}>{activeBanner.button} <ArrowUpRight /></Link></Button>}{activeBanner.note && <small>{activeBanner.note}</small>}</div>

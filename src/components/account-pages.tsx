@@ -128,7 +128,7 @@ export function DepositScreen() {
       setNotice(tr('Silakan masukkan jumlah deposit yang ingin disetorkan.'));
       return;
     }
-    const minVal = Number(c.minimum) || 1000;
+    const minVal = Number(c.minimum) || 100;
     const currentRate = c.rate || 18000;
     if (n < minVal) {
       setNotice(tr(`Jumlah deposit minimal adalah $${minVal.toLocaleString('id-ID')} USD (~ IDR ${(minVal * currentRate).toLocaleString('id-ID')}).`));
@@ -192,12 +192,12 @@ export function DepositScreen() {
         <div className="acct-amount-header">
           <span className="font-semibold text-muted-foreground">{tr('Nominal Deposit (USD)')}</span>
           <span className="acct-amount-min-badge">
-            {tr(`Min. $${(c.minimum || 1000).toLocaleString('id-ID')} (~ Rp ${((c.minimum || 1000) * (c.rate || 18000)).toLocaleString('id-ID')})`)}
+            {tr(`Min. $${(c.minimum || 100).toLocaleString('id-ID')} (~ Rp ${((c.minimum || 100) * (c.rate || 18000)).toLocaleString('id-ID')})`)}
           </span>
         </div>
-        <div className="acct-amount-box"><input inputMode="decimal" placeholder={String(c.minimum || 1000)} value={amount} onChange={(e) => handleAmountChange(e.target.value)} aria-label={tr('Jumlah deposit')} /><span>{c.currency}</span></div>
+        <div className="acct-amount-box"><input inputMode="decimal" placeholder={String(c.minimum || 100)} value={amount} onChange={(e) => handleAmountChange(e.target.value)} aria-label={tr('Jumlah deposit')} /><span>{c.currency}</span></div>
         <div className="acct-presets">
-          {[1000, 2000, 5000, 10000].map((preset) => (
+          {[100, 200, 500, 1000].map((preset) => (
             <button
               key={preset}
               type="button"
@@ -209,7 +209,7 @@ export function DepositScreen() {
           ))}
         </div>
         <p><span>{tr(c.rateLabel)} <b>1</b></span><span>~ IDR {(n * (c.rate || 18000)).toLocaleString('id-ID')}</span></p>
-        {amount && n < (c.minimum || 1000) && <small className="text-destructive font-semibold block mt-2">{tr(c.minimumText || `Minimal deposit $${(c.minimum || 1000).toLocaleString('id-ID')} (~ Rp ${((c.minimum || 1000) * (c.rate || 18000)).toLocaleString('id-ID')})`)}</small>}
+        {amount && n < (c.minimum || 100) && <small className="text-destructive font-semibold block mt-2">{tr(c.minimumText || `Minimal deposit $${(c.minimum || 100).toLocaleString('id-ID')} (~ Rp ${((c.minimum || 100) * (c.rate || 18000)).toLocaleString('id-ID')})`)}</small>}
       </div>
       <div className="acct-proof">
         <label><span>{tr('Nama pemilik rekening')}</span><input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder={tr('Nama sesuai rekening')} maxLength={100} /></label>

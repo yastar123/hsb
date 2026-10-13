@@ -1,14 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowDownToLine, ArrowLeft, CalendarDays, Check, ChevronRight, Copy, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Sun, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2, CandlestickChart, Compass, ArrowUpRight, ArrowDownLeft, Cpu } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, CalendarDays, Check, ChevronRight, Eye, EyeOff, FileBarChart, Landmark, LockKeyhole, LogOut, Moon, Sun, Percent, Signal, TrendingUp, Wallet, Sparkles, Trash2, CandlestickChart, Compass, ArrowUpRight, ArrowDownLeft, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav, Notice } from '@/components/account-pages';
 import { isValidPassword, passwordRules } from '@/lib/account-validation';
 import { useLedger } from '@/components/ledger-content';
 import { useAppPreferences, translate, type Language } from '@/components/app-preferences';
 import { useCustomerServiceContent } from '@/components/customer-service-content';
-
-const UID = '95279505';
 
 function Header({ title, back = '/profil' }: { title: string; back?: '/profil' }) {
   const { language } = useAppPreferences();
@@ -18,9 +16,13 @@ function Header({ title, back = '/profil' }: { title: string; back?: '/profil' }
 export function ProfileScreen() {
   const [notice, setNotice] = useState('');
   const navigate = useNavigate();
-  const { setCurrentEmail } = useLedger();
+  const { currentUser, currentEmail, users, setCurrentEmail } = useLedger();
   const { language, theme, toggleTheme } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
+
+  const me = users.find((u) => u.email.toLowerCase() === (currentEmail || currentUser?.email || '').toLowerCase()) || currentUser;
+  const displayName = me?.name?.trim() || currentUser?.name?.trim() || (currentEmail ? currentEmail.split('@')[0] : '') || 'Trader';
+
   const shortcuts = [
     { label: 'Trade', icon: CandlestickChart, to: '/pasar' as const, subtitle: 'Terminal Pasar' },
     { label: 'Copy Signals', icon: Compass, to: '/sinyal-trading' as const, subtitle: 'Ikuti Analis Utama' },
@@ -31,7 +33,6 @@ export function ProfileScreen() {
     { label: 'Promo', icon: Percent, to: '/promo' as const, subtitle: 'Bonus & Event' },
     { label: 'Smart Trader', icon: Cpu, to: '/smart-trader' as const, subtitle: 'Alat Analisa' },
   ];
-  const copy = async () => { try { await navigator.clipboard.writeText(UID); setNotice('UID disalin.'); } catch { setNotice('UID belum dapat disalin.'); } };
   
   const linkOf = (lbl: string) => shortcuts.find(s => s.label === lbl)!;
   const tradeL = linkOf('Trade');
@@ -46,7 +47,7 @@ export function ProfileScreen() {
   return <main className="home-page"><div className="home-shell prof-shell">
     <section className="prof-head">
       <img src="/logo.jpg" width="34" height="34" alt="" className="rounded-full object-cover" />
-      <div><h1>{tr('Hello Demo')}</h1><p>UID: {UID} <button onClick={copy} aria-label={tr('Salin UID')}><Copy /></button></p></div>
+      <div><h1>{displayName}</h1></div>
       <Button variant="ghost" size="icon" className="prof-moon" aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'} title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'} onClick={toggleTheme}>{theme === 'dark' ? <Sun /> : <Moon />}</Button>
     </section>
     
@@ -153,7 +154,6 @@ export function ProfileScreen() {
       <h2>{tr('Pusat Klien')}</h2>
        <Link to="/informasi-akun">{tr('Informasi Anda')}<ChevronRight /></Link>
       <Link to="/bank-penarikan">{tr('Bank Penarikan')}<ChevronRight /></Link>
-      <Link to="/layanan-pelanggan">{tr('Layanan Pelanggan')}<ChevronRight /></Link>
       <h2>{tr('Pengaturan')}</h2>
       <Link to="/ganti-kata-sandi">{tr('Ganti Password')}<ChevronRight /></Link>
       <Link to="/bahasa">{tr('Bahasa')}<ChevronRight /></Link>
@@ -226,7 +226,7 @@ export function ChangePasswordScreen() {
         {mismatch && <p className="prof-error">Konfirmasi kata sandi tidak sama.</p>}
         <Button type="submit" className="account-submit">Ganti Kata Sandi</Button>
       </form>
-      <p className="prof-help">Butuh bantuan? <Link to="/layanan-pelanggan">Layanan Pelanggan</Link></p>
+      <p className="prof-help">Butuh bantuan? <Link to="/faq">Pusat Bantuan</Link></p>
     </section>
     {notice && <Notice text={notice} onClose={() => setNotice('')} />}
   </div></main>;

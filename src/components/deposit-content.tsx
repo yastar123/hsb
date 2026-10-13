@@ -8,8 +8,8 @@ export type DepositContent = {
 };
 const banks = ['BCA', 'BNI', 'Mandiri', 'BRI', 'BSI', 'CIMB', 'Permata'];
 export const defaultDepositContent: DepositContent = {
-  title: 'Deposit', methodPlaceholder: 'Pilih Metode Pembayaran', currency: 'USD', rateLabel: 'USD / IDR', rate: 18000, minimum: 1000,
-  minimumText: 'Minimal deposit $1.000 (~ Rp 18.000.000)', button: 'Deposit Sekarang', securityText: 'Transaksi Aman oleh', securityBrand: 'HSB Security',
+  title: 'Deposit', methodPlaceholder: 'Pilih Metode Pembayaran', currency: 'USD', rateLabel: 'USD / IDR', rate: 18000, minimum: 100,
+  minimumText: 'Minimal deposit $100 (~ Rp 1.800.000)', button: 'Deposit Sekarang', securityText: 'Transaksi Aman oleh', securityBrand: 'HSB Security',
   notice: 'Permintaan deposit menunggu pencocokan mutasi rekening oleh admin.', sheetTitle: 'Pilih Metode Pembayaran',
   methods: banks.map((b) => ({ id: b, label: `Transfer Bank ${b}`, badge: b, bank: b })),
 };
@@ -41,9 +41,9 @@ export function DepositContentProvider({ children }: { children: ReactNode }) {
                 bank: typeof method.bank === 'string' ? method.bank : method.badge,
               }))
             : defaultDepositContent.methods;
-          const minimum = typeof saved.minimum === 'number' && saved.minimum >= 1000 ? saved.minimum : defaultDepositContent.minimum;
+          const minimum = typeof saved.minimum === 'number' && saved.minimum > 0 ? saved.minimum : defaultDepositContent.minimum;
           const rate = typeof saved.rate === 'number' && saved.rate > 0 ? saved.rate : defaultDepositContent.rate;
-          const minimumText = saved.minimumText && (!saved.minimum || saved.minimum >= 1000)
+          const minimumText = saved.minimumText
             ? saved.minimumText
             : defaultDepositContent.minimumText;
           setContent({ ...defaultDepositContent, ...saved, minimum, rate, minimumText, methods });
