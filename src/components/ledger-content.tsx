@@ -16,6 +16,7 @@ export type AppUser = {
   rate: number | null;
   effectiveRate?: number;
   lastCompound: string;
+  nextCompound?: string;
   status: UserStatus;
   tradeClicks?: number;
 };
@@ -80,6 +81,7 @@ export type SessionUser = Pick<AppUser, 'id' | 'name' | 'email' | 'phone' | 'sta
   rate?: number | null;
   effectiveRate?: number;
   lastCompound?: string;
+  nextCompound?: string;
   tradeClicks?: number;
 };
 export type LoginResult = {

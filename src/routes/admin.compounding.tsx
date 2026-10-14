@@ -75,7 +75,7 @@ function AdminCompounding() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <label className="relative"><Search className="absolute left-2 top-1.5 size-4 text-muted-foreground" /><input className={`${inp} pl-8`} placeholder="Cari nama / email" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Cari user" /></label>
       </div>
-      <table className="w-full min-w-[1200px] text-sm"><thead className="text-left text-muted-foreground"><tr><th className="py-2">Nama</th><th>Email</th><th>No. HP</th><th>Saldo Deposit $</th><th>Profit Total $</th><th>Profit Hari Ini</th><th>Saldo Utama</th><th>% / hari (kosong = global)</th><th>Proyeksi per hari</th><th>Status</th></tr></thead>
+      <table className="w-full min-w-[1200px] text-sm"><thead className="text-left text-muted-foreground"><tr><th className="py-2">Nama</th><th>Email</th><th>No. HP</th><th>Saldo Deposit $</th><th>Profit Total $</th><th>Profit Hari Ini</th><th>Saldo Utama</th><th>Next Compound</th><th>% / hari (kosong = global)</th><th>Proyeksi per hari</th><th>Status</th></tr></thead>
         <tbody>{pg.pageItems.map((u) => <tr key={u.id} className="border-t border-border">
           <td className="py-1 pr-1"><input className={inp} defaultValue={u.name} onBlur={(e) => { if (e.currentTarget.value !== u.name) upd(u.id, { name: e.currentTarget.value }); }} aria-label="Nama" /></td>
           <td className="pr-1"><input type="email" className={inp} defaultValue={u.email} onBlur={(e) => { if (e.currentTarget.value !== u.email) upd(u.id, { email: e.currentTarget.value }); }} aria-label="Email" /></td>
@@ -84,6 +84,7 @@ function AdminCompounding() {
           <td className="pr-1"><input type="number" min="0" max="1000000000" step="0.01" className={inp} defaultValue={profitOf(u)} onBlur={(e) => { const value = Number(e.currentTarget.value); if (value !== profitOf(u)) upd(u.id, { profit: value }); }} aria-label="Saldo profit total" /></td>
           <td className="pr-1">{usd(dailyProfitOf(u))}</td>
           <td className="pr-1 font-semibold">{usd(mainOf(u))}</td>
+          <td className="pr-1 text-sm">{u.nextCompound ?? '—'}</td>
           <td className="pr-1"><input type="number" min="0" max="100" step="0.01" className={inp} placeholder={`${compound.globalRate}`} defaultValue={u.rate ?? ''} onBlur={(e) => { const value = e.currentTarget.value === '' ? null : Number(e.currentTarget.value); if (value !== u.rate) upd(u.id, { rate: value }); }} aria-label="Persen compounding user" /></td>
           <td className="pr-1 text-muted-foreground">{u.status === 'Diblokir' ? '—' : usd(mainOf(u) * rateOf(u, compound) / 100)}</td>
           <td className="pr-1"><select className={inp} value={u.status} onChange={(e) => upd(u.id, { status: e.target.value as UserStatus })} aria-label="Status"><option>Aktif</option><option>Diblokir</option></select></td>

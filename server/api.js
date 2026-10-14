@@ -485,6 +485,7 @@ function serializeUser(row, globalRate = 0) {
       (row.id ? inMemoryStore.tradeClicks?.get(row.id) : 0) ||
       (row.email ? inMemoryStore.tradeClicks?.get(row.email) : 0) ||
       0,
+    nextCompound: row.last_compound_date ? addDate(String(row.last_compound_date).slice(0, 10), 1) : businessDate(),
   };
 }
 
@@ -593,7 +594,7 @@ async function addAudit(pool, adminName, action, targetType, targetId, details =
   });
 }
 
-async function runDueCompounding(pool) {
+export async function runDueCompounding(pool) {
   if (!pool) return { applied: 0, date: businessDate() };
   let client = null;
   try {

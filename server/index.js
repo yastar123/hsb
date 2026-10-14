@@ -17,6 +17,7 @@ import { createServer as createViteServer } from "vite";
 import { requireAdminAuthentication, requireRole, ROLES } from "./rbac.js";
 import { setAdminDbPool } from "./auth.js";
 import { createApiRouter } from "./api.js";
+import { runDueCompounding } from "./api.js"; // This might fail if not exported.
 
 const { Pool } = pg;
 const app = express();
@@ -141,6 +142,21 @@ app.use((error, _request, response, _next) => {
 const server = httpServer.listen(port, "0.0.0.0", () => {
   console.log(`WebullXAU Trading is listening on port ${port}`);
 });
+
+
+setInterval(async () => {
+  if (pool) {
+    try {
+      console.log("Running automated compounding check...");
+      const result = await runDueCompounding(pool);
+      if (result.applied > 0) {
+        console.log(`Automated compounding applied to ${result.applied} entries.`);
+      }
+    } catch (e) {
+      console.error("Automated compounding failed:", e);
+    }
+  }
+}, 60 * 60 * 1000); // Check every hour
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
