@@ -661,10 +661,13 @@ export async function runDueCompounding(pool, force = false) {
     );
     let applied = 0;
     for (const account of accounts.rows) {
-      let nextDate = account.last_compound_date
-        ? addDate(String(account.last_compound_date).slice(0, 10), 1)
-        : businessDate(new Date(account.created_at));
-      if (nextDate > cutoffDate) continue;
+      let nextDate = force
+        ? businessDate()
+        : (account.last_compound_date
+          ? addDate(String(account.last_compound_date).slice(0, 10), 1)
+          : businessDate(new Date(account.created_at)));
+      if (nextDate > cutoffDate && !force) continue;
+      console.log(`Processing compounding for user ${account.id}, force=${force}, nextDate=${nextDate}, cutoffDate=${cutoffDate}`);
       let balance = Number(account.main_balance);
       let totalAccrual = Number(account.total_accrual);
       let todaysAccrual = 0;
@@ -674,6 +677,7 @@ export async function runDueCompounding(pool, force = false) {
         : null;
       const originalProcessedThrough = processedThrough;
       let dayCount = 0;
+      console.log(`Processing compounding loop for user ${account.id}, processedThrough=${processedThrough}`);
       while (nextDate <= cutoffDate && dayCount < 366) {
         dayCount += 1;
         const rate =
@@ -718,7 +722,7 @@ export async function runDueCompounding(pool, force = false) {
         processedThrough = nextDate;
         nextDate = addDate(nextDate, 1);
       }
-      if (processedThrough && processedThrough !== originalProcessedThrough) {
+      if (processedThrough && (processedThrough !== originalProcessedThrough || force)) {
         await client.query(
           `UPDATE public.customer_accounts
            SET main_balance = $2,
