@@ -1807,6 +1807,7 @@ export function createApiRouter(pool) {
             item.holder.trim(),
         );
       if (!amount || !transferredAmountIdr || !method || !destination) {
+        console.log("Deposit validation failed:", { amount, transferredAmountIdr, method, destination, body: request.body });
         return apiError(
           response,
           400,
