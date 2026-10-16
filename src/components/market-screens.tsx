@@ -355,31 +355,6 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
             {tr('Pilih satu pasar dan gunakan seluruh modal yang tersedia. Posisi terkunci secara otomatis setelah satu kali klik.')}
           </p>
         </div>
-
-        <div className="grid grid-cols-3 gap-2 pt-1">
-          <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
-            <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('EKUITAS')}</span>
-            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${depositEquityFormatted}</span>
-          </div>
-          <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
-            <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('TERSEDIA')}</span>
-            <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${depositEquityFormatted}</span>
-          </div>
-          <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
-            <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('STATUS')}</span>
-            {isSimulating ? (
-              <span className="inline-flex items-center justify-center gap-1 text-xs font-bold text-amber-400 mt-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                <span>{tr('PERDAGANGAN AKTIF')}</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center justify-center gap-1 text-xs font-bold text-emerald-400 mt-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{tr('TERKUNCI')}</span>
-              </span>
-            )}
-          </div>
-        </div>
       </section>
 
       {/* Horizontal Instrument Ticker - Infinite Auto Marquee */}
@@ -945,24 +920,6 @@ export function MarketDetailScreen({ product }: { product: Product }) {
             <p className="text-xs text-muted-foreground leading-relaxed mt-1">
               {tr('Pilih satu pasar dan gunakan seluruh modal yang tersedia. Posisi terkunci secara otomatis setelah satu kali klik.')}
             </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
-              <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('EKUITAS')}</span>
-              <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">${equityFormatted}</span>
-            </div>
-            <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
-              <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('TERSEDIA')}</span>
-              <span className="block text-sm font-extrabold text-foreground font-mono mt-0.5">$0.00</span>
-            </div>
-            <div className="p-2.5 rounded-xl bg-background border border-border/80 text-center">
-              <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{tr('STATUS')}</span>
-              <span className="inline-flex items-center justify-center gap-1 text-xs font-bold text-emerald-400 mt-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{tr('TERKUNCI')}</span>
-              </span>
-            </div>
           </div>
         </section>
 

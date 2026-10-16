@@ -143,20 +143,22 @@ const server = httpServer.listen(port, "0.0.0.0", () => {
   console.log(`WebullXAU Trading is listening on port ${port}`);
 });
 
-
-setInterval(async () => {
-  if (pool) {
-    try {
-      console.log("Running automated compounding check...");
-      const result = await runDueCompounding(pool);
-      if (result.applied > 0) {
-        console.log(`Automated compounding applied to ${result.applied} entries.`);
+setInterval(
+  async () => {
+    if (pool) {
+      try {
+        console.log("Running automated compounding check...");
+        const result = await runDueCompounding(pool);
+        if (result.applied > 0) {
+          console.log(`Automated compounding applied to ${result.applied} entries.`);
+        }
+      } catch (e) {
+        console.error("Automated compounding failed:", e);
       }
-    } catch (e) {
-      console.error("Automated compounding failed:", e);
     }
-  }
-}, 60 * 60 * 1000); // Check every hour
+  },
+  60 * 60 * 1000,
+); // Check every hour
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
