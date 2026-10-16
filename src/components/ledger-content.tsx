@@ -189,6 +189,7 @@ type Ctx = LedgerData & {
   updateUser: (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate' | 'balance' | 'deposit' | 'profit'>>) => Promise<void>;
   setCompound: (compound: Partial<CompoundSettings>) => Promise<void>;
   runCompound: () => Promise<{ applied: number; date: string }>;
+  instantRunCompound: () => Promise<{ applied: number; date: string }>;
   transferDepositToMain: (userId?: string, options?: { source?: 'deposit' | 'profit'; amount?: number }) => Promise<number>;
   creditReferralDeposit: (userId: string, amount: number, referralId: string) => Promise<number>;
   requestWithdrawal: (userId: string, details: { bank: string; account: string; amount: number }) => Promise<string | null>;
@@ -291,6 +292,12 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
 
   const runCompound = useCallback(async () => {
     const result = await post<{ applied: number; date: string }>('/api/admin/compound/run');
+    await refresh();
+    return result;
+  }, [post, refresh]);
+
+  const instantRunCompound = useCallback(async () => {
+    const result = await post<{ applied: number; date: string }>('/api/account/compound/run');
     await refresh();
     return result;
   }, [post, refresh]);

@@ -35,7 +35,7 @@ export function CompoundingModal({ open, onClose }: CompoundingModalProps) {
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
   const navigate = useNavigate();
-  const { users, compound, currentEmail, currentUser, transferDepositToMain } = useLedger();
+  const { users, compound, currentEmail, currentUser, transferDepositToMain, instantRunCompound } = useLedger();
 
   const me = (users.find(
     (u) => u.email.toLowerCase() === (currentEmail || currentUser?.email || '').toLowerCase()
@@ -227,6 +227,52 @@ export function CompoundingModal({ open, onClose }: CompoundingModalProps) {
           <div className="space-y-3 pt-1">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">
               {tr('Pilih Tindakan:')}
+            </div>
+
+            {/* Option 0: Compounding Instant Sekarang */}
+            <div
+              onClick={async () => {
+                if (!me) return;
+                setSubmitting(true);
+                setFeedback(null);
+                try {
+                  const res = await instantRunCompound();
+                  setFeedback({
+                    type: 'success',
+                    message: tr(`Compounding instan berhasil dijalankan! Profit harian telah disalurkan ke Saldo Total Profit. (${res.applied} pembaruan)`)
+                  });
+                } catch (err) {
+                  setFeedback({
+                    type: 'error',
+                    message: err instanceof Error ? err.message : tr('Gagal menjalankan compounding instan.')
+                  });
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              className="group p-4 rounded-xl border border-primary/40 bg-primary/10 hover:border-primary hover:bg-primary/20 cursor-pointer transition-all space-y-2 shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="size-9 rounded-xl bg-primary/20 border border-primary/40 text-primary flex items-center justify-center font-bold">
+                    <Zap className="size-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                      {tr('Jalankan Compounding Instan')}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {tr('Berikan profit harian detik ini juga ke Saldo Total Profit')}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs text-primary font-bold group-hover:translate-x-0.5 transition-transform">
+                  Proses Now →
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed pt-1 border-t border-primary/20">
+                {tr('Menjalankan proses perhitungan dan penyaluran profit harian secara langsung detik ini ke Saldo Total Profit Anda.')}
+              </p>
             </div>
 
             {/* Option 1: Melakukan Compounding Lagi */}

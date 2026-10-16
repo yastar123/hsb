@@ -2100,6 +2100,17 @@ export function createApiRouter(pool) {
   );
 
   router.post(
+    "/account/compound/run",
+    requireCustomer(pool),
+    asyncRoute(async (request, response) => {
+      if (request.customer.status === "Diblokir")
+        return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
+      const result = await runDueCompounding(pool, true);
+      return response.json({ ok: true, ...result });
+    }),
+  );
+
+  router.post(
     "/account/trade-click",
     requireCustomer(pool),
     asyncRoute(async (request, response) => {
