@@ -2079,7 +2079,7 @@ export function createApiRouter(pool) {
         await client.query(
           `INSERT INTO public.customer_ledger_entries
            (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
-         VALUES ($1, 'reinvest_to_main', 'main', $2, $3, 'transfer', $4, $5::jsonb)`,
+         VALUES ($1, 'deposit_to_main', 'main', $2, $3, 'transfer', $4, $5::jsonb)`,
           [
             request.customer.id,
             moved,
