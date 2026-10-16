@@ -664,7 +664,7 @@ export async function runDueCompounding(pool, force = false) {
       let nextDate = force
         ? businessDate()
         : (account.last_compound_date
-          ? addDate(String(account.last_compound_date).slice(0, 10), 1)
+          ? addDate(new Date(account.last_compound_date).toISOString().slice(0, 10), 1)
           : businessDate(new Date(account.created_at)));
       if (nextDate > cutoffDate && !force) continue;
       console.log(`Processing compounding for user ${account.id}, force=${force}, nextDate=${nextDate}, cutoffDate=${cutoffDate}`);
@@ -673,7 +673,7 @@ export async function runDueCompounding(pool, force = false) {
       let todaysAccrual = 0;
       let lastAccrualDate = null;
       let processedThrough = account.last_compound_date
-        ? String(account.last_compound_date).slice(0, 10)
+        ? new Date(account.last_compound_date).toISOString().slice(0, 10)
         : null;
       const originalProcessedThrough = processedThrough;
       let dayCount = 0;
