@@ -345,9 +345,6 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>{tr('KONEKSI LANGSUNG')}</span>
           </div>
-          <div className="px-2.5 py-0.5 rounded-full bg-secondary border border-border text-muted-foreground font-mono font-semibold">
-            {tr('1 ENTRI · 30 HARI')}
-          </div>
         </div>
 
         <div>
@@ -573,7 +570,7 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
                 </p>
               ) : (
                 <p className="text-[10px] text-center text-muted-foreground leading-snug">
-                  {tr('Akun ini tidak dapat membuka posisi lain sampai siklus 30 hari selesai.')}
+                  {tr('Akun ini tidak dapat membuka posisi lain sampai posisi aktif selesai.')}
                 </p>
               )}
             </div>
@@ -865,7 +862,7 @@ export function MarketDetailScreen({ product }: { product: Product }) {
         setNotice(tr('Saldo Profit Harian: Compounding harian dari saldo utama. Dana ini diakumulasikan dan disalurkan otomatis ke Saldo Total Profit setiap hari pukul 14:00 WIB.'));
         break;
       case 'Saldo Deposit':
-        setNotice(tr('Saldo Deposit: Deposit user hanya bisa ditarik minimal setelah 30 hari. Dana ini dapat dimasukkan ke Saldo Utama melalui menu Compounding.'));
+        setNotice(tr('Saldo Deposit: Saldo deposit user. Dana ini dapat dimasukkan ke Saldo Utama melalui menu Compounding.'));
         break;
       case 'Saldo Total Profit':
         setNotice(tr('Saldo Total Profit: Total akumulasi dari Saldo Profit Harian. Saldo ini siap ditarik melalui menu Withdraw atau dapat di-compound lagi ke Saldo Utama.'));
@@ -920,9 +917,6 @@ export function MarketDetailScreen({ product }: { product: Product }) {
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>{tr('KONEKSI LANGSUNG')}</span>
-            </div>
-            <div className="px-2.5 py-0.5 rounded-full bg-secondary border border-border text-muted-foreground font-mono font-semibold">
-              {tr('1 ENTRI · 30 HARI')}
             </div>
           </div>
 
@@ -1087,10 +1081,9 @@ export function MarketDetailScreen({ product }: { product: Product }) {
               <span className="font-bold text-foreground font-mono">${equityFormatted}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-semibold">{tr('SIKLUS')}</span>
+              <span className="text-muted-foreground font-semibold">{tr('STATUS')}</span>
               <div className="text-right">
-                <span className="font-bold text-foreground font-mono block">{tr('Hari 1 dari 30')}</span>
-                <span className="text-[10px] text-muted-foreground">{tr('Sisa 29 hari')}</span>
+                <span className="font-bold text-emerald-400 font-mono block">{tr('Posisi Aktif')}</span>
               </div>
             </div>
           </div>
@@ -1100,7 +1093,7 @@ export function MarketDetailScreen({ product }: { product: Product }) {
             <span>{tr('Posisi telah terkunci')}</span>
           </Button>
           <p className="text-[10px] text-center text-muted-foreground leading-snug">
-            {tr('Akun ini tidak dapat membuka posisi lain sampai siklus 30 hari selesai.')}
+            {tr('Akun ini tidak dapat membuka posisi lain sampai posisi aktif selesai.')}
           </p>
         </section>
 

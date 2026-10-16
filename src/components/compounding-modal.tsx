@@ -188,8 +188,8 @@ export function CompoundingModal({ open, onClose }: CompoundingModalProps) {
             <span className="text-sm font-bold text-foreground font-mono block mt-0.5">
               ${depositBalance.toFixed(2)}
             </span>
-            <span className="text-[10px] text-amber-400 block mt-0.5">
-              {tr('Minimal 30 hari')}
+            <span className="text-[10px] text-muted-foreground block mt-0.5">
+              {tr('Tersedia untuk compounding')}
             </span>
           </div>
 

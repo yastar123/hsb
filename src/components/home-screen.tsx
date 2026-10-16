@@ -77,7 +77,7 @@ export function HomeScreen() {
         open(tr('Saldo Profit Harian'), tr('Compounding harian dari saldo utama. Dana ini diakumulasikan dan disalurkan otomatis ke Saldo Total Profit setiap hari pukul 14:00 WIB.'));
         break;
       case 'Saldo Deposit':
-        open(tr('Saldo Deposit'), tr('Deposit user hanya bisa ditarik minimal setelah 30 hari. Dana ini dapat dipindahkan ke Saldo Utama melalui menu Compounding.'));
+        open(tr('Saldo Deposit'), tr('Saldo deposit user. Dana ini dapat dipindahkan ke Saldo Utama melalui menu Compounding.'));
         break;
       case 'Saldo Total Profit':
         open(tr('Saldo Total Profit'), tr('Total akumulasi dari Saldo Profit Harian. Saldo ini siap ditarik melalui menu Withdraw atau dapat di-compound lagi ke Saldo Utama.'));

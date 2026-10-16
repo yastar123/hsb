@@ -78,7 +78,7 @@ export function WithdrawScreen() {
       </div>
       <div className="pt-2.5 border-t border-border/60 text-xs text-muted-foreground space-y-1.5">
         <div className="flex items-center justify-between">
-          <span>{tr('Saldo Deposit (Minimal 30 Hari):')}</span>
+          <span>{tr('Saldo Deposit:')}</span>
           <span className="font-mono font-medium text-foreground">${depositBalance.toFixed(2)} USD</span>
         </div>
         <div className="flex items-center justify-between">
@@ -95,8 +95,7 @@ export function WithdrawScreen() {
         <span>{tr('Ketentuan Penarikan Dana')}</span>
       </div>
       <p className="text-muted-foreground leading-relaxed">
-        {tr('1. Penarikan dana hanya dapat dilakukan berdasarkan Saldo Total Profit.')}<br />
-        {tr('2. Saldo Deposit user terkunci minimal 30 hari dan tidak dapat ditarik sebelum masa periode selesai.')}
+        {tr('Penarikan dana hanya dapat dilakukan berdasarkan Saldo Total Profit.')}
       </p>
     </div>
 
