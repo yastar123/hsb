@@ -722,7 +722,7 @@ export async function runDueCompounding(pool, force = false) {
         processedThrough = nextDate;
         nextDate = addDate(nextDate, 1);
       }
-      if (processedThrough && (processedThrough !== originalProcessedThrough || force)) {
+      if (force || (processedThrough && processedThrough !== originalProcessedThrough)) {
         await client.query(
           `UPDATE public.customer_accounts
            SET main_balance = $2,
@@ -732,7 +732,7 @@ export async function runDueCompounding(pool, force = false) {
                last_compound_date = $6::date,
                updated_at = now()
            WHERE user_id = $1`,
-          [account.id, balance, totalAccrual, todaysAccrual, lastAccrualDate, processedThrough],
+          [account.id, balance, totalAccrual, todaysAccrual, lastAccrualDate, processedThrough || businessDate()],
         );
       }
     }
