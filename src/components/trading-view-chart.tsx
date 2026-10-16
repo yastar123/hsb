@@ -48,7 +48,7 @@ export function TradingViewChart({
   const toolbarBg = isDark ? '0a0e17' : 'ffffff';
   const iframeUrl = `https://s.tradingview.com/widgetembed/?frameElementId=tradingview_${product.symbol}&symbol=${encodeURIComponent(
     tvSymbol,
-  )}&interval=${intervalCode}&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=${toolbarBg}&studies=%5B%22STD%3BVolume%22%5D&theme=${isDark ? 'dark' : 'light'}&style=1&timezone=Asia%2FJakarta&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en&utm_source=&utm_medium=widget&utm_campaign=chart&utm_term=${encodeURIComponent(
+  )}&interval=${intervalCode}&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=${toolbarBg}&theme=${isDark ? 'dark' : 'light'}&style=1&timezone=Asia%2FJakarta&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en&utm_source=&utm_medium=widget&utm_campaign=chart&utm_term=${encodeURIComponent(
     tvSymbol,
   )}`;
 
