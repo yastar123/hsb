@@ -460,16 +460,40 @@ function requireCustomer(pool) {
 }
 
 function serializeUser(row, globalRate = 0) {
+  const effectiveRate =
+    row.daily_rate_override === null || row.daily_rate_override === undefined
+      ? globalRate
+      : Number(row.daily_rate_override);
+  const mainBal = Number(row.main_balance ?? 0);
+  const estimatedDaily =
+    row.status === "Aktif" && effectiveRate > 0 && mainBal > 0
+      ? Math.round(mainBal * effectiveRate) / 100
+      : 0;
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const mapP = {};
+  for (const p of parts) mapP[p.type] = p.value;
+  const currentHour = parseInt(mapP.hour, 10);
+  const todayStr = `${mapP.year}-${mapP.month}-${mapP.day}`;
+  const nextTargetDate = currentHour < 14 ? todayStr : addDate(todayStr, 1);
+
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     phone: row.phone,
     joined: businessDate(new Date(row.created_at)),
-    balance: Number(row.main_balance ?? 0),
+    balance: mainBal,
     deposit: Number(row.deposit_balance ?? 0),
     profit: Number(row.total_accrual ?? 0),
-    dailyProfit: Number(row.daily_accrual ?? 0),
+    dailyProfit: estimatedDaily > 0 ? estimatedDaily : Number(row.daily_accrual ?? 0),
     dailyProfitDate: row.daily_accrual_date ? String(row.daily_accrual_date).slice(0, 10) : "",
     lastCompound: row.last_compound_date ? String(row.last_compound_date).slice(0, 10) : "",
     rate:
@@ -477,15 +501,12 @@ function serializeUser(row, globalRate = 0) {
         ? null
         : Number(row.daily_rate_override),
     status: row.status === "Diblokir" ? "Diblokir" : "Aktif",
-    effectiveRate:
-      row.daily_rate_override === null || row.daily_rate_override === undefined
-        ? globalRate
-        : Number(row.daily_rate_override),
+    effectiveRate,
     tradeClicks:
       (row.id ? inMemoryStore.tradeClicks?.get(row.id) : 0) ||
       (row.email ? inMemoryStore.tradeClicks?.get(row.email) : 0) ||
       0,
-    nextCompound: row.last_compound_date ? addDate(String(row.last_compound_date).slice(0, 10), 1) : businessDate(),
+    nextCompound: `${nextTargetDate} 14:00 WIB`,
   };
 }
 
@@ -594,7 +615,29 @@ async function addAudit(pool, adminName, action, targetType, targetId, details =
   });
 }
 
-export async function runDueCompounding(pool) {
+export function getCompoundingCutoffDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const mapping = {};
+  for (const p of parts) mapping[p.type] = p.value;
+  const dateStr = `${mapping.year}-${mapping.month}-${mapping.day}`;
+  const hour = parseInt(mapping.hour, 10);
+  // Cutoff is 14:00 WIB (Jam 2 Siang WIB)
+  if (hour < 14) {
+    return addDate(dateStr, -1);
+  }
+  return dateStr;
+}
+
+export async function runDueCompounding(pool, force = false) {
   if (!pool) return { applied: 0, date: businessDate() };
   let client = null;
   try {
@@ -607,7 +650,7 @@ export async function runDueCompounding(pool) {
        FOR UPDATE`,
     );
     const settings = settingResult.rows[0] ?? { global_rate_percent: 0, enabled: false };
-    const today = businessDate();
+    const cutoffDate = force ? businessDate() : getCompoundingCutoffDate();
     const accounts = await client.query(
       `SELECT u.id, u.created_at, u.status, u.daily_rate_override,
               a.main_balance, a.total_accrual, a.last_compound_date
@@ -621,7 +664,7 @@ export async function runDueCompounding(pool) {
       let nextDate = account.last_compound_date
         ? addDate(String(account.last_compound_date).slice(0, 10), 1)
         : businessDate(new Date(account.created_at));
-      if (nextDate > today) nextDate = today;
+      if (nextDate > cutoffDate) continue;
       let balance = Number(account.main_balance);
       let totalAccrual = Number(account.total_accrual);
       let todaysAccrual = 0;
@@ -631,7 +674,7 @@ export async function runDueCompounding(pool) {
         : null;
       const originalProcessedThrough = processedThrough;
       let dayCount = 0;
-      while (nextDate <= today && dayCount < 366) {
+      while (nextDate <= cutoffDate && dayCount < 366) {
         dayCount += 1;
         const rate =
           account.daily_rate_override === null
@@ -669,10 +712,8 @@ export async function runDueCompounding(pool) {
             );
             applied += 1;
           }
-          if (nextDate === today) {
-            todaysAccrual = accrual;
-            lastAccrualDate = nextDate;
-          }
+          todaysAccrual = accrual;
+          lastAccrualDate = nextDate;
         }
         processedThrough = nextDate;
         nextDate = addDate(nextDate, 1);
@@ -692,7 +733,7 @@ export async function runDueCompounding(pool) {
       }
     }
     await client.query("COMMIT");
-    return { applied, date: today };
+    return { applied, date: cutoffDate };
   } catch (error) {
     if (client) await client.query("ROLLBACK").catch(() => {});
     return { applied: 0, date: businessDate() };
@@ -2929,7 +2970,7 @@ export function createApiRouter(pool) {
   router.post(
     "/admin/compound/run",
     asyncRoute(async (request, response) => {
-      const result = await runDueCompounding(pool);
+      const result = await runDueCompounding(pool, true);
       await addAudit(
         pool,
         request.adminName,

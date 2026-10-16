@@ -97,7 +97,11 @@ export function HomeScreen() {
      <section className="acct-card my-2">
        <div className="acct-equity">
          <div><small>{tr('Saldo Utama')} <CircleHelp /></small><b>{f(me ? mainOf(me) : 0)}</b></div>
-         <div><small>{tr('Saldo Profit Harian')} <CircleHelp /></small><b>{f(me ? dailyProfitOf(me) : 0)}</b></div>
+         <div>
+           <small>{tr('Saldo Profit Harian')} <CircleHelp /></small>
+           <b>{f(me ? dailyProfitOf(me) : 0)}</b>
+           <span className="block text-[9px] text-muted-foreground font-normal">{tr('Disalurkan pukul 14:00 WIB')}</span>
+         </div>
        </div>
        <div className="acct-margins">
          {[

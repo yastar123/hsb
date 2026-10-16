@@ -1103,6 +1103,7 @@ export function MarketDetailScreen({ product }: { product: Product }) {
             <div>
               <small>{tr('Saldo Profit Harian')} <CircleHelp /></small>
               <b>{f(me ? dailyProfitOf(me) : 0)}</b>
+              <span className="block text-[9px] text-muted-foreground font-normal">{tr('Disalurkan pukul 14:00 WIB')}</span>
             </div>
           </div>
           <div className="acct-margins">

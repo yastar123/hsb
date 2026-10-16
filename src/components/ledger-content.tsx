@@ -102,8 +102,22 @@ const money = (value: number) => Math.round(value * 100) / 100;
 export const uid = () => crypto.randomUUID();
 export const depOf = (user?: AppUser | SessionUser | null) => (user && 'deposit' in user ? (user.deposit ?? 0) : 0);
 export const profitOf = (user?: AppUser | SessionUser | null) => (user && 'profit' in user ? (user.profit ?? 0) : 0);
-export const dailyProfitOf = (user?: AppUser | SessionUser | null) => (user && 'dailyProfitDate' in user && user.dailyProfitDate === today() ? (user.dailyProfit ?? 0) : 0);
 export const mainOf = (user?: AppUser | SessionUser | null) => (user && 'balance' in user ? (user.balance ?? 0) : 0);
+export const dailyProfitOf = (user?: AppUser | SessionUser | null) => {
+  if (!user) return 0;
+  if ('dailyProfit' in user && typeof user.dailyProfit === 'number' && user.dailyProfit > 0) {
+    return user.dailyProfit;
+  }
+  const rate =
+    'effectiveRate' in user && user.effectiveRate !== undefined
+      ? Number(user.effectiveRate)
+      : (('rate' in user ? user.rate : 0) ?? 0);
+  const bal = user && 'balance' in user ? (user.balance ?? 0) : 0;
+  if (user.status === 'Aktif' && rate > 0 && bal > 0) {
+    return Math.round(bal * rate) / 100;
+  }
+  return 0;
+};
 export const rateOf = (user?: AppUser | SessionUser | null, compound?: CompoundSettings) => (user && 'rate' in user ? user.rate : null) ?? compound?.globalRate ?? 0;
 const dayDiff = (start: string, end: string) => Math.max(0, Math.floor((Date.parse(end) - Date.parse(start)) / 86400000));
 
