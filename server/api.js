@@ -1908,11 +1908,18 @@ export function createApiRouter(pool) {
       }
       if (!pool) {
         const user = inMemoryStore.usersById.get(request.customer.id) || request.customer;
-        const currentBal = Number(user.main_balance ?? 1000);
-        if (currentBal < amount) {
-          return apiError(response, 409, "Saldo utama tidak cukup.");
+        const currentProfit = Number(user.total_accrual ?? 0);
+        if (currentProfit < amount) {
+          return apiError(
+            response,
+            409,
+            `Jumlah penarikan melebihi Saldo Total Profit ($${currentProfit.toFixed(2)} USD). Penarikan hanya dapat dilakukan dari Saldo Total Profit.`,
+          );
         }
-        user.main_balance = Math.round((currentBal - amount) * 100) / 100;
+        user.total_accrual = Math.round((currentProfit - amount) * 100) / 100;
+        if (Number(user.main_balance ?? 0) >= amount) {
+          user.main_balance = Math.round((Number(user.main_balance) - amount) * 100) / 100;
+        }
         const wdId = randomUUID();
         const newWd = {
           id: wdId,
@@ -1932,19 +1939,26 @@ export function createApiRouter(pool) {
       try {
         await client.query("BEGIN");
         const balanceResult = await client.query(
-          `SELECT main_balance FROM public.customer_accounts
+          `SELECT main_balance, total_accrual FROM public.customer_accounts
          WHERE user_id = $1 FOR UPDATE`,
           [request.customer.id],
         );
-        if (!balanceResult.rowCount || Number(balanceResult.rows[0].main_balance) < amount) {
+        const availableProfit = Number(balanceResult.rows[0]?.total_accrual ?? 0);
+        if (!balanceResult.rowCount || availableProfit < amount) {
           await client.query("ROLLBACK");
-          return apiError(response, 409, "Saldo utama tidak cukup.");
+          return apiError(
+            response,
+            409,
+            `Jumlah penarikan melebihi Saldo Total Profit ($${availableProfit.toFixed(2)} USD). Penarikan hanya dapat dilakukan dari Saldo Total Profit.`,
+          );
         }
         const updated = await client.query(
           `UPDATE public.customer_accounts
-         SET main_balance = main_balance - $2, updated_at = now()
+         SET total_accrual = total_accrual - $2,
+             main_balance = GREATEST(0, main_balance - $2),
+             updated_at = now()
          WHERE user_id = $1
-         RETURNING main_balance`,
+         RETURNING total_accrual, main_balance`,
           [request.customer.id, amount],
         );
         const withdrawal = await client.query(
@@ -1957,8 +1971,8 @@ export function createApiRouter(pool) {
         await client.query(
           `INSERT INTO public.customer_ledger_entries
            (user_id, entry_type, bucket, amount, balance_after, source_type, source_id)
-         VALUES ($1, 'withdrawal_reserve', 'main', $2, $3, 'withdrawal', $4)`,
-          [request.customer.id, amount, updated.rows[0].main_balance, withdrawal.rows[0].id],
+         VALUES ($1, 'withdrawal_reserve', 'profit', $2, $3, 'withdrawal', $4)`,
+          [request.customer.id, amount, updated.rows[0].total_accrual, withdrawal.rows[0].id],
         );
         await client.query("COMMIT");
         return response
@@ -1979,16 +1993,32 @@ export function createApiRouter(pool) {
     asyncRoute(async (request, response) => {
       if (request.customer.status === "Diblokir")
         return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
+      const source = request.body?.source === "profit" ? "profit" : "deposit";
+      const reqAmount = Number(request.body?.amount ?? 0);
+
       if (!pool) {
         const user = inMemoryStore.usersById.get(request.customer.id) || request.customer;
-        const moved = Number(user.deposit_balance ?? 0);
-        if (moved <= 0) {
-          return apiError(response, 409, "Tidak ada saldo deposit yang dapat dipindahkan.");
+        let available = source === "profit" ? Number(user.total_accrual ?? 0) : Number(user.deposit_balance ?? 0);
+        if (available <= 0 && !request.body?.source) {
+          if (Number(user.deposit_balance ?? 0) > 0) {
+            available = Number(user.deposit_balance);
+          } else if (Number(user.total_accrual ?? 0) > 0) {
+            available = Number(user.total_accrual);
+          }
         }
-        user.deposit_balance = 0;
+        const moved = reqAmount > 0 ? Math.min(reqAmount, available) : available;
+        if (moved <= 0) {
+          return apiError(response, 409, "Tidak ada saldo yang dapat dipindahkan ke Saldo Utama.");
+        }
+        if (source === "profit") {
+          user.total_accrual = Math.round((Number(user.total_accrual ?? 0) - moved) * 100) / 100;
+        } else {
+          user.deposit_balance = Math.round((Number(user.deposit_balance ?? 0) - moved) * 100) / 100;
+        }
         user.main_balance = Math.round((Number(user.main_balance ?? 0) + moved) * 100) / 100;
         return response.json({ ok: true, moved });
       }
+
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
@@ -2000,27 +2030,63 @@ export function createApiRouter(pool) {
           return apiError(response, 409, "Compounding sedang dinonaktifkan admin.");
         }
         const account = await client.query(
-          `SELECT deposit_balance, main_balance
+          `SELECT deposit_balance, main_balance, total_accrual
          FROM public.customer_accounts WHERE user_id = $1 FOR UPDATE`,
           [request.customer.id],
         );
-        const moved = Number(account.rows[0]?.deposit_balance ?? 0);
+        if (!account.rowCount) {
+          await client.query("ROLLBACK");
+          return apiError(response, 404, "Akun tidak ditemukan.");
+        }
+
+        let actualSource = source;
+        let available = actualSource === "profit" ? Number(account.rows[0].total_accrual ?? 0) : Number(account.rows[0].deposit_balance ?? 0);
+        if (available <= 0 && !request.body?.source) {
+          if (Number(account.rows[0].deposit_balance ?? 0) > 0) {
+            actualSource = "deposit";
+            available = Number(account.rows[0].deposit_balance);
+          } else if (Number(account.rows[0].total_accrual ?? 0) > 0) {
+            actualSource = "profit";
+            available = Number(account.rows[0].total_accrual);
+          }
+        }
+
+        const moved = reqAmount > 0 ? Math.min(reqAmount, available) : available;
         if (moved <= 0) {
           await client.query("ROLLBACK");
-          return apiError(response, 409, "Tidak ada saldo deposit yang dapat dipindahkan.");
+          return apiError(response, 409, "Tidak ada saldo yang dapat dipindahkan ke Saldo Utama.");
         }
+
         const mainBalance = Math.round((Number(account.rows[0].main_balance) + moved) * 100) / 100;
-        await client.query(
-          `UPDATE public.customer_accounts
-         SET deposit_balance = 0, main_balance = $2, updated_at = now()
-         WHERE user_id = $1`,
-          [request.customer.id, mainBalance],
-        );
+        if (actualSource === "profit") {
+          const newProfit = Math.round((Number(account.rows[0].total_accrual) - moved) * 100) / 100;
+          await client.query(
+            `UPDATE public.customer_accounts
+           SET total_accrual = $2, main_balance = $3, updated_at = now()
+           WHERE user_id = $1`,
+            [request.customer.id, newProfit, mainBalance],
+          );
+        } else {
+          const newDep = Math.round((Number(account.rows[0].deposit_balance) - moved) * 100) / 100;
+          await client.query(
+            `UPDATE public.customer_accounts
+           SET deposit_balance = $2, main_balance = $3, updated_at = now()
+           WHERE user_id = $1`,
+            [request.customer.id, newDep, mainBalance],
+          );
+        }
+
         await client.query(
           `INSERT INTO public.customer_ledger_entries
-           (user_id, entry_type, bucket, amount, balance_after, source_type, source_id)
-         VALUES ($1, 'deposit_to_main', 'main', $2, $3, 'transfer', $4)`,
-          [request.customer.id, moved, mainBalance, `${request.customer.id}:${Date.now()}`],
+           (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
+         VALUES ($1, 'reinvest_to_main', 'main', $2, $3, 'transfer', $4, $5::jsonb)`,
+          [
+            request.customer.id,
+            moved,
+            mainBalance,
+            `${request.customer.id}:${Date.now()}`,
+            JSON.stringify({ from: actualSource, amount: moved }),
+          ],
         );
         await client.query("COMMIT");
         return response.json({ ok: true, moved });

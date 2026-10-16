@@ -7,6 +7,7 @@ import { useHomeContent, resolveImage, type Signal } from '@/components/home-con
 import { useAppPreferences, translate } from '@/components/app-preferences';
 import { useLedger, mainOf, depOf, profitOf, dailyProfitOf, rateOf } from '@/components/ledger-content';
 import { TradingTerminalSection } from '@/components/market-screens';
+import { CompoundingModal } from '@/components/compounding-modal';
 
 const shortcutIcons: Record<string, typeof Wallet> = { Withdraw: WalletCards, FAQ: BadgeHelp, Deposit: Wallet, Promo: BadgePercent, 'Proteksi Dana': ShieldCheck };
 const lines = (t: string) => t.split('\n').map((l, i, a) => <span key={i}>{l}{i < a.length - 1 && <br />}</span>);
@@ -15,6 +16,7 @@ export function HomeScreen() {
   const { content } = useHomeContent();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
+  const [compoundingModalOpen, setCompoundingModalOpen] = useState(false);
   const banners = content.banners;
   const signals = content.signals;
   const markets = content.markets;
@@ -66,16 +68,25 @@ export function HomeScreen() {
   const { users, compound, currentEmail, transferDepositToMain } = useLedger();
   const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase());
   const f = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const compoundNow = async () => {
-    if (!me) return;
-    try {
-      const moved = await transferDepositToMain(me.id);
-      if (moved > 0) open(tr('Compounding'), `${tr('Saldo deposit')} $${f(moved)} ${tr('dipindahkan ke saldo utama. Akrual harian mengikuti tarif admin.')}`);
-      else if (!compound.enabled) open(tr('Compounding'), tr('Compounding sedang dinonaktifkan admin.'));
-      else if (me.status === 'Diblokir') open(tr('Compounding'), tr('Akun sedang diblokir. Hubungi layanan pelanggan.'));
-      else open(tr('Compounding'), tr('Tidak ada saldo deposit yang dapat dipindahkan.'));
-    } catch (error) {
-      open(tr('Compounding'), error instanceof Error ? error.message : tr('Pemindahan saldo gagal.'));
+  const explainBalance = (type: string) => {
+    switch (type) {
+      case 'Saldo Utama':
+        open(tr('Saldo Utama'), tr('Saldo aktif yang melakukan compounding harian sesuai tarif yang diatur admin.'));
+        break;
+      case 'Saldo Profit Harian':
+        open(tr('Saldo Profit Harian'), tr('Compounding harian dari saldo utama. Dana ini diakumulasikan dan disalurkan otomatis ke Saldo Total Profit setiap hari pukul 14:00 WIB.'));
+        break;
+      case 'Saldo Deposit':
+        open(tr('Saldo Deposit'), tr('Deposit user hanya bisa ditarik minimal setelah 30 hari. Dana ini dapat dipindahkan ke Saldo Utama melalui menu Compounding.'));
+        break;
+      case 'Saldo Total Profit':
+        open(tr('Saldo Total Profit'), tr('Total akumulasi dari Saldo Profit Harian. Saldo ini siap ditarik melalui menu Withdraw atau dapat di-compound lagi ke Saldo Utama.'));
+        break;
+      case 'Compounding':
+        open(tr('Compounding'), tr(`Tarif akrual keuntungan harian (${me ? rateOf(me, compound) : 0}% per hari) yang diterapkan pada Saldo Utama setiap pukul 14:00 WIB.`));
+        break;
+      default:
+        break;
     }
   };
   const marqueeText = me ? `Saldo akun · tarif akrual admin ${rateOf(me, compound)}% per hari · ` : 'Masuk ke akun untuk melihat saldo dan transaksi · ';
@@ -96,9 +107,12 @@ export function HomeScreen() {
      {/* Account Balances, Marquee, & Action Links matching Position Page */}
      <section className="acct-card my-2">
        <div className="acct-equity">
-         <div><small>{tr('Saldo Utama')} <CircleHelp /></small><b>{f(me ? mainOf(me) : 0)}</b></div>
          <div>
-           <small>{tr('Saldo Profit Harian')} <CircleHelp /></small>
+           <small onClick={() => explainBalance('Saldo Utama')} className="cursor-pointer">{tr('Saldo Utama')} <CircleHelp /></small>
+           <b>{f(me ? mainOf(me) : 0)}</b>
+         </div>
+         <div>
+           <small onClick={() => explainBalance('Saldo Profit Harian')} className="cursor-pointer">{tr('Saldo Profit Harian')} <CircleHelp /></small>
            <b>{f(me ? dailyProfitOf(me) : 0)}</b>
            <span className="block text-[9px] text-muted-foreground font-normal">{tr('Disalurkan pukul 14:00 WIB')}</span>
          </div>
@@ -109,7 +123,10 @@ export function HomeScreen() {
            ['Saldo Total Profit', f(me ? profitOf(me) : 0)],
            ['Compounding', `${me ? rateOf(me, compound) : 0} % / hari`],
          ].map(([k, v]) => (
-           <div key={k}><small>{tr(String(k))} <CircleHelp /></small><b>{v}</b></div>
+           <div key={k}>
+             <small onClick={() => explainBalance(String(k))} className="cursor-pointer">{tr(String(k))} <CircleHelp /></small>
+             <b>{v}</b>
+           </div>
          ))}
        </div>
      </section>
@@ -120,12 +137,16 @@ export function HomeScreen() {
        </div>
        <Button
          variant="outline"
-         disabled={!me || depOf(me) <= 0 || !compound.enabled || me.status === 'Diblokir'}
-         onClick={compoundNow}
+         disabled={!me || me.status === 'Diblokir'}
+         onClick={() => setCompoundingModalOpen(true)}
        >
          <ArrowLeftRight /> {tr('Compounding')}
        </Button>
      </section>
+     <CompoundingModal
+       open={compoundingModalOpen}
+       onClose={() => setCompoundingModalOpen(false)}
+     />
 
      <nav className="acct-actions mb-3">
        <Link to="/withdraw"><span className="acct-icon"><ArrowUpFromLine /></span>{tr('Withdraw')}</Link>

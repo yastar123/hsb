@@ -189,7 +189,7 @@ type Ctx = LedgerData & {
   updateUser: (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate' | 'balance' | 'deposit' | 'profit'>>) => Promise<void>;
   setCompound: (compound: Partial<CompoundSettings>) => Promise<void>;
   runCompound: () => Promise<{ applied: number; date: string }>;
-  transferDepositToMain: (userId: string) => Promise<number>;
+  transferDepositToMain: (userId?: string, options?: { source?: 'deposit' | 'profit'; amount?: number }) => Promise<number>;
   creditReferralDeposit: (userId: string, amount: number, referralId: string) => Promise<number>;
   requestWithdrawal: (userId: string, details: { bank: string; account: string; amount: number }) => Promise<string | null>;
   reviewWithdrawal: (id: string, status: WithdrawalStatus, confirmPayout?: boolean, note?: string) => Promise<void>;
@@ -295,8 +295,8 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     return result;
   }, [post, refresh]);
 
-  const transferDepositToMain = useCallback(async (_userId: string) => {
-    const result = await post<{ moved: number }>('/api/account/transfer-deposit');
+  const transferDepositToMain = useCallback(async (_userId?: string, options?: { source?: 'deposit' | 'profit'; amount?: number }) => {
+    const result = await post<{ moved: number }>('/api/account/transfer-deposit', options ?? {});
     await refresh();
     return result.moved;
   }, [post, refresh]);

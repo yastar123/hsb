@@ -9,6 +9,7 @@ import { SimulatedChart } from '@/components/simulated-chart';
 import { TradingViewChart } from '@/components/trading-view-chart';
 import { useAppPreferences, translate } from '@/components/app-preferences';
 import { useLedger, mainOf, depOf, profitOf, dailyProfitOf, rateOf } from '@/components/ledger-content';
+import { CompoundingModal } from '@/components/compounding-modal';
 
 export function MarketHeader({title,back=true,children}:{title:string;back?:boolean;children?:React.ReactNode}){const {language}=useAppPreferences();const tr=(text:string)=>translate(text,language);return <header className="market-header">{back&&<Button asChild variant="ghost" size="icon"><Link to="/pasar" aria-label={tr('Kembali ke pasar')}><ArrowLeft/></Link></Button>}<h1>{tr(title)}</h1><div className="market-header-actions">{children}</div></header>;}
 function MarketNav(){const [notice,setNotice]=useState('');const {language}=useAppPreferences();const tr=(text:string)=>translate(text,language);return <><nav className="home-bottom-nav" aria-label={tr('Navigasi utama')}><Button asChild variant="ghost"><Link to="/beranda"><House/><span>{tr('Beranda')}</span></Link></Button><Button asChild variant="ghost"><Link to="/pasar" aria-current="page"><ChartNoAxesColumn/><span>{tr('Pasar')}</span></Link></Button><Button asChild variant="ghost"><Link to="/posisi"><BriefcaseBusiness/><span>{tr('Posisi')}</span></Link></Button><Button variant="ghost" onClick={()=>setNotice(tr('Layanan mitra belum terhubung.'))}><Users/><span>{tr('Mitra')}</span></Button><Button asChild variant="ghost"><Link to="/profil"><UserRound/><span>{tr('Profil')}</span></Link></Button></nav>{notice&&<div className="account-dialog-backdrop"><section className="account-dialog" role="dialog" aria-modal="true" aria-label={tr('Informasi')}><p>{notice}</p><Button onClick={()=>setNotice('')}>{tr('Tutup')}</Button></section></div>}</>;}
@@ -855,16 +856,25 @@ export function MarketDetailScreen({ product }: { product: Product }) {
   const f = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const [notice, setNotice] = useState('');
 
-  const compoundNow = async () => {
-    if (!me || !transferDepositToMain) return;
-    try {
-      const moved = await transferDepositToMain(me.id);
-      if (moved > 0) setNotice(`${tr('Saldo deposit')} $${f(moved)} ${tr('dipindahkan ke saldo utama. Akrual harian mengikuti tarif admin.')}`);
-      else if (!compound.enabled) setNotice(tr('Compounding sedang dinonaktifkan admin.'));
-      else if (me.status !== 'Aktif') setNotice(tr('Akun belum aktif untuk compounding.'));
-      else setNotice(tr('Tidak ada saldo deposit yang dapat dipindahkan.'));
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : tr('Pemindahan saldo gagal.'));
+  const explainBalance = (type: string) => {
+    switch (type) {
+      case 'Saldo Utama':
+        setNotice(tr('Saldo Utama: Saldo aktif yang melakukan compounding harian sesuai tarif yang diatur admin.'));
+        break;
+      case 'Saldo Profit Harian':
+        setNotice(tr('Saldo Profit Harian: Compounding harian dari saldo utama. Dana ini diakumulasikan dan disalurkan otomatis ke Saldo Total Profit setiap hari pukul 14:00 WIB.'));
+        break;
+      case 'Saldo Deposit':
+        setNotice(tr('Saldo Deposit: Deposit user hanya bisa ditarik minimal setelah 30 hari. Dana ini dapat dimasukkan ke Saldo Utama melalui menu Compounding.'));
+        break;
+      case 'Saldo Total Profit':
+        setNotice(tr('Saldo Total Profit: Total akumulasi dari Saldo Profit Harian. Saldo ini siap ditarik melalui menu Withdraw atau dapat di-compound lagi ke Saldo Utama.'));
+        break;
+      case 'Compounding':
+        setNotice(tr(`Compounding: Tarif akrual keuntungan harian (${me ? rateOf(me, compound) : 0}% per hari) yang diterapkan pada Saldo Utama setiap pukul 14:00 WIB.`));
+        break;
+      default:
+        break;
     }
   };
 
@@ -880,6 +890,7 @@ export function MarketDetailScreen({ product }: { product: Product }) {
 
   const [timeframe, setTimeframe] = useState('1H');
   const [expanded, setExpanded] = useState(false);
+  const [compoundingModalOpen, setCompoundingModalOpen] = useState(false);
 
   const tickerProducts = products.length ? products : [product];
   const availableInstruments = [
@@ -1097,11 +1108,11 @@ export function MarketDetailScreen({ product }: { product: Product }) {
         <section className="acct-card">
           <div className="acct-equity">
             <div>
-              <small>{tr('Saldo Utama')} <CircleHelp /></small>
+              <small onClick={() => explainBalance('Saldo Utama')} className="cursor-pointer">{tr('Saldo Utama')} <CircleHelp /></small>
               <b>{f(me ? mainOf(me) : 0)}</b>
             </div>
             <div>
-              <small>{tr('Saldo Profit Harian')} <CircleHelp /></small>
+              <small onClick={() => explainBalance('Saldo Profit Harian')} className="cursor-pointer">{tr('Saldo Profit Harian')} <CircleHelp /></small>
               <b>{f(me ? dailyProfitOf(me) : 0)}</b>
               <span className="block text-[9px] text-muted-foreground font-normal">{tr('Disalurkan pukul 14:00 WIB')}</span>
             </div>
@@ -1113,7 +1124,7 @@ export function MarketDetailScreen({ product }: { product: Product }) {
               ['Compounding', `${me ? rateOf(me, compound) : 0} % / hari`],
             ].map(([k, v]) => (
               <div key={k}>
-                <small>{tr(String(k))} <CircleHelp /></small>
+                <small onClick={() => explainBalance(String(k))} className="cursor-pointer">{tr(String(k))} <CircleHelp /></small>
                 <b>{v}</b>
               </div>
             ))}
@@ -1126,12 +1137,17 @@ export function MarketDetailScreen({ product }: { product: Product }) {
           </div>
           <Button
             variant="outline"
-            disabled={!me || depOf(me) <= 0 || !compound.enabled || me.status === 'Diblokir'}
-            onClick={compoundNow}
+            disabled={!me || me.status === 'Diblokir'}
+            onClick={() => setCompoundingModalOpen(true)}
           >
             <ArrowLeftRight /> {tr('Compounding')}
           </Button>
         </section>
+
+        <CompoundingModal
+          open={compoundingModalOpen}
+          onClose={() => setCompoundingModalOpen(false)}
+        />
 
         <nav className="acct-actions">
           <Link to="/withdraw">
