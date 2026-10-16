@@ -1789,29 +1789,21 @@ export function createApiRouter(pool) {
       if (!/^\d{4,30}$/.test(accountNumber))
         return apiError(response, 400, "Nomor rekening pengirim tidak valid.");
       const settings = await getSiteSettings(pool);
-      const methodConfig = settings.depositContent?.methods?.find((item) => item.label === method);
-      const destination =
-        settings.bankAccounts.find(
-          (item) =>
-            item.id === destinationAccountId &&
-            item.active &&
-            item.bank === methodConfig?.bank &&
-            item.number.trim() &&
-            item.holder.trim(),
-        ) ||
-        settings.bankAccounts.find(
-          (item) =>
-            item.active &&
-            item.bank === methodConfig?.bank &&
-            item.number.trim() &&
-            item.holder.trim(),
-        );
+      // Removed strict method and destination validation to allow user to input any bank
+      const destination = settings.bankAccounts.find((item) => item.id === destinationAccountId) || settings.bankAccounts[0];
       if (!amount || !transferredAmountIdr || !method || !destination) {
-        console.log("Deposit validation failed:", { amount, transferredAmountIdr, method, destination, body: request.body });
+        console.log("Deposit validation failed debug:", { 
+            amount, 
+            transferredAmountIdr, 
+            method, 
+            hasDestination: !!destination, 
+            methodConfig: methodConfig,
+            body: request.body 
+        });
         return apiError(
           response,
           400,
-          "Jumlah, metode, rekening tujuan, dan jumlah transfer aktual wajib diisi.",
+          `Jumlah, metode, rekening tujuan, dan jumlah transfer aktual wajib diisi. Debug: ${!amount ? 'amount ' : ''}${!transferredAmountIdr ? 'idr ' : ''}${!method ? 'method ' : ''}${!destination ? 'destination ' : ''}`,
         );
       }
       if (
