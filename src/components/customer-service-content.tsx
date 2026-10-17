@@ -19,7 +19,7 @@ export const defaultCustomerServiceContent: CustomerServiceContent = {
   items: [
     { id: 'phone', title: 'Nomor Telepon', value: '(+62) 21-501-22288', buttonLabel: 'Telepon', href: 'tel:+622150122288' },
     { id: 'whatsapp', title: 'WhatsApp', value: 'http://wa.me/628211019087', buttonLabel: 'Hubungi', href: 'https://wa.me/628211019087' },
-    { id: 'email', title: 'Email', value: 'cs@hsb.co.id', buttonLabel: 'Hubungi', href: 'mailto:cs@hsb.co.id' },
+    { id: 'email', title: 'Email', value: 'cs@webullxau.com', buttonLabel: 'Hubungi', href: 'mailto:cs@webullxau.com' },
     { id: 'chat', title: 'Ngobrol dengan Agen kami', value: 'Live Chat', buttonLabel: 'Hubungi', href: '' },
   ],
   officeName: 'PT. Handal Semesta Berjangka',

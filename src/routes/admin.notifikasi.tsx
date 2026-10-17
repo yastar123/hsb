@@ -9,9 +9,9 @@ import { SaveStatusText } from '@/lib/site-content';
 
 export const Route = createFileRoute('/admin/notifikasi')({
   head: () => ({ meta: [
-    { title: 'Kelola Notifikasi — Admin HSB' },
+    { title: 'Kelola Notifikasi — Admin WebullXAU' },
     { name: 'description', content: 'Kirim notifikasi ke semua user atau user tertentu (simulasi).' },
-    { property: 'og:title', content: 'Kelola Notifikasi — Admin HSB' },
+    { property: 'og:title', content: 'Kelola Notifikasi — Admin WebullXAU' },
     { property: 'og:description', content: 'Panel admin untuk mengirim notifikasi ke user.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },

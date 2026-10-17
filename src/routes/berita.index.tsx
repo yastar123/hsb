@@ -8,9 +8,9 @@ import { useNews } from '@/lib/news-store';
 
 export const Route = createFileRoute('/berita/')({
   head: () => ({ meta: [
-    { title: 'Berita Ekonomi — HSB Trading' },
-    { name: 'description', content: 'Berita ekonomi, analisa teknikal, dan materi belajar trading dari HSB.' },
-    { property: 'og:title', content: 'Berita Ekonomi — HSB Trading' },
+    { title: 'Berita Ekonomi — WebullXAU Trading' },
+    { name: 'description', content: 'Berita ekonomi, analisa teknikal, dan materi belajar trading dari WebullXAU.' },
+    { property: 'og:title', content: 'Berita Ekonomi — WebullXAU Trading' },
     { property: 'og:description', content: 'Kumpulan berita ekonomi dan edukasi trading terbaru.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary_large_image' },

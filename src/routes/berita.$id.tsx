@@ -10,13 +10,13 @@ export const Route = createFileRoute('/berita/$id')({
   head: ({ loaderData }) => {
     if (!loaderData?.article) {
       return { meta: [
-        { title: 'Berita — HSB Trading' },
+        { title: 'Berita — WebullXAU Trading' },
         { name: 'robots', content: 'noindex' },
       ] };
     }
     const a = loaderData.article;
     return { meta: [
-      { title: `${a.title} — HSB Trading` },
+      { title: `${a.title} — WebullXAU Trading` },
       { name: 'description', content: a.text },
       { property: 'og:title', content: a.title },
       { property: 'og:description', content: a.text },

@@ -280,7 +280,7 @@ const DEFAULT_DEPOSIT_CONTENT = {
 const DEFAULT_DEMO_USER = {
   id: "demo-user-1",
   name: "Trader WebullXAU",
-  email: "trader@hsb.co.id",
+  email: "trader@webullxau.com",
   phone: "08123456789",
   status: "Aktif",
   main_balance: 1000,

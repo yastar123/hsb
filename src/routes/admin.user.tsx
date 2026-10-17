@@ -6,9 +6,9 @@ import { useLedger, depOf, mainOf, type AppUser, type UserStatus } from '@/compo
 
 export const Route = createFileRoute('/admin/user')({
   head: () => ({ meta: [
-    { title: 'Kelola User — Admin HSB' },
-    { name: 'description', content: 'Lihat dan kelola akun pengguna HSB.' },
-    { property: 'og:title', content: 'Kelola User — Admin HSB' },
+    { title: 'Kelola User — Admin WebullXAU' },
+    { name: 'description', content: 'Lihat dan kelola akun pengguna WebullXAU.' },
+    { property: 'og:title', content: 'Kelola User — Admin WebullXAU' },
     { property: 'og:description', content: 'Panel admin untuk mengelola semua user terdaftar.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },

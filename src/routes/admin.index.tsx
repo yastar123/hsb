@@ -7,10 +7,10 @@ import { useReferral } from '@/components/referral-content';
 
 export const Route = createFileRoute('/admin/')({
   head: () => ({ meta: [
-    { title: 'Dashboard Admin — HSB Trading' },
-    { name: 'description', content: 'Ringkasan analitik HSB: pengguna terdaftar, deposit, withdraw, dan mitra referral.' },
-    { property: 'og:title', content: 'Dashboard Admin — HSB Trading' },
-    { property: 'og:description', content: 'Ringkasan analitik pengguna, deposit, withdraw, dan mitra HSB.' },
+    { title: 'Dashboard Admin — WebullXAU Trading' },
+    { name: 'description', content: 'Ringkasan analitik WebullXAU: pengguna terdaftar, deposit, withdraw, dan mitra referral.' },
+    { property: 'og:title', content: 'Dashboard Admin — WebullXAU Trading' },
+    { property: 'og:description', content: 'Ringkasan analitik pengguna, deposit, withdraw, dan mitra WebullXAU.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },
     { name: 'robots', content: 'noindex' },

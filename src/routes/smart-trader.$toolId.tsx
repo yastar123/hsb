@@ -4,7 +4,7 @@ import { SmartTraderDetailScreen, smartTraderTools } from '@/components/insight-
 export const Route = createFileRoute('/smart-trader/$toolId')({
   head: ({ params }) => {
     const tool = smartTraderTools.find((item) => item.id === params.toolId);
-    const title = tool ? `${tool.title} — Smart Trader` : 'Smart Trader — HSB Trading';
+    const title = tool ? `${tool.title} — Smart Trader` : 'Smart Trader — WebullXAU Trading';
     const description = tool?.summary ?? 'Informasi alat bantu Smart Trader.';
     return { meta: [
       { title },

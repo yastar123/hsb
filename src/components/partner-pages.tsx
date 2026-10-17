@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { BottomNav, Notice } from '@/components/account-pages';
 import { useAppPreferences, translate } from '@/components/app-preferences';
 
-const REFERRAL_LINK = 'https://client.hsb.co.id/id/register?ref_code=WiJAR4-AWZSP';
+const REFERRAL_LINK = 'https://webullxau.com/id/register?ref_code=WiJAR4-AWZSP';
 
 function PartnerNav({ active }: { active: '/mitra' | '/klien' | '/alat-pemasaran' }) {
   const { language } = useAppPreferences();

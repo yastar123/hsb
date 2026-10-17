@@ -6,9 +6,9 @@ import { useLedger, type WithdrawalReq, type WithdrawalStatus } from '@/componen
 
 export const Route = createFileRoute('/admin/withdraw')({
   head: () => ({ meta: [
-    { title: 'Kelola Withdraw — Admin HSB' },
+    { title: 'Kelola Withdraw — Admin WebullXAU' },
     { name: 'description', content: 'Pantau siapa saja yang melakukan withdraw, total penarikan, dan riwayatnya (simulasi).' },
-    { property: 'og:title', content: 'Kelola Withdraw — Admin HSB' },
+    { property: 'og:title', content: 'Kelola Withdraw — Admin WebullXAU' },
     { property: 'og:description', content: 'Panel admin riwayat dan total penarikan dana.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },

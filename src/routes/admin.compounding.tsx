@@ -7,9 +7,9 @@ import { useLedger, depOf, profitOf, dailyProfitOf, mainOf, rateOf, type AppUser
 
 export const Route = createFileRoute('/admin/compounding')({
   head: () => ({ meta: [
-    { title: 'Compounding — Admin HSB' },
+    { title: 'Compounding — Admin WebullXAU' },
     { name: 'description', content: 'Atur persentase compounding harian untuk semua user atau user tertentu.' },
-    { property: 'og:title', content: 'Compounding — Admin HSB' },
+    { property: 'og:title', content: 'Compounding — Admin WebullXAU' },
     { property: 'og:description', content: 'Panel admin pengaturan compounding harian dan saldo user.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },

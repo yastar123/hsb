@@ -10,10 +10,10 @@ const rewardsImage = rewardsImageAsset;
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "Selamat Datang — HSB Trading" },
-    { name: "description", content: "Kenali HSB Trading: trading aman, akun demo, welcome bonus, dan Smart Reward." },
-    { property: "og:title", content: "Selamat Datang — HSB Trading" },
-    { property: "og:description", content: "Mulai perjalanan trading Anda bersama HSB." },
+    { title: "Selamat Datang — WebullXAU Trading" },
+    { name: "description", content: "Kenali WebullXAU Trading: trading aman, akun demo, welcome bonus, dan Smart Reward." },
+    { property: "og:title", content: "Selamat Datang — WebullXAU Trading" },
+    { property: "og:description", content: "Mulai perjalanan trading Anda bersama WebullXAU." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ] }),
@@ -36,7 +36,7 @@ function Index() {
 
   return (
     <main className="welcome-page bg-background">
-      <section className="welcome-screen" aria-label="Selamat datang di HSB Trading" aria-roledescription="carousel"
+      <section className="welcome-screen" aria-label="Selamat datang di WebullXAU Trading" aria-roledescription="carousel"
         onTouchStart={(event) => { touchStart.current = event.touches[0]?.clientX ?? null; }}
         onTouchEnd={(event) => { const end = event.changedTouches[0]?.clientX; if (touchStart.current !== null && end !== undefined && Math.abs(end - touchStart.current) > 45) changeSlide(active + (end < touchStart.current ? 1 : -1)); touchStart.current = null; }}
         onKeyDown={(event) => { if (event.key === 'ArrowRight') changeSlide(active + 1); if (event.key === 'ArrowLeft') changeSlide(active - 1); }}>

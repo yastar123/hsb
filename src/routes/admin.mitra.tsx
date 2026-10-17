@@ -8,9 +8,9 @@ import { SaveStatusText } from '@/lib/site-content';
 
 export const Route = createFileRoute('/admin/mitra')({
   head: () => ({ meta: [
-    { title: 'Kelola Mitra & Referral — Admin HSB' },
-    { name: 'description', content: 'Kelola program referral HSB: mitra, user yang diajak, hadiah, dan pembagian komisi.' },
-    { property: 'og:title', content: 'Kelola Mitra & Referral — Admin HSB' },
+    { title: 'Kelola Mitra & Referral — Admin WebullXAU' },
+    { name: 'description', content: 'Kelola program referral WebullXAU: mitra, user yang diajak, hadiah, dan pembagian komisi.' },
+    { property: 'og:title', content: 'Kelola Mitra & Referral — Admin WebullXAU' },
     { property: 'og:description', content: 'Admin program referral: mitra, referral, dan komisi.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary' },

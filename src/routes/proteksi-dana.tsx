@@ -2,9 +2,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { FundProtectionScreen } from '@/components/fund-protection-screen';
 export const Route = createFileRoute('/proteksi-dana')({
   head: () => ({ meta: [
-    { title: 'Proteksi Dana — HSB Trading' },
+    { title: 'Proteksi Dana — WebullXAU Trading' },
     { name: 'description', content: 'Bagaimana dana Anda dilindungi: akun terpisah, proteksi saldo negatif, keamanan penarikan, dan pengawasan regulator.' },
-    { property: 'og:title', content: 'Proteksi Dana — HSB Trading' },
+    { property: 'og:title', content: 'Proteksi Dana — WebullXAU Trading' },
     { property: 'og:description', content: 'Bagaimana dana Anda dilindungi: akun terpisah, proteksi saldo negatif, keamanan penarikan, dan pengawasan regulator.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary_large_image' },

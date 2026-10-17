@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { MarketDetailScreen } from '@/components/market-screens';
 import { marketMeta } from '@/lib/market-data';
 import { useMarket } from '@/components/market-context';
-export const Route=createFileRoute('/pasar/$symbol')({head:({params})=>marketMeta(`${params.symbol} — Detail Pasar`,`Grafik simulasi, harga, dan spesifikasi ${params.symbol} di HSB Trading.`),component:Detail});
+export const Route=createFileRoute('/pasar/$symbol')({head:({params})=>marketMeta(`${params.symbol} — Detail Pasar`,`Grafik simulasi, harga, dan spesifikasi ${params.symbol} di WebullXAU Trading.`),component:Detail});
 function Detail() {
   const { symbol } = Route.useParams();
   const { products, loading, error, refresh } = useMarket();
