@@ -52,10 +52,21 @@ export type WithdrawalReq = {
   status: WithdrawalStatus;
   note?: string;
 };
+export type DailyAccrualReq = {
+  id: string;
+  userId: string;
+  date: string;
+  ratePercent: number;
+  amount: number;
+  balanceAfter: number;
+  createdAt: string;
+  status?: string;
+};
 export type LedgerData = {
   users: AppUser[];
   deposits: DepositReq[];
   withdrawals: WithdrawalReq[];
+  dailyAccruals?: DailyAccrualReq[];
   compound: CompoundSettings;
 };
 export type DepositInput = {
@@ -94,6 +105,7 @@ const emptyData: LedgerData = {
   users: [],
   deposits: [],
   withdrawals: [],
+  dailyAccruals: [],
   compound: { globalRate: 0, enabled: false },
 };
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());

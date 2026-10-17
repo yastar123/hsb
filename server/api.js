@@ -304,6 +304,7 @@ const inMemoryStore = {
   sessions: new Map(),
   deposits: [],
   withdrawals: [],
+  dailyAccruals: [],
   notifications: [],
   audit: [],
   tradeClicks: new Map(),
@@ -821,6 +822,79 @@ async function loadWithdrawals(pool, userId) {
     }));
 }
 
+function serializeDailyAccrual(row) {
+  const dateStr =
+    row.accrual_date instanceof Date
+      ? row.accrual_date.toISOString().slice(0, 10)
+      : String(row.accrual_date || "").slice(0, 10);
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    date: dateStr,
+    ratePercent: Number(row.rate_percent) || 0,
+    amount: Number(row.amount) || 0,
+    balanceAfter: Number(row.balance_after) || 0,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    status: "Disalurkan",
+  };
+}
+
+async function loadDailyAccruals(pool, userId) {
+  if (pool) {
+    try {
+      const query = userId
+        ? `WITH unified AS (
+             SELECT 
+               id,
+               user_id,
+               accrual_date,
+               rate_percent,
+               amount,
+               balance_after,
+               created_at
+             FROM public.customer_daily_accruals
+             WHERE user_id = $1
+             UNION
+             SELECT
+               id,
+               user_id,
+               COALESCE((details->>'date')::date, created_at::date) AS accrual_date,
+               COALESCE((details->>'ratePercent')::numeric, 0) AS rate_percent,
+               amount,
+               balance_after,
+               created_at
+             FROM public.customer_ledger_entries
+             WHERE user_id = $1 AND entry_type = 'admin_rate_accrual'
+           )
+           SELECT DISTINCT ON (accrual_date) *
+           FROM unified
+           ORDER BY accrual_date DESC, created_at DESC
+           LIMIT 1000`
+        : `SELECT 
+             id,
+             user_id,
+             accrual_date,
+             rate_percent,
+             amount,
+             balance_after,
+             created_at
+           FROM public.customer_daily_accruals
+           ORDER BY accrual_date DESC, created_at DESC
+           LIMIT 2000`;
+      const result = await pool.query(query, userId ? [userId] : []);
+      return result.rows.map(serializeDailyAccrual);
+    } catch (err) {
+      console.warn("Could not load daily accruals from database, falling back to in-memory:", err?.message);
+    }
+  }
+  return (inMemoryStore.dailyAccruals || [])
+    .filter((a) => !userId || a.userId === userId)
+    .map((a) => ({
+      ...a,
+      date: typeof a.date === "string" ? a.date : new Date(a.date).toISOString().slice(0, 10),
+    }));
+}
+
 async function makeState(pool, userId, admin = false) {
   try {
     await runDueCompounding(pool);
@@ -857,14 +931,16 @@ async function makeState(pool, userId, admin = false) {
         ? [inMemoryStore.usersById.get(userId)].filter(Boolean)
         : [];
   }
-  const [deposits, withdrawals] = await Promise.all([
+  const [deposits, withdrawals, dailyAccruals] = await Promise.all([
     loadDeposits(pool, admin ? null : userId, admin),
     loadWithdrawals(pool, admin ? null : userId),
+    loadDailyAccruals(pool, admin ? null : userId),
   ]);
   return {
     users: userRows.map((row) => serializeUser(row, compound.globalRate)),
     deposits,
     withdrawals,
+    dailyAccruals,
     compound,
     ...(settings ?? {}),
   };
@@ -1688,6 +1764,16 @@ export function createApiRouter(pool) {
       return response.json(await makeState(pool, request.customer.id));
     }),
   );
+
+  router.get(
+    "/account/compounding-history",
+    requireCustomer(pool),
+    asyncRoute(async (request, response) => {
+      const history = await loadDailyAccruals(pool, request.customer.id);
+      return response.json({ history });
+    }),
+  );
+
 
   router.post(
     "/account/referrals/claim",

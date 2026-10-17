@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, ArrowLeftRight, CircleHelp, Wallet, ReceiptText, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, ChevronRight, ShieldCheck, CalendarDays, PackageOpen, Check, X } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, CircleHelp, Wallet, ReceiptText, House, ChartNoAxesColumn, BriefcaseBusiness, Users, UserRound, ChevronRight, ShieldCheck, CalendarDays, PackageOpen, Check, X, TrendingUp, Zap, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDepositContent } from '@/components/deposit-content';
 import { useLedger, compressImage, depOf, profitOf, dailyProfitOf, mainOf, rateOf } from '@/components/ledger-content';
@@ -231,18 +231,37 @@ export function DepositScreen() {
 }
 
 export function PaymentHistoryScreen() {
-  const [tab, setTab] = useState<'Setoran' | 'Penarikan'>('Setoran');
+  const [tab, setTab] = useState<'Setoran' | 'Penarikan' | 'Compounding'>('Setoran');
   const [status, setStatus] = useState('Semua');
   const [from, setFrom] = useState('2026-09-06');
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [applied, setApplied] = useState(false);
-  const { deposits, withdrawals, users, currentEmail } = useLedger();
+  const { deposits, withdrawals, dailyAccruals = [], users, currentEmail } = useLedger();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
   const me = users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase());
+
+  const [compoundingHistory, setCompoundingHistory] = useState<typeof dailyAccruals>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/account/compounding-history', { credentials: 'same-origin' })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (mounted && Array.isArray(data?.history)) {
+          setCompoundingHistory(data.history);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [tab]);
+
   const rows = tab === 'Setoran'
     ? deposits.filter((r) => r.email.toLowerCase() === me?.email.toLowerCase())
     : withdrawals.filter((r) => r.userId === me?.id);
+
   const visibleRows = rows.filter((r) => {
     const date = r.date.slice(0, 10);
     if (applied && (date < from || date > to)) return false;
@@ -252,18 +271,234 @@ export function PaymentHistoryScreen() {
     if (status === 'Gagal') return r.status === 'Ditolak';
     return status === r.status;
   });
-  return <main className="home-page"><div className="home-shell acct-shell acct-plain">
-    <PageHeader title="Riwayat Pembayaran" />
-    <div className="acct-tabs acct-tabs-left" role="tablist">{(['Setoran', 'Penarikan'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => { setTab(t); setApplied(false); }}>{tr(t)}</button>)}</div>
-    <div className="acct-filter">
-      <div><small>{tr('Status Pembayaran')}</small><div className="acct-chips">{['Semua', 'Menunggu', 'Diproses', 'Disetujui', 'Gagal'].map((s) => <button key={s} aria-pressed={status === s} onClick={() => setStatus(s)}>{tr(s)}</button>)}</div></div>
-      <div><small>{tr('Tanggal Permintaan')}</small><div className="acct-dates"><label><CalendarDays /><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={tr('Dari tanggal')} /> - <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label={tr('Sampai tanggal')} /></label><Button onClick={() => setApplied(true)}>{tr('Terapkan')}</Button></div></div>
-    </div>
-    <p className="prof-hint">{tr('Status deposit dan penarikan mengikuti pemeriksaan admin. Status selesai tidak menggantikan bukti mutasi bank.')}</p>
-    {visibleRows.length ? <section className="space-y-2">{visibleRows.map((row) => <article key={row.id} className="rounded-xl border border-border bg-background p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><b>{tab === 'Setoran' ? (row as (typeof deposits)[number]).method : (row as (typeof withdrawals)[number]).bank}</b><b>${row.amount.toFixed(2)} USD</b></div>
-      <p className="mt-1 text-sm text-muted-foreground">{new Date(row.date).toLocaleString('id-ID')} · {row.status}</p>
-      {tab === 'Penarikan' && <p className="mt-1 text-sm">{(row as (typeof withdrawals)[number]).account}</p>}
-    </article>)}</section> : <p className="acct-history-empty">{applied ? `Tidak ada ${tab.toLowerCase()} dengan status “${status}” pada ${from} – ${to}.` : `Belum ada riwayat ${tab.toLowerCase()}.`}</p>}
-  </div></main>;
+
+  const allCompounding = compoundingHistory.length > 0 ? compoundingHistory : dailyAccruals;
+  const userCompounding = allCompounding.filter((r) => !me?.id || r.userId === me?.id);
+  const visibleCompounding = userCompounding.filter((r) => {
+    const date = (r.date || '').slice(0, 10);
+    if (applied && (date < from || date > to)) return false;
+    return true;
+  });
+  const totalCompoundingProfit = visibleCompounding.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+
+  return (
+    <main className="home-page">
+      <div className="home-shell acct-shell acct-plain">
+        <PageHeader title="Riwayat Pembayaran" />
+        <div className="acct-tabs acct-tabs-left" role="tablist">
+          {(['Setoran', 'Penarikan', 'Compounding'] as const).map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => {
+                setTab(t);
+                setApplied(false);
+              }}
+            >
+              {t === 'Compounding' ? (
+                <span className="flex items-center gap-1.5">
+                  <Zap className="size-3.5 text-primary" />
+                  {tr(t)}
+                </span>
+              ) : (
+                tr(t)
+              )}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'Compounding' ? (
+          <div className="space-y-3 mt-3">
+            {/* Compounding metric summary */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 p-3.5 rounded-xl bg-card border border-border">
+              <div>
+                <span className="text-[11px] text-muted-foreground block">{tr('Total Profit Compounding')}</span>
+                <span className="text-lg font-black text-emerald-400 font-mono mt-0.5 block">
+                  +${totalCompoundingProfit.toFixed(2)} USD
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] text-muted-foreground block">{tr('Jumlah Penyaluran')}</span>
+                <span className="text-lg font-black text-foreground font-mono mt-0.5 block">
+                  {visibleCompounding.length} {tr('Hari')}
+                </span>
+              </div>
+              <div className="col-span-2 sm:col-span-1 pt-1 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                <span className="text-[11px] text-muted-foreground block">{tr('Jadwal Eksekusi')}</span>
+                <span className="text-xs font-bold text-foreground mt-1 flex items-center gap-1">
+                  <Clock className="size-3.5 text-primary" /> 14:00 WIB (1x/hari)
+                </span>
+              </div>
+            </div>
+
+            {/* Date filter */}
+            <div className="acct-filter">
+              <div>
+                <small>{tr('Rentang Tanggal Penyaluran')}</small>
+                <div className="acct-dates">
+                  <label>
+                    <CalendarDays />
+                    <input
+                      type="date"
+                      value={from}
+                      onChange={(e) => setFrom(e.target.value)}
+                      aria-label={tr('Dari tanggal')}
+                    />{' '}
+                    -{' '}
+                    <input
+                      type="date"
+                      value={to}
+                      onChange={(e) => setTo(e.target.value)}
+                      aria-label={tr('Sampai tanggal')}
+                    />
+                  </label>
+                  <Button onClick={() => setApplied(true)}>{tr('Terapkan')}</Button>
+                </div>
+              </div>
+            </div>
+
+            <p className="prof-hint flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Zap className="size-3.5 text-primary shrink-0" />
+              {tr(
+                'Estimasi profit harian secara otomatis disalurkan dan disimpan ke Saldo Total Profit setiap hari tepat pukul 14:00 WIB.',
+              )}
+            </p>
+
+            {visibleCompounding.length ? (
+              <section className="space-y-2.5">
+                {visibleCompounding.map((row) => (
+                  <article
+                    key={row.id}
+                    className="rounded-xl border border-border bg-card p-4 space-y-2 shadow-sm transition-colors hover:border-primary/40"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                          <TrendingUp className="size-5" />
+                        </div>
+                        <div>
+                          <b className="text-sm font-bold text-foreground block">{tr('Profit Compounding Harian')}</b>
+                          <span className="text-xs text-muted-foreground">
+                            {tr('Tarif:')}{' '}
+                            <span className="font-semibold text-foreground font-mono">
+                              {row.ratePercent}% / hari
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <b className="text-base font-extrabold text-emerald-400 font-mono block">
+                          +${row.amount.toFixed(2)} USD
+                        </b>
+                        <span className="text-[11px] text-muted-foreground">
+                          {tr('Masuk ke Total Profit')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5 font-mono">
+                        <Clock className="size-3 text-primary" />
+                        {row.date} · 14:00 WIB
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <CheckCircle2 className="size-3" />
+                        {tr('Tersalurkan')}
+                      </span>
+                    </div>
+
+                    {row.balanceAfter > 0 && (
+                      <div className="text-[11px] text-muted-foreground/90 flex justify-between pt-0.5">
+                        <span>{tr('Saldo Utama setelah penyaluran:')}</span>
+                        <span className="font-mono font-semibold text-foreground">
+                          ${row.balanceAfter.toFixed(2)} USD
+                        </span>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </section>
+            ) : (
+              <p className="acct-history-empty">
+                {applied
+                  ? tr(`Tidak ada riwayat compounding pada rentang ${from} – ${to}.`)
+                  : tr('Belum ada riwayat compounding harian yang disalurkan ke akun Anda.')}
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="acct-filter">
+              <div>
+                <small>{tr('Status Pembayaran')}</small>
+                <div className="acct-chips">
+                  {['Semua', 'Menunggu', 'Diproses', 'Disetujui', 'Gagal'].map((s) => (
+                    <button key={s} aria-pressed={status === s} onClick={() => setStatus(s)}>
+                      {tr(s)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <small>{tr('Tanggal Permintaan')}</small>
+                <div className="acct-dates">
+                  <label>
+                    <CalendarDays />
+                    <input
+                      type="date"
+                      value={from}
+                      onChange={(e) => setFrom(e.target.value)}
+                      aria-label={tr('Dari tanggal')}
+                    />{' '}
+                    -{' '}
+                    <input
+                      type="date"
+                      value={to}
+                      onChange={(e) => setTo(e.target.value)}
+                      aria-label={tr('Sampai tanggal')}
+                    />
+                  </label>
+                  <Button onClick={() => setApplied(true)}>{tr('Terapkan')}</Button>
+                </div>
+              </div>
+            </div>
+            <p className="prof-hint">
+              {tr(
+                'Status deposit dan penarikan mengikuti pemeriksaan admin. Status selesai tidak menggantikan bukti mutasi bank.',
+              )}
+            </p>
+            {visibleRows.length ? (
+              <section className="space-y-2">
+                {visibleRows.map((row) => (
+                  <article key={row.id} className="rounded-xl border border-border bg-background p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <b>
+                        {tab === 'Setoran'
+                          ? (row as (typeof deposits)[number]).method
+                          : (row as (typeof withdrawals)[number]).bank}
+                      </b>
+                      <b>${row.amount.toFixed(2)} USD</b>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {new Date(row.date).toLocaleString('id-ID')} · {row.status}
+                    </p>
+                    {tab === 'Penarikan' && (
+                      <p className="mt-1 text-sm">{(row as (typeof withdrawals)[number]).account}</p>
+                    )}
+                  </article>
+                ))}
+              </section>
+            ) : (
+              <p className="acct-history-empty">
+                {applied
+                  ? `Tidak ada ${tab.toLowerCase()} dengan status “${status}” pada ${from} – ${to}.`
+                  : `Belum ada riwayat ${tab.toLowerCase()}.`}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </main>
+  );
 }
