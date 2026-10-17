@@ -170,7 +170,15 @@ function WalletBalancesComponent({ balance }: { balance: number }) {
   );
 }
 
-export function TradingTerminalSection({ hidePositionCard = false }: { hidePositionCard?: boolean }) {
+export function TradingTerminalSection({ 
+  hidePositionCard = false,
+  bannerTitle = 'Terminal Trading',
+  bannerDescription = 'Pilih satu pasar dan gunakan seluruh modal yang tersedia. Posisi terkunci secara otomatis setelah satu kali klik.'
+}: { 
+  hidePositionCard?: boolean,
+  bannerTitle?: string,
+  bannerDescription?: string
+}) {
   const { products } = useMarket();
   const { language } = useAppPreferences();
   const tr = (text: string) => translate(text, language);
@@ -348,10 +356,12 @@ export function TradingTerminalSection({ hidePositionCard = false }: { hidePosit
         </div>
 
         <div>
-          <h1 className="text-xl font-black tracking-tight text-foreground">{tr('Terminal Trading')}</h1>
-          <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-            {tr('Pilih satu pasar dan gunakan seluruh modal yang tersedia. Posisi terkunci secara otomatis setelah satu kali klik.')}
-          </p>
+          <h1 className="text-xl font-black tracking-tight text-foreground">{tr(bannerTitle)}</h1>
+          {bannerDescription && (
+            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+              {tr(bannerDescription)}
+            </p>
+          )}
         </div>
       </section>
 
