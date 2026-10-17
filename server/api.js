@@ -1967,9 +1967,15 @@ export function createApiRouter(pool) {
         );
         await client.query(
           `INSERT INTO public.customer_ledger_entries
-           (user_id, entry_type, bucket, amount, balance_after, source_type, source_id)
-         VALUES ($1, 'withdrawal_reserve', 'profit', $2, $3, 'withdrawal', $4)`,
-          [request.customer.id, amount, updated.rows[0].total_accrual, withdrawal.rows[0].id],
+           (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
+         VALUES ($1, 'withdrawal_reserve', 'main', $2, $3, 'withdrawal', $4, $5::jsonb)`,
+          [
+            request.customer.id,
+            amount,
+            updated.rows[0].main_balance,
+            withdrawal.rows[0].id,
+            JSON.stringify({ from: "profit", profitAfter: updated.rows[0].total_accrual }),
+          ],
         );
         await client.query("COMMIT");
         return response
@@ -2747,18 +2753,30 @@ export function createApiRouter(pool) {
           const withdrawal = res.rows[0];
           if (!["Menunggu", "Diproses"].includes(withdrawal.status)) { await client.query("ROLLBACK"); return apiError(response, 409, "Closed"); }
           
-                    await client.query(
-            `INSERT INTO public.customer_ledger_entries
-             (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
-           VALUES ($1, 'withdrawal_refund', 'main', $2, $3, 'withdrawal', $4, $5::jsonb)`,
-            [
-              withdrawal.user_id,
-              withdrawal.amount,
-              balance.rows[0].main_balance,
-              withdrawal.id,
-              JSON.stringify({ reason: note }),
-            ],
-          );
+          if (status === "Ditolak") {
+            const balance = await client.query(
+              `UPDATE public.customer_accounts
+               SET total_accrual = total_accrual + $2,
+                   main_balance = main_balance + $2,
+                   updated_at = now()
+               WHERE user_id = $1
+               RETURNING total_accrual, main_balance`,
+              [withdrawal.user_id, withdrawal.amount],
+            );
+            await client.query(
+              `INSERT INTO public.customer_ledger_entries
+               (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
+             VALUES ($1, 'withdrawal_refund', 'main', $2, $3, 'withdrawal', $4, $5::jsonb)
+             ON CONFLICT (entry_type, source_type, source_id) DO NOTHING`,
+              [
+                withdrawal.user_id,
+                withdrawal.amount,
+                balance.rows[0].main_balance,
+                withdrawal.id,
+                JSON.stringify({ reason: note }),
+              ],
+            );
+          }
                   await client.query(
           `UPDATE public.customer_withdrawals
          SET status = $2, note = $3, reviewed_by = $4, reviewed_at = now()
@@ -3154,7 +3172,8 @@ export function createApiRouter(pool) {
       );
     }
     console.error(
-      `API request failed: ${request.method} ${request.path} (${error?.name ?? "Error"}).`,
+      `API request failed: ${request.method} ${request.path}:`,
+      error?.stack || error?.message || error,
     );
     return apiError(response, 500, "Permintaan gagal diproses.");
   });
