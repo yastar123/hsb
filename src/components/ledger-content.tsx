@@ -200,7 +200,7 @@ type Ctx = LedgerData & {
   review: (id: string, approve: boolean, note?: string) => Promise<void>;
   updateUser: (id: string, patch: Partial<Pick<AppUser, 'name' | 'email' | 'phone' | 'status' | 'rate' | 'balance' | 'deposit' | 'profit'>>) => Promise<void>;
   setCompound: (compound: Partial<CompoundSettings>) => Promise<void>;
-  runCompound: () => Promise<{ applied: number; date: string }>;
+  runCompound: (options?: { date?: string; cycleDate?: string }) => Promise<{ applied: number; date: string }>;
   instantRunCompound: () => Promise<{ applied: number; date: string }>;
   transferDepositToMain: (userId?: string, options?: { source?: 'deposit' | 'profit'; amount?: number }) => Promise<number>;
   creditReferralDeposit: (userId: string, amount: number, referralId: string) => Promise<number>;
@@ -302,8 +302,8 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [data.compound, post, refresh]);
 
-  const runCompound = useCallback(async () => {
-    const result = await post<{ applied: number; date: string }>('/api/admin/compound/run');
+  const runCompound = useCallback(async (options?: { date?: string; cycleDate?: string }) => {
+    const result = await post<{ applied: number; date: string }>('/api/admin/compound/run', options ?? {});
     await refresh();
     return result;
   }, [post, refresh]);

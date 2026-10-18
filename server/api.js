@@ -638,8 +638,46 @@ export function getCompoundingCutoffDate(date = new Date()) {
   return dateStr;
 }
 
-export async function runDueCompounding(pool, force = false) {
-  if (!pool) return { applied: 0, date: businessDate() };
+export async function runDueCompounding(pool, force = false, requestedDate = null) {
+  const todayDate = businessDate();
+  const defaultDate = requestedDate || todayDate;
+  if (!pool) {
+    let applied = 0;
+    const target = defaultDate;
+    const compound = inMemoryStore.compound || { globalRate: 2, enabled: true };
+    for (const user of inMemoryStore.usersById.values()) {
+      if (user.status !== "Aktif") continue;
+      const balance = Number(user.main_balance || 0);
+      if (balance <= 0) continue;
+      const rate =
+        user.daily_rate_override !== null && user.daily_rate_override !== undefined
+          ? Number(user.daily_rate_override)
+          : Number(compound.globalRate || 2);
+      if (rate <= 0) continue;
+      const accrual = Math.round(((balance * rate) / 100) * 100) / 100;
+      if (accrual > 0) {
+        user.main_balance = Math.round((balance + accrual) * 100) / 100;
+        user.total_accrual = Math.round(((Number(user.total_accrual) || 0) + accrual) * 100) / 100;
+        user.daily_accrual = accrual;
+        user.daily_accrual_date = target;
+        user.last_compound_date = target;
+        if (!inMemoryStore.dailyAccruals) inMemoryStore.dailyAccruals = [];
+        inMemoryStore.dailyAccruals.unshift({
+          id: randomUUID(),
+          userId: user.id,
+          date: target,
+          ratePercent: rate,
+          amount: accrual,
+          balanceAfter: user.main_balance,
+          createdAt: new Date().toISOString(),
+          status: "Disalurkan",
+        });
+        applied += 1;
+      }
+    }
+    return { applied, date: target };
+  }
+
   let client = null;
   try {
     client = await pool.connect();
@@ -650,8 +688,7 @@ export async function runDueCompounding(pool, force = false) {
        WHERE singleton = true
        FOR UPDATE`,
     );
-    const settings = settingResult.rows[0] ?? { global_rate_percent: 0, enabled: false };
-    const cutoffDate = force ? businessDate() : getCompoundingCutoffDate();
+    const settings = settingResult.rows[0] ?? { global_rate_percent: 0, enabled: true };
     const accounts = await client.query(
       `SELECT u.id, u.created_at, u.status, u.daily_rate_override,
               a.main_balance, a.total_accrual, a.last_compound_date
@@ -661,87 +698,86 @@ export async function runDueCompounding(pool, force = false) {
        FOR UPDATE OF a`,
     );
     let applied = 0;
+    let targetExecutionDate = defaultDate;
     for (const account of accounts.rows) {
-      let nextDate = force
-        ? businessDate()
-        : (account.last_compound_date
-          ? addDate(new Date(account.last_compound_date).toISOString().slice(0, 10), 1)
-          : businessDate(new Date(account.created_at)));
-      if (nextDate > cutoffDate && !force) continue;
-      console.log(`Processing compounding for user ${account.id}, force=${force}, nextDate=${nextDate}, cutoffDate=${cutoffDate}`);
+      if (account.status !== "Aktif") continue;
       let balance = Number(account.main_balance);
       let totalAccrual = Number(account.total_accrual);
-      let todaysAccrual = 0;
-      let lastAccrualDate = null;
-      let processedThrough = account.last_compound_date
-        ? new Date(account.last_compound_date).toISOString().slice(0, 10)
-        : null;
-      const originalProcessedThrough = processedThrough;
-      let dayCount = 0;
-      console.log(`Processing compounding loop for user ${account.id}, processedThrough=${processedThrough}`);
-      while (nextDate <= cutoffDate && dayCount < 366) {
-        dayCount += 1;
-        const rate =
-          account.daily_rate_override === null
-            ? Number(settings.global_rate_percent)
-            : Number(account.daily_rate_override);
-        let accrual = 0;
-        if ((settings.enabled || force) && account.status === "Aktif" && rate > 0 && balance > 0) {
-          accrual = Math.round(balance * rate) / 100;
-          accrual = Math.round(accrual * 100) / 100;
+      if (balance <= 0) continue;
+
+      const rate =
+        account.daily_rate_override === null
+          ? Number(settings.global_rate_percent)
+          : Number(account.daily_rate_override);
+      if (rate <= 0) continue;
+
+      let runDate = requestedDate;
+      if (!runDate) {
+        const lastDate = account.last_compound_date
+          ? new Date(account.last_compound_date).toISOString().slice(0, 10)
+          : null;
+        if (!lastDate || lastDate < todayDate) {
+          runDate = todayDate;
+        } else {
+          runDate = addDate(lastDate, 1);
         }
-        if (accrual > 0) {
-          const insert = await client.query(
-            `INSERT INTO public.customer_daily_accruals
-               (user_id, accrual_date, rate_percent, amount, balance_after)
-             VALUES ($1, $2::date, $3, $4, $5)
-             ON CONFLICT (user_id, accrual_date) DO NOTHING
-             RETURNING id`,
-            [account.id, nextDate, rate, accrual, balance + accrual],
-          );
-          if (insert.rowCount) {
-            balance = Math.round((balance + accrual) * 100) / 100;
-            totalAccrual = Math.round((totalAccrual + accrual) * 100) / 100;
-            await client.query(
-              `INSERT INTO public.customer_ledger_entries
-                 (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
-               VALUES ($1, 'admin_rate_accrual', 'main', $2, $3, 'daily_accrual', $4, $5::jsonb)
-               ON CONFLICT (entry_type, source_type, source_id) DO NOTHING`,
-              [
-                account.id,
-                accrual,
-                balance,
-                `${account.id}:${nextDate}`,
-                JSON.stringify({ ratePercent: rate, date: nextDate }),
-              ],
-            );
-            applied += 1;
-          }
-          todaysAccrual = accrual;
-          lastAccrualDate = nextDate;
-        }
-        processedThrough = nextDate;
-        nextDate = addDate(nextDate, 1);
       }
-      if (force || (processedThrough && processedThrough !== originalProcessedThrough)) {
-        await client.query(
-          `UPDATE public.customer_accounts
-           SET main_balance = $2,
-               total_accrual = $3,
-               daily_accrual = $4,
-               daily_accrual_date = COALESCE($5::date, daily_accrual_date),
-               last_compound_date = $6::date,
-               updated_at = now()
-           WHERE user_id = $1`,
-          [account.id, balance, totalAccrual, todaysAccrual, lastAccrualDate, processedThrough || businessDate()],
+      targetExecutionDate = runDate;
+
+      const accrual = Math.round(((balance * rate) / 100) * 100) / 100;
+      if (accrual > 0) {
+        const insert = await client.query(
+          `INSERT INTO public.customer_daily_accruals
+             (user_id, accrual_date, rate_percent, amount, balance_after)
+           VALUES ($1, $2::date, $3, $4, $5)
+           ON CONFLICT (user_id, accrual_date) DO UPDATE
+             SET rate_percent = EXCLUDED.rate_percent,
+                 amount = public.customer_daily_accruals.amount + EXCLUDED.amount,
+                 balance_after = EXCLUDED.balance_after
+           RETURNING id`,
+          [account.id, runDate, rate, accrual, balance + accrual],
         );
+
+        if (insert.rowCount) {
+          balance = Math.round((balance + accrual) * 100) / 100;
+          totalAccrual = Math.round((totalAccrual + accrual) * 100) / 100;
+
+          await client.query(
+            `INSERT INTO public.customer_ledger_entries
+               (user_id, entry_type, bucket, amount, balance_after, source_type, source_id, details)
+             VALUES ($1, 'admin_rate_accrual', 'main', $2, $3, 'daily_accrual', $4, $5::jsonb)
+             ON CONFLICT (entry_type, source_type, source_id) DO NOTHING`,
+            [
+              account.id,
+              accrual,
+              balance,
+              `${account.id}:${runDate}:${randomUUID()}`,
+              JSON.stringify({ ratePercent: rate, date: runDate, manual: true }),
+            ],
+          );
+
+          await client.query(
+            `UPDATE public.customer_accounts
+             SET main_balance = $2,
+                 total_accrual = $3,
+                 daily_accrual = $4,
+                 daily_accrual_date = $5::date,
+                 last_compound_date = $5::date,
+                 updated_at = now()
+             WHERE user_id = $1`,
+            [account.id, balance, totalAccrual, accrual, runDate],
+          );
+
+          applied += 1;
+        }
       }
     }
     await client.query("COMMIT");
-    return { applied, date: cutoffDate };
+    return { applied, date: targetExecutionDate };
   } catch (error) {
     if (client) await client.query("ROLLBACK").catch(() => {});
-    return { applied: 0, date: businessDate() };
+    console.error("Compounding run failed:", error);
+    throw error;
   } finally {
     if (client) client.release();
   }
@@ -3144,7 +3180,13 @@ export function createApiRouter(pool) {
   router.post(
     "/admin/compound/run",
     asyncRoute(async (request, response) => {
-      const result = await runDueCompounding(pool, true);
+      const requestedDate =
+        typeof request.body?.cycleDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(request.body.cycleDate)
+          ? request.body.cycleDate
+          : typeof request.body?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(request.body.date)
+            ? request.body.date
+            : null;
+      const result = await runDueCompounding(pool, true, requestedDate);
       await addAudit(
         pool,
         request.adminName,

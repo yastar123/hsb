@@ -27,6 +27,8 @@ function AdminCompounding() {
   const [settingsDraft, setSettingsDraft] = useState<CompoundSettings>(compound);
   const [savingSettings, setSavingSettings] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const todayStr = useMemo(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date()), []);
+  const [cycleDate, setCycleDate] = useState(todayStr);
   const [message, setMessage] = useState('');
   const [lastExecutionInfo, setLastExecutionInfo] = useState<string | null>(null);
 
@@ -59,7 +61,7 @@ function AdminCompounding() {
     setExecuting(true);
     setMessage('');
     try {
-      const result = await runCompound();
+      const result = await runCompound({ cycleDate });
       const info = `Compounding manual berhasil dieksekusi! Disalurkan ke ${result.applied} akun pengguna pada siklus ${result.date}.`;
       setMessage(info);
       setLastExecutionInfo(`${new Date().toLocaleTimeString('id-ID')} WIB (${result.applied} akun diperbarui)`);
@@ -197,7 +199,7 @@ function AdminCompounding() {
 
         {/* Settings & Action Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border/60">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <label className="text-sm">
               <span className="text-xs font-semibold text-muted-foreground block mb-1">
                 Tarif Compounding Global (% / hari)
@@ -208,7 +210,7 @@ function AdminCompounding() {
                   min="0"
                   max="100"
                   step="0.01"
-                  className={`${inp} w-36 font-mono font-bold`}
+                  className={`${inp} w-32 font-mono font-bold`}
                   value={settingsDraft.globalRate}
                   onChange={(e) =>
                     setSettingsDraft((curr) => ({
@@ -230,6 +232,19 @@ function AdminCompounding() {
                 </Button>
               </div>
             </label>
+
+            <label className="text-sm">
+              <span className="text-xs font-semibold text-muted-foreground block mb-1">
+                Tanggal Siklus yang Disalurkan
+              </span>
+              <input
+                type="date"
+                className={`${inp} w-40 font-mono font-medium`}
+                value={cycleDate}
+                onChange={(e) => setCycleDate(e.target.value)}
+                aria-label="Tanggal siklus compounding"
+              />
+            </label>
           </div>
 
           <div className="flex items-center gap-3">
@@ -239,7 +254,7 @@ function AdminCompounding() {
               disabled={loading || executing || eligibleUsers.length === 0}
               onClick={() => {
                 const confirmed = confirm(
-                  `Eksekusi compounding manual sekarang?\n\n• Jumlah penerima: ${eligibleUsers.length} akun aktif\n• Total profit yang disalurkan: +${usd(projectedTotalPayout)}\n\nSaldo profit akan langsung disalurkan dan dibukukan ke Saldo Total Profit masing-masing user.`,
+                  `Eksekusi compounding manual sekarang?\n\n• Tanggal Siklus: ${cycleDate}\n• Jumlah penerima: ${eligibleUsers.length} akun aktif\n• Total profit yang disalurkan: +${usd(projectedTotalPayout)}\n\nSaldo profit akan langsung disalurkan dan dibukukan ke Saldo Total Profit masing-masing user.`,
                 );
                 if (confirmed) {
                   void runManualCompounding();
@@ -247,7 +262,7 @@ function AdminCompounding() {
               }}
             >
               <Play className="size-4 fill-white" />
-              {executing ? 'Sedang Memproses...' : 'Eksekusi Compounding Sekarang'}
+              {executing ? 'Sedang Memproses...' : `Eksekusi Compounding (${cycleDate})`}
             </Button>
           </div>
         </div>
