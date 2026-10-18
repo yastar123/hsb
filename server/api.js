@@ -859,10 +859,14 @@ async function loadWithdrawals(pool, userId) {
 }
 
 function serializeDailyAccrual(row) {
-  const dateStr =
-    row.accrual_date instanceof Date
-      ? row.accrual_date.toISOString().slice(0, 10)
-      : String(row.accrual_date || "").slice(0, 10);
+  let dateStr;
+  if (row.accrual_date instanceof Date) {
+    dateStr = new Intl.DateTimeFormat("en-CA", { timeZone: BUSINESS_TIME_ZONE }).format(
+      row.accrual_date,
+    );
+  } else {
+    dateStr = String(row.accrual_date || "").slice(0, 10);
+  }
   return {
     id: String(row.id),
     userId: String(row.user_id),
@@ -879,48 +883,34 @@ async function loadDailyAccruals(pool, userId) {
   if (pool) {
     try {
       const query = userId
-        ? `WITH unified AS (
-             SELECT 
-               id,
-               user_id,
-               accrual_date,
-               rate_percent,
-               amount,
-               balance_after,
-               created_at
-             FROM public.customer_daily_accruals
-             WHERE user_id = $1
-             UNION
-             SELECT
-               id,
-               user_id,
-               COALESCE((details->>'date')::date, created_at::date) AS accrual_date,
-               COALESCE((details->>'ratePercent')::numeric, 0) AS rate_percent,
-               amount,
-               balance_after,
-               created_at
-             FROM public.customer_ledger_entries
-             WHERE user_id = $1 AND entry_type = 'admin_rate_accrual'
-           )
-           SELECT DISTINCT ON (accrual_date) *
-           FROM unified
+        ? `SELECT id, user_id, accrual_date, rate_percent, amount, balance_after, created_at
+           FROM public.customer_daily_accruals
+           WHERE user_id = $1
            ORDER BY accrual_date DESC, created_at DESC
            LIMIT 1000`
-        : `SELECT 
-             id,
-             user_id,
-             accrual_date,
-             rate_percent,
-             amount,
-             balance_after,
-             created_at
+        : `SELECT id, user_id, accrual_date, rate_percent, amount, balance_after, created_at
            FROM public.customer_daily_accruals
            ORDER BY accrual_date DESC, created_at DESC
            LIMIT 2000`;
       const result = await pool.query(query, userId ? [userId] : []);
-      return result.rows.map(serializeDailyAccrual);
+      if (result.rowCount > 0) {
+        return result.rows.map(serializeDailyAccrual);
+      }
+      if (userId) {
+        const ledgerQuery = `
+          SELECT id, user_id, created_at::date AS accrual_date, 0 AS rate_percent,
+                 amount, balance_after, created_at
+          FROM public.customer_ledger_entries
+          WHERE user_id = $1 AND entry_type = 'admin_rate_accrual'
+          ORDER BY created_at DESC
+          LIMIT 1000
+        `;
+        const ledgerRes = await pool.query(ledgerQuery, [userId]);
+        return ledgerRes.rows.map(serializeDailyAccrual);
+      }
+      return [];
     } catch (err) {
-      console.warn("Could not load daily accruals from database, falling back to in-memory:", err?.message);
+      console.warn("Could not load daily accruals from database:", err?.message);
     }
   }
   return (inMemoryStore.dailyAccruals || [])
