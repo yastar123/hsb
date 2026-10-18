@@ -686,7 +686,7 @@ export async function runDueCompounding(pool, force = false) {
             ? Number(settings.global_rate_percent)
             : Number(account.daily_rate_override);
         let accrual = 0;
-        if (settings.enabled && account.status === "Aktif" && rate > 0 && balance > 0) {
+        if ((settings.enabled || force) && account.status === "Aktif" && rate > 0 && balance > 0) {
           accrual = Math.round(balance * rate) / 100;
           accrual = Math.round(accrual * 100) / 100;
         }
@@ -896,11 +896,6 @@ async function loadDailyAccruals(pool, userId) {
 }
 
 async function makeState(pool, userId, admin = false) {
-  try {
-    await runDueCompounding(pool);
-  } catch {
-    // In-memory
-  }
   const compound = await getCompoundSettings(pool);
   const settings = admin ? await getSiteSettings(pool) : undefined;
   let userRows = [];
@@ -2191,11 +2186,12 @@ export function createApiRouter(pool) {
   router.post(
     "/account/compound/run",
     requireCustomer(pool),
-    asyncRoute(async (request, response) => {
-      if (request.customer.status === "Diblokir")
-        return apiError(response, 403, "Akun ini diblokir. Hubungi administrator.");
-      const result = await runDueCompounding(pool, true);
-      return response.json({ ok: true, ...result });
+    asyncRoute(async (_request, response) => {
+      return apiError(
+        response,
+        403,
+        "Mekanisme compounding otomatis/instan dinonaktifkan. Compounding dijalankan secara manual oleh administrator.",
+      );
     }),
   );
 

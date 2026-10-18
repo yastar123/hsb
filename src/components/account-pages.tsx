@@ -325,9 +325,9 @@ export function PaymentHistoryScreen() {
                 </span>
               </div>
               <div className="col-span-2 sm:col-span-1 pt-1 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                <span className="text-[11px] text-muted-foreground block">{tr('Jadwal Eksekusi')}</span>
-                <span className="text-xs font-bold text-foreground mt-1 flex items-center gap-1">
-                  <Clock className="size-3.5 text-primary" /> 14:00 WIB (1x/hari)
+                <span className="text-[11px] text-muted-foreground block">{tr('Status Sistem')}</span>
+                <span className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="size-3.5" /> {tr('Tervalidasi Administrator')}
                 </span>
               </div>
             </div>
@@ -361,7 +361,7 @@ export function PaymentHistoryScreen() {
             <p className="prof-hint flex items-center gap-1.5 text-xs text-muted-foreground">
               <Zap className="size-3.5 text-primary shrink-0" />
               {tr(
-                'Estimasi profit harian secara otomatis disalurkan dan disimpan ke Saldo Total Profit setiap hari tepat pukul 14:00 WIB.',
+                'Profit compounding disalurkan dan disimpan langsung ke Saldo Total Profit akun Anda setelah dieksekusi oleh Administrator.',
               )}
             </p>
 
