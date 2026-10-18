@@ -397,11 +397,7 @@ export function PaymentHistoryScreen() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1.5 font-mono">
-                        <Clock className="size-3 text-primary" />
-                        {row.date} · 14:00 WIB
-                      </span>
+                    <div className="flex items-center justify-end pt-2 border-t border-border/60 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         <CheckCircle2 className="size-3" />
                         {tr('Tersalurkan')}
