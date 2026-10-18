@@ -379,7 +379,21 @@ function AdminCompounding() {
                       aria-label="Saldo profit total"
                     />
                   </td>
-                  <td className="pr-1.5 font-extrabold font-mono text-foreground">{usd(mainOf(u))}</td>
+                  <td className="pr-1.5 font-semibold text-foreground">
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000000000"
+                      step="0.01"
+                      className={inp}
+                      defaultValue={mainOf(u)}
+                      onBlur={(e) => {
+                        const value = Number(e.currentTarget.value);
+                        if (value !== mainOf(u)) upd(u.id, { balance: value });
+                      }}
+                      aria-label="Saldo utama basis"
+                    />
+                  </td>
                   <td className="pr-1.5">
                     <input
                       type="number"
